@@ -1,0 +1,18 @@
+rule_id: iot_anomaly_001
+name: IoT Sensor Anomaly Detection
+description: Detects anomalous IoT sensor behavior such as excessive event bursts or out-of-range values
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: iot_anomaly
+  parameters:
+    threshold: 5
+    field: actor_id
+    event_types:
+      - sensor_anomaly
+      - data_tampering
+technique_id: T1565
+technique_name: "Data Manipulation"
+response_actions:
+  - isolate_service

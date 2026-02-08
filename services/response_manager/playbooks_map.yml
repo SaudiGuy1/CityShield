@@ -1,0 +1,23 @@
+# Response action to Ansible playbook mapping
+
+response_actions:
+  block_ip:
+    playbook: /ansible/playbooks/block_ip.yml
+    description: Block malicious IP address
+    parameters:
+      - ip_address
+      - alert_id
+
+  isolate_service:
+    playbook: /ansible/playbooks/isolate_service.yml
+    description: Isolate compromised service
+    parameters:
+      - service
+      - alert_id
+
+  revoke_token:
+    playbook: /ansible/playbooks/revoke_token.yml
+    description: Revoke user authentication token
+    parameters:
+      - user
+      - alert_id

@@ -1,0 +1,31 @@
+{
+  "scenario_id": "traffic_scan_001",
+  "name": "Traffic Network Scan Scenario",
+  "description": "Simulates a network port scanning attack targeting the traffic management system",
+  "components": ["network_emulator"],
+  "duration_seconds": 180,
+  "attack_pattern": "port_scan",
+  "parameters": {
+    "attacker_ip": "192.168.100.50",
+    "target_zone": "zone_1",
+    "attack_type": "port_scan"
+  },
+  "steps": [
+    {
+      "delay_seconds": 0,
+      "service": "network_emulator",
+      "action": "start_attack",
+      "params": {
+        "type": "port_scan",
+        "attacker_ip": "192.168.100.50",
+        "target_zone": "zone_1"
+      }
+    },
+    {
+      "delay_seconds": 180,
+      "service": "network_emulator",
+      "action": "stop_attack",
+      "params": {}
+    }
+  ]
+}

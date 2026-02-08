@@ -1,0 +1,20 @@
+rule_id: net_scan_001
+name: Network Port Scan Detection
+description: Detects network port scanning activity by monitoring for connections to multiple distinct destination ports from a single source IP within a time window
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: net_scan
+  parameters:
+    threshold: 10
+    field: dst_port
+    group_by: src_ip
+    event_types:
+      - port_scan
+      - network_probe
+      - network_connection
+technique_id: T1046
+technique_name: "Network Service Scanning"
+response_actions:
+  - block_ip

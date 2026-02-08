@@ -1,0 +1,243 @@
+networks:
+  cityshield_network:
+    driver: bridge
+
+volumes:
+  opensearch_data:
+  logs_volume:
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.11.1
+    container_name: cityshield_opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - cityshield_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.1
+    container_name: cityshield_dashboards
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "5601:5601"
+    networks:
+      - cityshield_network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.17.18
+    container_name: cityshield_filebeat
+    user: root
+    volumes:
+      - ./infrastructure/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - logs_volume:/var/log/cityshield:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: filebeat -e -strict.perms=false
+    networks:
+      - cityshield_network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cityshield_backend
+    environment:
+      - OPENSEARCH_URL=${OPENSEARCH_URL}
+      - OPENSEARCH_USER=${OPENSEARCH_USER}
+      - OPENSEARCH_PASS=${OPENSEARCH_PASS}
+      - BACKEND_JWT_SECRET=${BACKEND_JWT_SECRET}
+      - BACKEND_JWT_ALGORITHM=${BACKEND_JWT_ALGORITHM}
+      - BACKEND_ACCESS_TOKEN_EXPIRE_MINUTES=${BACKEND_ACCESS_TOKEN_EXPIRE_MINUTES}
+      - DEFAULT_ADMIN_USER=${DEFAULT_ADMIN_USER}
+      - DEFAULT_ADMIN_PASS=${DEFAULT_ADMIN_PASS}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL}
+    ports:
+      - "8000:8000"
+    networks:
+      - cityshield_network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cityshield_frontend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    ports:
+      - "3000:80"
+    networks:
+      - cityshield_network
+    depends_on:
+      - backend
+
+  traffic_sim:
+    build:
+      context: ./services/simulators/traffic_sim
+      dockerfile: Dockerfile
+    container_name: cityshield_traffic_sim
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL}
+      - EVENT_RATE=${TRAFFIC_SIM_EVENT_RATE}
+      - OPENSEARCH_URL=${OPENSEARCH_URL}
+    volumes:
+      - logs_volume:/data/logs
+    networks:
+      - cityshield_network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  iot_sim:
+    build:
+      context: ./services/simulators/iot_sim
+      dockerfile: Dockerfile
+    container_name: cityshield_iot_sim
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL}
+      - EVENT_RATE=${IOT_SIM_EVENT_RATE}
+      - OPENSEARCH_URL=${OPENSEARCH_URL}
+    volumes:
+      - logs_volume:/data/logs
+    networks:
+      - cityshield_network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  network_emulator:
+    build:
+      context: ./services/simulators/network_emulator
+      dockerfile: Dockerfile
+    container_name: cityshield_network_emulator
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL}
+      - EVENT_RATE=${NETWORK_EMULATOR_EVENT_RATE}
+      - OPENSEARCH_URL=${OPENSEARCH_URL}
+    volumes:
+      - logs_volume:/data/logs
+    networks:
+      - cityshield_network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  detection_engine:
+    build:
+      context: ./services/detection_engine
+      dockerfile: Dockerfile
+    container_name: cityshield_detection_engine
+    environment:
+      - OPENSEARCH_URL=${OPENSEARCH_URL}
+      - OPENSEARCH_USER=${OPENSEARCH_USER}
+      - OPENSEARCH_PASS=${OPENSEARCH_PASS}
+      - DETECTION_POLL_INTERVAL_SECONDS=${DETECTION_POLL_INTERVAL_SECONDS}
+      - DETECTION_QUERY_WINDOW_SECONDS=${DETECTION_QUERY_WINDOW_SECONDS}
+      - DETECTION_LOOKBACK_MINUTES=${DETECTION_LOOKBACK_MINUTES}
+      - THREAT_INTEL_PROVIDER=${THREAT_INTEL_PROVIDER}
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL}
+    networks:
+      - cityshield_network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  response_manager:
+    build:
+      context: ./services/response_manager
+      dockerfile: Dockerfile
+    container_name: cityshield_response_manager
+    environment:
+      - OPENSEARCH_URL=${OPENSEARCH_URL}
+      - OPENSEARCH_USER=${OPENSEARCH_USER}
+      - OPENSEARCH_PASS=${OPENSEARCH_PASS}
+      - RESPONSE_POLL_INTERVAL_SECONDS=${RESPONSE_POLL_INTERVAL_SECONDS}
+      - RESPONSE_ENABLED=${RESPONSE_ENABLED}
+      - LOG_LEVEL=${LOG_LEVEL}
+    volumes:
+      - ./infrastructure/ansible:/ansible
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cityshield_network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  scenario_runner:
+    build:
+      context: ./services/scenario_runner
+      dockerfile: Dockerfile
+    container_name: cityshield_scenario_runner
+    environment:
+      - OPENSEARCH_URL=${OPENSEARCH_URL}
+      - OPENSEARCH_USER=${OPENSEARCH_USER}
+      - OPENSEARCH_PASS=${OPENSEARCH_PASS}
+      - SCENARIO_POLL_INTERVAL_SECONDS=${SCENARIO_POLL_INTERVAL_SECONDS}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - TRAFFIC_SIM_URL=http://traffic_sim:8001
+      - IOT_SIM_URL=http://iot_sim:8002
+      - NETWORK_EMULATOR_URL=http://network_emulator:8003
+    networks:
+      - cityshield_network
+    depends_on:
+      - traffic_sim
+      - iot_sim
+      - network_emulator
+      - opensearch

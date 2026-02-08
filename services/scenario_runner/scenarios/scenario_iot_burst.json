@@ -1,0 +1,29 @@
+{
+  "scenario_id": "iot_burst_001",
+  "name": "IoT Sensor Anomaly Burst Scenario",
+  "description": "Simulates anomalous IoT sensor behavior with out-of-range values and high event rates",
+  "components": ["iot_sim"],
+  "duration_seconds": 180,
+  "attack_pattern": "anomaly_burst",
+  "parameters": {
+    "target_zone": "zone_2",
+    "attack_type": "anomaly_burst"
+  },
+  "steps": [
+    {
+      "delay_seconds": 0,
+      "service": "iot_sim",
+      "action": "start_attack",
+      "params": {
+        "type": "anomaly_burst",
+        "target_zone": "zone_2"
+      }
+    },
+    {
+      "delay_seconds": 180,
+      "service": "iot_sim",
+      "action": "stop_attack",
+      "params": {}
+    }
+  ]
+}

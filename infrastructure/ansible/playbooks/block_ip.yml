@@ -1,0 +1,24 @@
+---
+- name: Block IP Address
+  hosts: localhost
+  gather_facts: no
+  vars:
+    target_ip: "{{ ip_address }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log IP blocking action
+      debug:
+        msg: "Blocking IP address {{ target_ip }} for alert {{ alert_id }}"
+
+    - name: Simulate firewall rule addition
+      shell: |
+        echo "SIMULATED: iptables -A INPUT -s {{ target_ip }} -j DROP"
+        echo "{{ target_ip }}" >> /tmp/blocked_ips.txt
+      args:
+        creates: /tmp/blocked_ips.txt
+      register: block_result
+
+    - name: Record blocking action
+      debug:
+        msg: "IP {{ target_ip }} has been blocked. Result: {{ block_result.stdout }}"

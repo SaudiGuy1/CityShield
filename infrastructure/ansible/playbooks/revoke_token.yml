@@ -1,0 +1,22 @@
+---
+- name: Revoke User Token
+  hosts: localhost
+  gather_facts: no
+  vars:
+    user_id: "{{ user }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log token revocation action
+      debug:
+        msg: "Revoking token for user {{ user_id }} for alert {{ alert_id }}"
+
+    - name: Simulate token revocation
+      shell: |
+        echo "SIMULATED: Revoke JWT token for user {{ user_id }}"
+        echo "User {{ user_id }} token revoked at $(date)" >> /tmp/revoked_tokens.txt
+      register: revoke_result
+
+    - name: Record revocation action
+      debug:
+        msg: "Token for user {{ user_id }} has been revoked. Result: {{ revoke_result.stdout }}"

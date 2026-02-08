@@ -1,0 +1,22 @@
+---
+- name: Isolate Service
+  hosts: localhost
+  gather_facts: no
+  vars:
+    service_name: "{{ service }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log service isolation action
+      debug:
+        msg: "Isolating service {{ service_name }} for alert {{ alert_id }}"
+
+    - name: Simulate service isolation
+      shell: |
+        echo "SIMULATED: docker network disconnect cityshield_network {{ service_name }}"
+        echo "Service {{ service_name }} isolated at $(date)" >> /tmp/isolated_services.txt
+      register: isolate_result
+
+    - name: Record isolation action
+      debug:
+        msg: "Service {{ service_name }} has been isolated. Result: {{ isolate_result.stdout }}"

@@ -1,0 +1,22 @@
+# MITRE ATT&CK Technique Mappings for CityShield
+
+techniques:
+  T1046:
+    name: Network Service Scanning
+    tactic: Discovery
+    description: Adversaries may attempt to get a listing of services running on remote hosts
+
+  T1565:
+    name: Data Manipulation
+    tactic: Impact
+    description: Adversaries may insert, delete, or manipulate data to influence external outcomes or hide activity
+
+  T1499:
+    name: Endpoint Denial of Service
+    tactic: Impact
+    description: Adversaries may perform Endpoint Denial of Service (DoS) attacks to degrade or block availability
+
+  T1110:
+    name: Brute Force
+    tactic: Credential Access
+    description: Adversaries may use brute force techniques to gain access to accounts
