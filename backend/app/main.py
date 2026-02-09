@@ -18,8 +18,10 @@ from .api import (
     routes_scenarios,
     routes_alerts,
     routes_metrics,
-    routes_logs
+    routes_logs,
+    routes_overview,
 )
+from .api.routes_overview import init_opensearch_dashboards
 
 # Setup logging
 setup_logging()
@@ -66,6 +68,14 @@ async def lifespan(app: FastAPI):
     # Create default admin user
     create_default_admin()
 
+    # Initialize OpenSearch Dashboards (non-blocking)
+    try:
+        created = init_opensearch_dashboards()
+        if created:
+            logger.info(f"OpenSearch Dashboards initialized: {len(created)} objects")
+    except Exception as e:
+        logger.debug(f"Dashboard init skipped (dashboards may not be ready): {e}")
+
     logger.info("Application startup complete")
 
     yield
@@ -100,6 +110,7 @@ app.include_router(routes_scenarios.router)
 app.include_router(routes_alerts.router)
 app.include_router(routes_metrics.router)
 app.include_router(routes_logs.router)
+app.include_router(routes_overview.router)
 
 
 @app.get("/")

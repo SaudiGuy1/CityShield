@@ -1,10 +1,11 @@
 """Scenario management routes."""
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
+import asyncio
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from typing import List, Optional, Dict, Any
 from ..models.scenario import Scenario, ScenarioCreate, ScenarioUpdate, ScenarioRun, ScenarioRunCreate
 from ..core.rbac import require_researcher_or_admin
 from ..core.security import get_current_user
-from ..services.scenario_service import ScenarioService
+from ..services.scenario_service import ScenarioService, simulate_scenario_execution
 
 router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 
@@ -70,15 +71,25 @@ async def delete_scenario(
 @router.post("/runs", response_model=ScenarioRun)
 async def create_scenario_run(
     run: ScenarioRunCreate,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(require_researcher_or_admin)
 ):
-    """Create a new scenario run (Researcher or Admin)."""
-    # Check if scenario exists
+    """Create a new scenario run and launch background execution."""
     scenario = ScenarioService.get_scenario(run.scenario_id)
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
 
-    return ScenarioService.create_run(run, current_user["username"])
+    scenario_run = ScenarioService.create_run(run, current_user["username"], scenario)
+
+    # Launch background execution
+    background_tasks.add_task(_run_simulation, scenario_run.run_id, scenario)
+
+    return scenario_run
+
+
+async def _run_simulation(run_id: str, scenario: Scenario):
+    """Wrapper to run the async simulation in the background."""
+    await simulate_scenario_execution(run_id, scenario)
 
 
 @router.get("/runs", response_model=List[ScenarioRun])
@@ -100,3 +111,22 @@ async def get_scenario_run(
     if not run:
         raise HTTPException(status_code=404, detail="Scenario run not found")
     return run
+
+
+@router.get("/runs/{run_id}/stages")
+async def get_scenario_run_stages(
+    run_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Get real-time stage data + target info for a scenario run."""
+    doc = ScenarioService.get_run_raw(run_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Scenario run not found")
+
+    return {
+        "run_id": doc.get("run_id"),
+        "status": doc.get("status"),
+        "target_device_id": doc.get("target_device_id"),
+        "target_component_id": doc.get("target_component_id"),
+        "stages": doc.get("stages", []),
+    }

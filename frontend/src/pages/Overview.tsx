@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import anime from 'animejs'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import CityVisualization from '../components/CityVisualization'
+import SmartCity3D from '../components/SmartCity3D'
+import type { ActiveAttack } from '../App'
 
-export default function Overview({ user }: { user: any }) {
+interface OverviewProps {
+  user: any
+  activeAttack: ActiveAttack | null
+  onAttackEnd: () => void
+}
+
+export default function Overview({ user, activeAttack, onAttackEnd }: OverviewProps) {
   const [stats, setStats] = useState({
     totalLogs: 0,
     activeAlerts: 0,
@@ -11,7 +18,6 @@ export default function Overview({ user }: { user: any }) {
     detectionRate: 0
   })
   const [eventData, setEventData] = useState<any[]>([])
-  const [componentData, setComponentData] = useState({ traffic: 0, iot: 0, network: 0 })
   const [pieData, setPieData] = useState<any[]>([])
 
   const statsRef = useRef<HTMLDivElement>(null)
@@ -101,8 +107,6 @@ export default function Overview({ user }: { user: any }) {
       const iotCount = events.filter((e: any) => e.component === 'iot_sensors').length
       const networkCount = events.filter((e: any) => e.component === 'network_infrastructure').length
 
-      setComponentData({ traffic: trafficCount, iot: iotCount, network: networkCount })
-
       // Pie chart data
       setPieData([
         { name: 'Traffic', value: trafficCount, color: '#ef4444' },
@@ -154,21 +158,7 @@ export default function Overview({ user }: { user: any }) {
       {/* 3D City Visualization */}
       <div className="chart-container">
         <h3>Smart City Components</h3>
-        <CityVisualization data={componentData} />
-        <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', marginTop: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: 16, height: 16, background: '#ef4444', borderRadius: 4 }}></div>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Traffic ({componentData.traffic})</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: 16, height: 16, background: '#10b981', borderRadius: 4 }}></div>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>IoT ({componentData.iot})</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: 16, height: 16, background: '#3b82f6', borderRadius: 4 }}></div>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Network ({componentData.network})</span>
-          </div>
-        </div>
+        <SmartCity3D activeAttack={activeAttack} onAttackEnd={onAttackEnd} />
       </div>
 
       {/* Charts Row */}
@@ -287,6 +277,44 @@ export default function Overview({ user }: { user: any }) {
               <span>OpenSearch Dashboards</span>
               <span style={{ color: 'var(--accent-primary)' }}>→</span>
             </a>
+
+            <button
+              style={{
+                color: 'var(--text-primary)',
+                padding: '0.75rem',
+                background: 'var(--bg-tertiary)',
+                borderRadius: '0.5rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                border: '1px solid var(--border-color)',
+                cursor: 'pointer',
+                width: '100%',
+                transition: 'all 0.2s',
+                fontSize: 'inherit',
+                fontFamily: 'inherit',
+              }}
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('token')
+                  const res = await fetch('/api/overview/init-dashboards', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    alert(`Dashboards initialized: ${data.created?.length || 0} objects created`)
+                  } else {
+                    alert('Failed to initialize dashboards')
+                  }
+                } catch {
+                  alert('Error connecting to server')
+                }
+              }}
+            >
+              <span>Initialize Dashboards</span>
+              <span style={{ color: 'var(--accent-primary)' }}>+</span>
+            </button>
 
             <a
               href="http://localhost:8000/docs"

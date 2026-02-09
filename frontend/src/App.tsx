@@ -9,9 +9,21 @@ import AdminUsers from './pages/AdminUsers'
 import Nav from './components/Nav'
 import ProtectedRoute from './components/ProtectedRoute'
 
+export interface ActiveAttack {
+  runId: string
+  scenarioId: string
+  scenarioName: string
+  attackPattern: string
+  targetComponent: string
+  durationSeconds: number
+  startedAt: string
+  targetDeviceId?: string
+}
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [activeAttack, setActiveAttack] = useState<ActiveAttack | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -25,16 +37,24 @@ function App() {
 
   return (
     <BrowserRouter>
-      {isAuthenticated && <Nav user={user} onLogout={() => {
+      {isAuthenticated && <Nav user={user} activeAttack={activeAttack} onLogout={() => {
         localStorage.removeItem('token')
         setIsAuthenticated(false)
         setUser(null)
       }} />}
       <Routes>
         <Route path="/login" element={<Login onLogin={(u) => { setIsAuthenticated(true); setUser(u) }} />} />
-        <Route path="/" element={<ProtectedRoute isAuth={isAuthenticated}><Overview user={user} /></ProtectedRoute>} />
+        <Route path="/" element={
+          <ProtectedRoute isAuth={isAuthenticated}>
+            <Overview user={user} activeAttack={activeAttack} onAttackEnd={() => setActiveAttack(null)} />
+          </ProtectedRoute>
+        } />
         <Route path="/alerts" element={<ProtectedRoute isAuth={isAuthenticated}><Alerts /></ProtectedRoute>} />
-        <Route path="/scenarios" element={<ProtectedRoute isAuth={isAuthenticated}><ScenarioBuilder /></ProtectedRoute>} />
+        <Route path="/scenarios" element={
+          <ProtectedRoute isAuth={isAuthenticated}>
+            <ScenarioBuilder onAttackLaunched={setActiveAttack} />
+          </ProtectedRoute>
+        } />
         <Route path="/rules" element={<ProtectedRoute isAuth={isAuthenticated}><Rules /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute isAuth={isAuthenticated}><AdminUsers user={user} /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" />} />

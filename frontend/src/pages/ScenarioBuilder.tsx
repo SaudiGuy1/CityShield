@@ -1,15 +1,31 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import anime from 'animejs'
+import type { ActiveAttack } from '../App'
 
-export default function ScenarioBuilder() {
+interface ScenarioBuilderProps {
+  onAttackLaunched: (attack: ActiveAttack) => void
+}
+
+interface DeviceTarget {
+  id: string
+  name: string
+  category: string
+  zone: string
+}
+
+export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderProps) {
   const [scenarios, setScenarios] = useState<any[]>([])
   const [runs, setRuns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState<{ [key: string]: boolean }>({})
+  const [targetModal, setTargetModal] = useState<{ scenarioId: string; targetComponent: string } | null>(null)
+  const [devices, setDevices] = useState<DeviceTarget[]>([])
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 5000) // Poll for updates
+    const interval = setInterval(fetchData, 5000)
     return () => clearInterval(interval)
   }, [])
 
@@ -42,27 +58,89 @@ export default function ScenarioBuilder() {
     }
   }
 
-  const runScenario = async (scenarioId: string) => {
+  const fetchDevices = async (targetComponent: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/overview/city-components', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const all: DeviceTarget[] = await res.json()
+        // Map scenario target_component to category/zone filtering
+        const zoneMap: Record<string, string> = {
+          traffic_management: 'zone-a',
+          traffic_sim: 'zone-a',
+          iot_sensors: 'zone-b',
+          iot_sim: 'zone-b',
+          network_infrastructure: 'zone-c',
+          network_emulator: 'zone-c',
+          security: 'zone-d',
+          industrial_systems: 'zone-e',
+        }
+        const targetZone = zoneMap[targetComponent]
+        if (targetZone) {
+          setDevices(all.filter(d => d.zone === targetZone))
+        } else {
+          setDevices(all)
+        }
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const openTargetModal = async (scenarioId: string) => {
+    const scenario = scenarios.find(s => s.scenario_id === scenarioId)
+    if (!scenario) return
+    const targetComponent = scenario.components?.[0] || scenario.target_component || 'unknown'
+    setTargetModal({ scenarioId, targetComponent })
+    await fetchDevices(targetComponent)
+  }
+
+  const runScenario = async (scenarioId: string, targetDeviceId?: string) => {
+    setTargetModal(null)
     setRunning({ ...running, [scenarioId]: true })
 
     try {
       const token = localStorage.getItem('token')
+      const body: any = { scenario_id: scenarioId }
+      if (targetDeviceId) body.target_device_id = targetDeviceId
+
       const res = await fetch('/api/scenarios/runs', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ scenario_id: scenarioId })
+        body: JSON.stringify(body)
       })
 
       if (res.ok) {
+        const run = await res.json()
+        const scenario = scenarios.find(s => s.scenario_id === scenarioId)
+
         // Animate success
         anime({
           targets: `#scenario-${scenarioId}`,
           scale: [1, 1.05, 1],
           duration: 300
         })
+
+        // Signal attack started and navigate to map
+        if (scenario) {
+          onAttackLaunched({
+            runId: run.run_id,
+            scenarioId: scenarioId,
+            scenarioName: scenario.name || 'Unknown Scenario',
+            attackPattern: scenario.attack_pattern || 'Unknown',
+            targetComponent: scenario.components?.[0] || scenario.target_component || 'unknown',
+            durationSeconds: scenario.duration_seconds || 60,
+            startedAt: new Date().toISOString(),
+            targetDeviceId: targetDeviceId || run.target_device_id,
+          })
+          navigate('/')
+        }
+
         await fetchData()
       } else {
         alert('Failed to start scenario')
@@ -78,23 +156,23 @@ export default function ScenarioBuilder() {
   }
 
   const getAttackIcon = (attackPattern: string) => {
-    switch(attackPattern) {
-      case 'DDoS': return '🌊'
-      case 'Brute Force': return '🔨'
-      case 'Port Scan': return '🔍'
-      case 'Malware': return '🦠'
-      case 'Data Exfiltration': return '📤'
-      case 'SQL Injection': return '💉'
-      default: return '⚠️'
+    switch (attackPattern) {
+      case 'DDoS': return '\u{1F30A}'
+      case 'Brute Force': return '\u{1F528}'
+      case 'Port Scan': return '\u{1F50D}'
+      case 'Malware': return '\u{1F9A0}'
+      case 'Data Exfiltration': return '\u{1F4E4}'
+      case 'SQL Injection': return '\u{1F489}'
+      default: return '\u{26A0}\u{FE0F}'
     }
   }
 
   const getStatusBadgeClass = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'running': return 'badge-warning'
       case 'completed': return 'badge-success'
       case 'failed': return 'badge-danger'
-      default: return 'badge-secondary'
+      default: return 'badge-info'
     }
   }
 
@@ -103,57 +181,74 @@ export default function ScenarioBuilder() {
       <div className="page-header">
         <div>
           <h1>Attack Scenario Builder</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Launch cyber attack simulations for testing detection rules</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Launch cyber attack simulations and watch them unfold on the 3D city map</p>
         </div>
       </div>
 
-      {/* Quick Launch Attacks */}
+      {/* Target Selection Modal */}
+      {targetModal && (
+        <div style={modalOverlayStyle} onClick={() => setTargetModal(null)}>
+          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-primary)' }}>Select Target Device</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              Choose a specific device to target or let the system pick randomly
+            </p>
+            <div style={{ display: 'grid', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+              <button
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.75rem' }}
+                onClick={() => runScenario(targetModal.scenarioId)}
+              >
+                Random Target
+              </button>
+              {devices.map(device => (
+                <button
+                  key={device.id}
+                  className="btn btn-danger"
+                  style={{ width: '100%', justifyContent: 'flex-start', padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)', color: 'var(--text-primary)' }}
+                  onClick={() => runScenario(targetModal.scenarioId, device.id)}
+                >
+                  <span style={{ fontWeight: 600 }}>{device.name}</span>
+                  <span style={{ color: 'var(--text-tertiary)', marginLeft: '0.5rem', fontSize: '0.8rem' }}>{device.id}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              className="btn btn-secondary"
+              style={{ marginTop: '1rem', width: '100%' }}
+              onClick={() => setTargetModal(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Launch */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <h3>Quick Launch Attacks</h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-          Launch common attack patterns directly to test your defenses
+          Launch an attack and automatically switch to the 3D city map to watch it unfold in real-time
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-          <button
-            className="btn btn-danger"
-            style={{ padding: '1rem', fontSize: '1rem' }}
-            onClick={() => {
-              const ddosScenario = scenarios.find(s => s.attack_pattern === 'DDoS')
-              if (ddosScenario) runScenario(ddosScenario.scenario_id)
-            }}
-          >
-            🌊 Launch DDoS
-          </button>
-          <button
-            className="btn btn-danger"
-            style={{ padding: '1rem', fontSize: '1rem' }}
-            onClick={() => {
-              const scanScenario = scenarios.find(s => s.attack_pattern === 'Port Scan')
-              if (scanScenario) runScenario(scanScenario.scenario_id)
-            }}
-          >
-            🔍 Port Scan
-          </button>
-          <button
-            className="btn btn-danger"
-            style={{ padding: '1rem', fontSize: '1rem' }}
-            onClick={() => {
-              const bruteForceScenario = scenarios.find(s => s.attack_pattern === 'Brute Force')
-              if (bruteForceScenario) runScenario(bruteForceScenario.scenario_id)
-            }}
-          >
-            🔨 Brute Force
-          </button>
-          <button
-            className="btn btn-danger"
-            style={{ padding: '1rem', fontSize: '1rem' }}
-            onClick={() => {
-              const malwareScenario = scenarios.find(s => s.attack_pattern === 'Malware')
-              if (malwareScenario) runScenario(malwareScenario.scenario_id)
-            }}
-          >
-            🦠 Malware Attack
-          </button>
+          {[
+            { pattern: 'DDoS', icon: '\u{1F30A}', label: 'Launch DDoS' },
+            { pattern: 'Port Scan', icon: '\u{1F50D}', label: 'Port Scan' },
+            { pattern: 'Brute Force', icon: '\u{1F528}', label: 'Brute Force' },
+            { pattern: 'Malware', icon: '\u{1F9A0}', label: 'Malware Attack' },
+          ].map(({ pattern, icon, label }) => (
+            <button
+              key={pattern}
+              className="btn btn-danger"
+              style={{ padding: '1rem', fontSize: '1rem' }}
+              onClick={() => {
+                const s = scenarios.find(sc => sc.attack_pattern === pattern)
+                if (s) openTargetModal(s.scenario_id)
+              }}
+            >
+              {icon} {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -205,11 +300,11 @@ export default function ScenarioBuilder() {
                   </div>
                   <button
                     className={`btn ${running[scenario.scenario_id] ? 'btn-secondary' : 'btn-danger'}`}
-                    onClick={() => runScenario(scenario.scenario_id)}
+                    onClick={() => openTargetModal(scenario.scenario_id)}
                     disabled={running[scenario.scenario_id]}
-                    style={{ minWidth: '120px' }}
+                    style={{ minWidth: '140px' }}
                   >
-                    {running[scenario.scenario_id] ? 'Starting...' : 'Run Scenario'}
+                    {running[scenario.scenario_id] ? 'Launching...' : 'Run & Watch'}
                   </button>
                 </div>
               </div>
@@ -227,12 +322,13 @@ export default function ScenarioBuilder() {
           </p>
         ) : (
           <div className="table-responsive" style={{ marginTop: '1rem' }}>
-            <table className="table">
+            <table>
               <thead>
                 <tr>
                   <th>Run ID</th>
                   <th>Scenario</th>
                   <th>Status</th>
+                  <th>Target</th>
                   <th>Started</th>
                   <th>Duration</th>
                 </tr>
@@ -258,6 +354,9 @@ export default function ScenarioBuilder() {
                           {run.status}
                         </span>
                       </td>
+                      <td>
+                        <code style={{ fontSize: '0.8rem' }}>{run.target_device_id || '-'}</code>
+                      </td>
                       <td style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
                         {new Date(run.started_at).toLocaleString()}
                       </td>
@@ -274,4 +373,28 @@ export default function ScenarioBuilder() {
       </div>
     </div>
   )
+}
+
+const modalOverlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: 'rgba(0, 0, 0, 0.6)',
+  backdropFilter: 'blur(4px)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000,
+}
+
+const modalContentStyle: React.CSSProperties = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-color)',
+  borderRadius: '0.75rem',
+  padding: '1.5rem',
+  width: '400px',
+  maxWidth: '90vw',
+  boxShadow: 'var(--shadow-lg)',
 }

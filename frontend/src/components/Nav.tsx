@@ -1,28 +1,40 @@
 import { Link } from 'react-router-dom'
+import type { ActiveAttack } from '../App'
 
-export default function Nav({ user, onLogout }: { user: any, onLogout: () => void }) {
+export default function Nav({ user, activeAttack, onLogout }: { user: any; activeAttack: ActiveAttack | null; onLogout: () => void }) {
   return (
-    <nav style={{ 
-      background: '#333', 
-      color: 'white', 
-      padding: '15px 20px',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center'
-    }}>
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-        <strong>CityShield</strong>
-        <Link to="/" style={{ color: 'white' }}>Overview</Link>
-        <Link to="/alerts" style={{ color: 'white' }}>Alerts</Link>
-        <Link to="/scenarios" style={{ color: 'white' }}>Scenarios</Link>
-        <Link to="/rules" style={{ color: 'white' }}>Rules</Link>
-        {user?.role === 'Administrator' && (
-          <Link to="/admin/users" style={{ color: 'white' }}>Users</Link>
-        )}
-      </div>
-      <div>
-        <span style={{ marginRight: '15px' }}>{user?.username} ({user?.role})</span>
-        <button onClick={onLogout} style={{ padding: '5px 15px', cursor: 'pointer' }}>Logout</button>
+    <nav>
+      <div className="nav-container">
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <span className="nav-brand">CityShield</span>
+          <Link to="/">Overview</Link>
+          <Link to="/alerts">Alerts</Link>
+          <Link to="/scenarios">Scenarios</Link>
+          <Link to="/rules">Rules</Link>
+          {user?.role === 'Administrator' && (
+            <Link to="/admin/users">Users</Link>
+          )}
+          {activeAttack && (
+            <Link to="/" style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid var(--accent-danger)',
+              borderRadius: '0.5rem',
+              padding: '0.35rem 0.75rem',
+              color: 'var(--accent-danger)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              animation: 'pulse-border 2s infinite',
+            }}>
+              ATTACK LIVE
+            </Link>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            {user?.username} ({user?.role})
+          </span>
+          <button className="btn btn-sm btn-secondary" onClick={onLogout}>Logout</button>
+        </div>
       </div>
     </nav>
   )

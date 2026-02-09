@@ -10,6 +10,7 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 - **Centralized Logging**: Filebeat ships logs to OpenSearch for analysis
 - **Threat Detection**: Rule-based detection engine with MITRE ATT&CK mapping and threat intelligence enrichment
 - **Automated Response**: Python-based response manager executes Ansible playbooks for containment actions
+- **Interactive 3D City Visualization**: Real-time 3D smart city powered by Three.js / React Three Fiber with orbit controls, hover/click interactions, and live data-driven building states
 - **Interactive Web UI**: React-based dashboard for monitoring, alert investigation, and scenario management
 - **Role-Based Access Control**: Administrator, Analyst, and Researcher roles with appropriate permissions
 - **Evaluation Metrics**: MTTD, MTTR, detection accuracy, false positive rate, and resource utilization tracking
@@ -237,8 +238,32 @@ cityshield/
 └── .env.example          # Example environment configuration
 ```
 
+## 3D Smart City Visualization
+
+The Overview dashboard features an interactive 3D city where each building represents a smart city component. Buildings are grouped into four zones (Traffic, IoT, Network, Security) separated by roads.
+
+- **Building height** reflects event count (log scale)
+- **Building color** reflects status: green (ok), amber (warning), red+glow (critical), gray (offline)
+- **Interactions**: Orbit/pan/zoom camera, hover for tooltips, click for detail panel
+- **Data source**: `GET /api/overview/city-components` (mock or live OpenSearch aggregation)
+
+Set `USE_MOCK_CITY_COMPONENTS=true` in `.env` for deterministic demo data.
+
+See [docs/smart-city-3d.md](docs/smart-city-3d.md) for full technical details.
+
+### Additional Frontend Dependencies
+
+| Package | Version | Purpose |
+|---|---|---|
+| `three` | ^0.160.0 | 3D rendering engine |
+| `@react-three/fiber` | ^8.15.12 | React Three.js renderer |
+| `@react-three/drei` | ^9.93.0 | Camera controls, helpers |
+| `@react-three/postprocessing` | ^2.16.2 | Optional bloom/glow effects |
+| `animejs` | ^3.2.1 | UI panel animations |
+
 ## Documentation
 
+- [3D Smart City](docs/smart-city-3d.md) - Scene structure, data mapping, performance, and extensions
 - [Architecture](docs/architecture.md) - System architecture and component descriptions
 - [Threat Model](docs/threat-model.md) - Threat modeling and security considerations
 - [Log Schema](docs/log-schema.md) - Log event schema specification

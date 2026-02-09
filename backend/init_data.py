@@ -383,6 +383,44 @@ ATTACK_SCENARIOS = [
         },
         "expected_alerts": ["CS-T1496"],
         "severity": "medium"
+    },
+    {
+        "scenario_id": "scenario-scada-compromise",
+        "name": "SCADA System Compromise",
+        "description": "Targeted attack on industrial SCADA systems via Modbus protocol manipulation. Based on ICS-focused APT campaigns.",
+        "attack_pattern": "Data Exfiltration",
+        "mitre_technique": "T1565",
+        "target_component": "industrial_systems",
+        "components": ["industrial_systems"],
+        "duration_seconds": 120,
+        "intensity": "critical",
+        "parameters": {
+            "protocol": "Modbus/TCP",
+            "target_registers": "holding_registers",
+            "function_codes": [3, 6, 16],
+            "affected_systems": ["water_treatment", "power_plant"]
+        },
+        "expected_alerts": ["CS-T1565"],
+        "severity": "critical"
+    },
+    {
+        "scenario_id": "scenario-wind-farm-hack",
+        "name": "Wind Farm Controller Takeover",
+        "description": "Remote exploitation of wind farm SCADA controller to manipulate turbine operations and cause physical damage.",
+        "attack_pattern": "Malware",
+        "mitre_technique": "T1071",
+        "target_component": "industrial_systems",
+        "components": ["industrial_systems"],
+        "duration_seconds": 90,
+        "intensity": "critical",
+        "parameters": {
+            "attack_vector": "firmware_exploit",
+            "target_device": "wind_turbine_controller",
+            "actions": ["increase_rpm", "disable_brakes", "override_safety"],
+            "physical_impact": "turbine_overspeed"
+        },
+        "expected_alerts": ["CS-T1071"],
+        "severity": "critical"
     }
 ]
 

@@ -49,6 +49,7 @@ class ScenarioRunBase(BaseModel):
 class ScenarioRunCreate(BaseModel):
     """Scenario run creation model."""
     scenario_id: str
+    target_device_id: Optional[str] = None
 
 
 class ScenarioRun(ScenarioRunBase):
@@ -57,6 +58,9 @@ class ScenarioRun(ScenarioRunBase):
     completed_at: Optional[datetime] = None
     started_by: str
     results: Optional[Dict[str, Any]] = None
+    target_device_id: Optional[str] = None
+    target_component_id: Optional[str] = None
+    stages: Optional[List[Dict[str, Any]]] = None
 
     class Config:
         from_attributes = True
