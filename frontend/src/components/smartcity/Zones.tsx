@@ -4,14 +4,14 @@ import * as THREE from 'three'
 import Building from './Building'
 import IndustrialBuilding from './IndustrialBuildings'
 import { CATEGORY_COLORS } from './materials'
-import type { CityComponent } from './useCityData'
+import type { CityAsset } from '../../types/assets'
 
 interface ZonesProps {
-  components: CityComponent[]
+  components: CityAsset[]
   selectedId: string | null
   attackedBuildingId?: string | null
   onSelect: (id: string | null) => void
-  onHover: (component: CityComponent | null, event?: ThreeEvent<PointerEvent>) => void
+  onHover: (component: CityAsset | null, event?: ThreeEvent<PointerEvent>) => void
 }
 
 // Zone layout configuration — four quadrants + center industrial zone
@@ -25,7 +25,7 @@ const ZONE_CONFIG: Record<string, { center: [number, number]; label: string }> =
 
 // Place buildings in a grid within their zone
 function layoutBuildings(
-  components: CityComponent[],
+  components: CityAsset[],
   zoneCenter: [number, number]
 ): Map<string, [number, number, number]> {
   const positions = new Map<string, [number, number, number]>()
@@ -37,7 +37,8 @@ function layoutBuildings(
     const col = i % cols
     const offsetX = (col - (cols - 1) / 2) * spacing
     const offsetZ = (row - (Math.ceil(components.length / cols) - 1) / 2) * spacing
-    positions.set(comp.id, [
+    const compId = comp.id || comp.asset_id
+    positions.set(compId, [
       zoneCenter[0] + offsetX,
       0, // y is set by Building based on height
       zoneCenter[1] + offsetZ,
@@ -49,7 +50,7 @@ function layoutBuildings(
 export default function Zones({ components, selectedId, attackedBuildingId, onSelect, onHover }: ZonesProps) {
   // Group components by zone
   const grouped = useMemo(() => {
-    const map = new Map<string, CityComponent[]>()
+    const map = new Map<string, CityAsset[]>()
     for (const comp of components) {
       const zone = comp.zone || 'zone-a'
       if (!map.has(zone)) map.set(zone, [])
@@ -89,18 +90,19 @@ export default function Zones({ components, selectedId, attackedBuildingId, onSe
 
       {/* Buildings */}
       {components.map((comp) => {
-        const pos = positions.get(comp.id)
+        const compId = comp.id || comp.asset_id
+        const pos = positions.get(compId)
         if (!pos) return null
-        const isUnderAttack = attackedBuildingId === comp.id
+        const isUnderAttack = attackedBuildingId === compId
 
         // Use industrial building for zone-e components
-        if (comp.zone === 'zone-e' && comp.id !== 'ind-wind-04') {
+        if (comp.zone === 'zone-e' && compId !== 'ind-wind-04') {
           return (
             <IndustrialBuilding
-              key={comp.id}
+              key={compId}
               component={comp}
               position={pos}
-              selected={selectedId === comp.id}
+              selected={selectedId === compId}
               isUnderAttack={isUnderAttack}
               onSelect={onSelect}
               onHover={onHover}
@@ -109,14 +111,14 @@ export default function Zones({ components, selectedId, attackedBuildingId, onSe
         }
 
         // Skip windmill component — it's rendered separately
-        if (comp.id === 'ind-wind-04') return null
+        if (compId === 'ind-wind-04') return null
 
         return (
           <Building
-            key={comp.id}
+            key={compId}
             component={comp}
             position={pos}
-            selected={selectedId === comp.id}
+            selected={selectedId === compId}
             isUnderAttack={isUnderAttack}
             onSelect={onSelect}
             onHover={onHover}

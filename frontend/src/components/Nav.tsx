@@ -7,7 +7,7 @@ export default function Nav({ user, activeAttack, onLogout }: { user: any; activ
       <div className="nav-container">
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <span className="nav-brand">CityShield</span>
-          <Link to="/">Overview</Link>
+          <Link to="/">Dashboard</Link>
           <Link to="/alerts">Alerts</Link>
           <Link to="/scenarios">Scenarios</Link>
           <Link to="/rules">Rules</Link>

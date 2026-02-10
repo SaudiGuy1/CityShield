@@ -2,15 +2,15 @@ import { useRef, useState, useMemo, useCallback } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { STATUS_COLORS, CATEGORY_COLORS } from './materials'
-import type { CityComponent } from './useCityData'
+import type { CityAsset } from '../../types/assets'
 
 interface IndustrialBuildingProps {
-  component: CityComponent
+  component: CityAsset
   position: [number, number, number]
   selected: boolean
   isUnderAttack?: boolean
   onSelect: (id: string | null) => void
-  onHover: (component: CityComponent | null, event?: ThreeEvent<PointerEvent>) => void
+  onHover: (component: CityAsset | null, event?: ThreeEvent<PointerEvent>) => void
 }
 
 function computeHeight(eventsCount: number): number {
@@ -23,15 +23,16 @@ function computeHeight(eventsCount: number): number {
 export default function IndustrialBuilding({ component, position, selected, isUnderAttack, onSelect, onHover }: IndustrialBuildingProps) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const [hovered, setHovered] = useState(false)
-  const height = useMemo(() => computeHeight(component.eventsCount), [component.eventsCount])
+  const height = useMemo(() => computeHeight(component.eventsCount || 0), [component.eventsCount])
 
   const accentColor = CATEGORY_COLORS.industrial || '#f97316'
 
   const color = useMemo(() => {
     if (isUnderAttack) return '#ef4444'
     if (hovered || selected) return '#3b82f6'
-    return STATUS_COLORS[component.status] || '#6b7280'
-  }, [hovered, selected, component.status, isUnderAttack])
+    const status = component.status || component.state?.status || 'ok'
+    return STATUS_COLORS[status as keyof typeof STATUS_COLORS] || '#6b7280'
+  }, [hovered, selected, component.status, component.state?.status, isUnderAttack])
 
   const emissiveColor = useMemo(() => {
     if (isUnderAttack) return '#ef4444'
@@ -66,13 +67,15 @@ export default function IndustrialBuilding({ component, position, selected, isUn
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
-    onSelect(selected ? null : component.id)
-  }, [component.id, selected, onSelect])
+    const compId = component.id || component.asset_id
+    onSelect(selected ? null : compId)
+  }, [component.id, component.asset_id, selected, onSelect])
 
   const buildingPos: [number, number, number] = [position[0], height / 2, position[2]]
 
   // Determine building type based on component name
-  const type = getBuildingType(component.id)
+  const compId = component.id || component.asset_id
+  const type = getBuildingType(compId)
 
   return (
     <group position={buildingPos}>

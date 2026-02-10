@@ -2,22 +2,30 @@ import { useRef, useState, useMemo, useCallback } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { STATUS_COLORS, CATEGORY_COLORS } from './materials'
-import type { CityComponent } from './useCityData'
+import type { CityAsset } from '../../types/assets'
 
 interface BuildingProps {
-  component: CityComponent
+  component: CityAsset
   position: [number, number, number]
   selected: boolean
   isUnderAttack?: boolean
   onSelect: (id: string | null) => void
-  onHover: (component: CityComponent | null, event?: ThreeEvent<PointerEvent>) => void
+  onHover: (component: CityAsset | null, event?: ThreeEvent<PointerEvent>) => void
 }
 
-// Height scaling: clamp eventsCount into a visual range
+// Height scaling: map risk_score (0-100) to visual range
+function computeHeightFromRisk(riskScore: number): number {
+  const minH = 0.6
+  const maxH = 4.0
+  // Linear scale: risk_score is already 0-100
+  const t = Math.max(0, Math.min(100, riskScore)) / 100
+  return minH + t * (maxH - minH)
+}
+
+// Fallback for assets without risk_score (use event count)
 function computeHeight(eventsCount: number): number {
   const minH = 0.6
   const maxH = 4.0
-  // Log scale for better visual distribution
   const t = Math.log1p(eventsCount) / Math.log1p(800)
   return minH + Math.min(t, 1) * (maxH - minH)
 }
@@ -35,7 +43,14 @@ export default function Building({ component, position, selected, isUnderAttack,
   const meshRef = useRef<THREE.Mesh>(null!)
   const [hovered, setHovered] = useState(false)
 
-  const height = useMemo(() => computeHeight(component.eventsCount), [component.eventsCount])
+  // Use risk_score for height (HighTopo-equivalent visual encoding)
+  const height = useMemo(() => {
+    const riskScore = component.metrics?.risk_score ?? component.eventsCount
+    return typeof riskScore === 'number' && riskScore <= 100
+      ? computeHeightFromRisk(riskScore)
+      : computeHeight(component.eventsCount || 0)
+  }, [component.metrics?.risk_score, component.eventsCount])
+
   const width = CATEGORY_WIDTH[component.category] || 0.65
 
   // Position building so its base sits on the ground (y = height/2)
@@ -44,8 +59,9 @@ export default function Building({ component, position, selected, isUnderAttack,
   const color = useMemo(() => {
     if (isUnderAttack) return '#ef4444'
     if (hovered || selected) return '#3b82f6'
-    return STATUS_COLORS[component.status] || '#6b7280'
-  }, [hovered, selected, component.status, isUnderAttack])
+    const status = component.status || component.state?.status || 'ok'
+    return STATUS_COLORS[status as keyof typeof STATUS_COLORS] || '#6b7280'
+  }, [hovered, selected, component.status, component.state?.status, isUnderAttack])
 
   const emissiveColor = useMemo(() => {
     if (isUnderAttack) return '#ef4444'
@@ -92,8 +108,9 @@ export default function Building({ component, position, selected, isUnderAttack,
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
-    onSelect(selected ? null : component.id)
-  }, [component.id, selected, onSelect])
+    const compId = component.id || component.asset_id
+    onSelect(selected ? null : compId)
+  }, [component.id, component.asset_id, selected, onSelect])
 
   const scaleVal = isUnderAttack ? 1.1 : hovered && !selected ? 1.05 : 1
 
@@ -135,7 +152,7 @@ export default function Building({ component, position, selected, isUnderAttack,
 
       {/* Window rows – procedural detail */}
       {height > 1.2 && (
-        <WindowRows width={width} height={height} status={component.status} />
+        <WindowRows width={width} height={height} status={component.status || 'ok'} />
       )}
 
       {/* Selection ring */}

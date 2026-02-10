@@ -173,6 +173,15 @@ class OpenSearchClient:
             logger.error(f"Error searching: {e}")
             raise
 
+    def search_with_aggregations(self, index: str, query: Dict[str, Any]) -> Dict[str, Any]:
+        """Search documents and return full response including aggregations."""
+        try:
+            response = self.client.search(index=index, body=query)
+            return response
+        except Exception as e:
+            logger.error(f"Error searching with aggregations: {e}")
+            raise
+
     def update_document(self, index: str, doc_id: str, updates: Dict[str, Any]) -> Dict:
         """Update a document."""
         try:

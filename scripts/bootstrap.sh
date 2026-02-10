@@ -33,7 +33,35 @@ echo ""
 
 # Pull required images
 echo "Pulling Docker images..."
-docker compose pull
+# Skip pull if images already exist (avoids Docker Hub connectivity issues)
+if [ "$SKIP_PULL" != "true" ]; then
+    docker compose pull || echo "⚠️  Warning: Image pull failed, continuing with existing images..."
+else
+    echo "✓ Skipping image pull (using existing images)"
+fi
+
+# Start OpenSearch first (needed for asset index creation)
+echo "Starting OpenSearch..."
+docker compose up -d opensearch
+
+echo "Waiting for OpenSearch to be ready..."
+for i in {1..30}; do
+    if curl -s http://localhost:9200/_cluster/health > /dev/null 2>&1; then
+        echo "✓ OpenSearch is ready"
+        break
+    fi
+    sleep 2
+done
+
+# Create asset index
+echo ""
+echo "Creating city assets index..."
+if [ -f scripts/create_assets_simple.sh ]; then
+    chmod +x scripts/create_assets_simple.sh
+    ./scripts/create_assets_simple.sh || echo "⚠️  Asset creation failed, continuing..."
+else
+    echo "⚠️  Asset creation script not found, skipping..."
+fi
 
 echo ""
 echo "==================================="
@@ -41,14 +69,14 @@ echo "Bootstrap complete!"
 echo "==================================="
 echo ""
 echo "Next steps:"
-echo "1. Review and update .env file with your configuration"
-echo "2. Run: docker compose up --build"
-echo "3. Wait for all services to be healthy"
-echo "4. Access the frontend at http://localhost:3000"
-echo "5. Login with default credentials:"
+echo "1. Run: docker compose up -d"
+echo "2. Wait for all services to be healthy (2-3 minutes)"
+echo "3. Access the frontend at http://localhost:3000"
+echo "4. Login with default credentials:"
 echo "   Username: admin"
 echo "   Password: CityShield@Admin2026"
 echo "   (Change this password immediately after first login!)"
+echo "5. Click 'Initialize Dashboards' on Overview page"
 echo ""
 echo "For more information, see README.md"
 echo ""

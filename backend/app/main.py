@@ -20,6 +20,7 @@ from .api import (
     routes_metrics,
     routes_logs,
     routes_overview,
+    routes_websocket,
 )
 from .api.routes_overview import init_opensearch_dashboards
 
@@ -111,6 +112,7 @@ app.include_router(routes_alerts.router)
 app.include_router(routes_metrics.router)
 app.include_router(routes_logs.router)
 app.include_router(routes_overview.router)
+app.include_router(routes_websocket.router)
 
 
 @app.get("/")

@@ -1,33 +1,11 @@
-/**
- * SmartCity3D: 3D Visualization Component (OVERVIEW Mode)
- *
- * This component provides OVERVIEW mode visualization using the CityScene
- * infrastructure with professional HighTopo-grade rendering.
- *
- * Key features:
- * - Shows status-encoded buildings representing asset groups (not individual assets)
- * - Buildings use height to encode risk score
- * - Buildings use color to encode status
- * - Uses CityScene → Zones → StatusBuilding rendering pipeline
- * - Professional lighting: 6-light setup + bloom + SSAO
- * - Optimized for high-level monitoring and attack visualization
- *
- * Attack visualization:
- * - Real-time attack phases with progress tracking
- * - Attack path visualization overlay
- * - Zone-based targeting indicators
- * - Stage polling for detailed attack progress
- *
- * This is used by the Overview/Dashboard page for executive monitoring.
- */
-
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import anime from 'animejs'
 import { ThreeEvent } from '@react-three/fiber'
 import CityScene from './smartcity/CityScene'
+import WindmillPanel from './smartcity/WindmillPanel'
 import AssetInspectorPanel from './smartcity/AssetInspectorPanel'
-import { useAssetStream } from '../hooks/useAssetStream'
+import { useAssetStream } from './smartcity/useAssetStream'
 import type { CityAsset } from '../types/assets'
 import { STATUS_COLORS, CATEGORY_COLORS } from './smartcity/materials'
 import type { ActiveAttack } from '../App'
@@ -170,7 +148,7 @@ interface SmartCity3DProps {
 }
 
 export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DProps) {
-  const { assets, attackPaths, connected: _connected, error } = useAssetStream()
+  const { assets, attackPaths, connected, error } = useAssetStream()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredComponent, setHoveredComponent] = useState<CityAsset | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -185,6 +163,29 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
   // Stage polling state
   const [stageData, setStageData] = useState<StageResponse | null>(null)
   const [attackedBuildingId, setAttackedBuildingId] = useState<string | null>(null)
+
+  // Windmill state
+  const [windmillState, setWindmillState] = useState({
+    rpm: 12, temperature: 45, powerOutput: 280, isHacked: false
+  })
+  const [showWindmillPanel, setShowWindmillPanel] = useState(false)
+
+  // Windmill hack effect — gradually increases rpm and temp
+  useEffect(() => {
+    if (!windmillState.isHacked) return
+    const interval = setInterval(() => {
+      setWindmillState(prev => {
+        if (!prev.isHacked) return prev
+        return {
+          ...prev,
+          rpm: Math.min(prev.rpm + 0.5, 35),
+          temperature: Math.min(prev.temperature + 2, 130),
+          powerOutput: Math.min(prev.powerOutput + 5, 600),
+        }
+      })
+    }, 500)
+    return () => clearInterval(interval)
+  }, [windmillState.isHacked])
 
   // Animate details panel on selection change
   useEffect(() => {
@@ -272,7 +273,7 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
   }, [activeAttack])
 
   const selectedComponent = useMemo(
-    () => assets.find((c: CityAsset) => (c.id || c.asset_id) === selectedId) || null,
+    () => assets.find((c) => c.id === selectedId) || null,
     [assets, selectedId]
   )
 
@@ -307,10 +308,10 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
   // Summary stats
   const stats = useMemo(() => {
     const total = assets.length
-    const critical = assets.filter((c: CityAsset) => c.status === 'critical').length
-    const warning = assets.filter((c: CityAsset) => c.status === 'warning').length
-    const ok = assets.filter((c: CityAsset) => c.status === 'ok').length
-    const offline = assets.filter((c: CityAsset) => c.status === 'offline').length
+    const critical = assets.filter((c) => c.status === 'critical').length
+    const warning = assets.filter((c) => c.status === 'warning').length
+    const ok = assets.filter((c) => c.status === 'ok').length
+    const offline = assets.filter((c) => c.status === 'offline').length
     return { total, critical, warning, ok, offline }
   }, [assets])
 
@@ -364,7 +365,21 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
           onSelect={handleSelect}
           onHover={handleHover}
           focusPosition={focusPosition}
+          windmillRpm={windmillState.rpm}
+          windmillTemperature={windmillState.temperature}
+          windmillHacked={windmillState.isHacked}
+          onWindmillInteract={() => setShowWindmillPanel(prev => !prev)}
+          trainHacked={windmillState.isHacked}
         />
+
+        {/* Windmill Panel */}
+        {showWindmillPanel && !activeAttack && (
+          <WindmillPanel
+            state={windmillState}
+            onStateChange={setWindmillState}
+            onClose={() => setShowWindmillPanel(false)}
+          />
+        )}
 
         {/* Attack Visualization Overlay */}
         {activeAttack && (
@@ -587,7 +602,7 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
             { label: 'Security', color: CATEGORY_COLORS.security, zone: 'zone-d' },
             { label: 'Industrial', color: CATEGORY_COLORS.industrial, zone: 'zone-e' },
           ].map(({ label, color, zone }) => {
-            const count = assets.filter((c: CityAsset) => c.zone === zone).length
+            const count = assets.filter((c) => c.zone === zone).length
             const isUnderAttack = attackZone === zone && !attackComplete
             return (
               <div key={zone} style={{ ...legendItem, ...(isUnderAttack ? { color: 'var(--accent-danger)' } : {}) }}>
@@ -658,7 +673,7 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  background: STATUS_COLORS[(hoveredComponent.status || 'ok') as keyof typeof STATUS_COLORS],
+                  background: STATUS_COLORS[hoveredComponent.status],
                 }}
               />
               <span style={{ color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
@@ -672,7 +687,7 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
         )}
 
         {/* SOC-Grade Asset Inspector Panel (HighTopo-equivalent) */}
-        {selectedComponent && !activeAttack && (
+        {selectedComponent && !activeAttack && !showWindmillPanel && (
           <AssetInspectorPanel
             asset={selectedComponent}
             onClose={() => setSelectedId(null)}
@@ -751,3 +766,15 @@ const badgeStyle: React.CSSProperties = {
   zIndex: 10,
 }
 
+const detailsPanelStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '0.75rem',
+  right: '0.75rem',
+  width: '240px',
+  background: 'rgba(10, 14, 39, 0.9)',
+  backdropFilter: 'blur(10px)',
+  border: '1px solid var(--border-color)',
+  borderRadius: '0.5rem',
+  padding: '0.875rem',
+  zIndex: 10,
+}
