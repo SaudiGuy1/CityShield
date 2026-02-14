@@ -32,7 +32,10 @@ MOCK_ALERTS = [
         "related_query": "component:traffic_management AND event_type:auth_failure",
         "status": "open",
         "enrichment": {"reputation": "suspicious", "geo": "Internal Network"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-002",
@@ -48,7 +51,10 @@ MOCK_ALERTS = [
         "related_query": "component:traffic_management AND event_type:auth_failure",
         "status": "open",
         "enrichment": {"reputation": "unknown", "geo": "Internal Network"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-003",
@@ -64,7 +70,10 @@ MOCK_ALERTS = [
         "related_query": "component:iot_sensors AND event_type:sensor_anomaly",
         "status": "open",
         "enrichment": {"reputation": "compromised_device", "details": "Sensor firmware may be tampered"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-004",
@@ -80,7 +89,10 @@ MOCK_ALERTS = [
         "related_query": "component:iot_sensors AND event_type:sensor_anomaly",
         "status": "open",
         "enrichment": {"reputation": "compromised_device"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-005",
@@ -96,7 +108,10 @@ MOCK_ALERTS = [
         "related_query": "component:iot_sensors AND event_type:protocol_anomaly",
         "status": "open",
         "enrichment": {"reputation": "malicious", "geo": "External - Eastern Europe"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-006",
@@ -112,7 +127,10 @@ MOCK_ALERTS = [
         "related_query": "component:iot_sensors AND dst_ip:185.234.72.11",
         "status": "open",
         "enrichment": {"reputation": "malicious", "geo": "External - C2 Server"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-007",
@@ -128,7 +146,10 @@ MOCK_ALERTS = [
         "related_query": "component:network_infrastructure AND event_type:port_scan",
         "status": "open",
         "enrichment": {"reputation": "suspicious", "geo": "Internal Network"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-008",
@@ -144,7 +165,10 @@ MOCK_ALERTS = [
         "related_query": "component:network_infrastructure AND event_type:ddos",
         "status": "open",
         "enrichment": {"reputation": "malicious", "geo": "Multiple External Sources"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-009",
@@ -160,7 +184,10 @@ MOCK_ALERTS = [
         "related_query": "component:network_infrastructure AND event_type:service_scan",
         "status": "open",
         "enrichment": {"reputation": "suspicious"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-010",
@@ -176,7 +203,10 @@ MOCK_ALERTS = [
         "related_query": "component:security AND event_type:vuln_scan",
         "status": "open",
         "enrichment": {"reputation": "malicious", "details": "Automated vulnerability scanner targeting known CVEs"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-011",
@@ -192,7 +222,10 @@ MOCK_ALERTS = [
         "related_query": "component:security AND event_type:vuln_scan",
         "status": "open",
         "enrichment": {"reputation": "malicious"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-012",
@@ -208,7 +241,10 @@ MOCK_ALERTS = [
         "related_query": "component:security AND event_type:sniffing",
         "status": "open",
         "enrichment": {"reputation": "suspicious", "details": "Unauthorized promiscuous mode detected"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     # Industrial zone alerts
     {
@@ -225,7 +261,10 @@ MOCK_ALERTS = [
         "related_query": "component:industrial_systems AND event_type:scada_manipulation",
         "status": "open",
         "enrichment": {"reputation": "compromised_device", "details": "Unauthorized SCADA setpoint modifications detected"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-014",
@@ -241,7 +280,10 @@ MOCK_ALERTS = [
         "related_query": "component:industrial_systems AND event_type:ics_dos",
         "status": "open",
         "enrichment": {"reputation": "malicious", "geo": "Internal Network"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
     {
         "alert_id": "mock-alert-015",
@@ -257,7 +299,10 @@ MOCK_ALERTS = [
         "related_query": "component:industrial_systems AND event_type:modbus_injection",
         "status": "open",
         "enrichment": {"reputation": "malicious", "details": "Unauthorized Modbus write commands to grid substation"},
-        "response": None
+        "response": None,
+        "asset_id": None,
+        "correlation_id": None,
+        "related_events_count": 0
     },
 ]
 
@@ -448,3 +493,137 @@ async def update_alert(
     # Get updated alert
     doc = opensearch_client.get_document("alerts", alert_id)
     return Alert(**doc)
+
+
+@router.get("/{alert_id}/replay-events")
+async def get_alert_replay_events(
+    alert_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get events for attack replay timeline.
+
+    Fetches events in a 5-minute window around the alert trigger time
+    for temporal attack visualization with structured metadata.
+    """
+    # Get alert to find trigger time
+    alert = opensearch_client.get_document("alerts", alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    triggered_at_str = alert.get("triggered_at")
+    if not triggered_at_str:
+        return {
+            "alert_id": alert_id,
+            "events": [],
+            "time_window": "unknown",
+            "metadata": {}
+        }
+
+    # Parse trigger time
+    triggered_at = datetime.fromisoformat(triggered_at_str.replace("Z", "+00:00"))
+
+    # Define time window (2.5 minutes before and after alert)
+    window_before = triggered_at - timedelta(minutes=2, seconds=30)
+    window_after = triggered_at + timedelta(minutes=2, seconds=30)
+
+    # Query events in time window
+    query = {
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "range": {
+                            "@timestamp": {
+                                "gte": window_before.isoformat() + "Z",
+                                "lte": window_after.isoformat() + "Z",
+                                "time_zone": "UTC"
+                            }
+                        }
+                    }
+                ],
+                "should": []
+            }
+        },
+        "size": 500,
+        "sort": [{"@timestamp": {"order": "asc"}}]
+    }
+
+    # Add filters based on alert context (as optional boosting, not required)
+    component = alert.get("component")
+    if component:
+        # Try both exact match and flexible patterns
+        query["query"]["bool"]["should"].extend([
+            {"term": {"component": component}},
+            {"match": {"component": component}}
+        ])
+
+    city_zone = alert.get("city_zone")
+    if city_zone:
+        # Try both exact match and flexible patterns (zone-a vs zone_1)
+        query["query"]["bool"]["should"].extend([
+            {"term": {"city_zone": city_zone}},
+            {"match": {"city_zone": city_zone}}
+        ])
+
+    # Don't require should matches - just use them for scoring/relevance
+    # This ensures we always get events in the time window even if component/zone don't match
+
+    # Query logs-* indices
+    try:
+        events = opensearch_client.search("logs-*", query)
+    except Exception as e:
+        logger.error(f"Failed to fetch replay events: {e}")
+        events = []
+
+    # Calculate metadata
+    event_types = {}
+    severities = {}
+    unique_sources = set()
+    unique_assets = set()
+
+    for event in events:
+        # Event type breakdown
+        event_type = event.get("event_type", "unknown")
+        event_types[event_type] = event_types.get(event_type, 0) + 1
+
+        # Severity breakdown
+        severity = event.get("severity", "info")
+        severities[severity] = severities.get(severity, 0) + 1
+
+        # Unique sources
+        src_ip = event.get("src_ip")
+        if src_ip:
+            unique_sources.add(src_ip)
+
+        # Unique assets (check both asset_id and actor_id)
+        asset_id = event.get("asset_id") or event.get("actor_id")
+        if asset_id:
+            unique_assets.add(asset_id)
+
+    metadata = {
+        "event_types": event_types,
+        "severities": severities,
+        "unique_sources": list(unique_sources),
+        "unique_assets": list(unique_assets),
+        "alert_context": {
+            "rule_id": alert.get("rule_id"),
+            "rule_name": alert.get("rule_name"),
+            "severity": alert.get("severity"),
+            "component": component,
+            "city_zone": city_zone,
+            "technique_id": alert.get("technique_id"),
+            "technique_name": alert.get("technique_name")
+        }
+    }
+
+    return {
+        "alert_id": alert_id,
+        "events": events,
+        "time_window": {
+            "start": window_before.isoformat() + "Z",
+            "end": window_after.isoformat() + "Z",
+            "center": triggered_at_str
+        },
+        "event_count": len(events),
+        "metadata": metadata
+    }

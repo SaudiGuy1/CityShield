@@ -18,6 +18,9 @@ class AlertBase(BaseModel):
     evidence: Dict[str, Any]
     related_query: str
     status: str = "open"  # open, triaged, resolved
+    asset_id: Optional[str] = None
+    correlation_id: Optional[str] = None
+    related_events_count: Optional[int] = 0
 
 
 class Alert(AlertBase):

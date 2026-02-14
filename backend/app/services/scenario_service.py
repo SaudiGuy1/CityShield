@@ -290,6 +290,9 @@ def _generate_stage_alert(run_id: str, scenario: Scenario, stage_index: int, tar
         "status": "open",
         "enrichment": {"source": "scenario_simulation", "scenario_id": scenario.scenario_id},
         "response": None,
+        "asset_id": target_device_id,
+        "correlation_id": run_id,
+        "related_events_count": 0,
     }
     try:
         opensearch_client.index_document("alerts", alert_doc, doc_id=alert_id)

@@ -22,14 +22,22 @@ export function useAssetStream(): UseAssetStreamReturn {
 
   const connect = useCallback(() => {
     try {
-      // Determine WebSocket URL
+      // Get auth token from localStorage
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.error('[AssetStream] No auth token found')
+        setError('Authentication required')
+        return
+      }
+
+      // Determine WebSocket URL with auth token
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const host = window.location.host.includes('localhost')
         ? 'localhost:8000'
         : window.location.host
-      const wsUrl = `${protocol}//${host}/ws/city-telemetry`
+      const wsUrl = `${protocol}//${host}/ws/city-telemetry?token=${encodeURIComponent(token)}`
 
-      console.log('[AssetStream] Connecting to:', wsUrl)
+      console.log('[AssetStream] Connecting to WebSocket (authenticated)')
 
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws

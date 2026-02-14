@@ -99,7 +99,48 @@ class OpenSearchClient:
                         "related_query": {"type": "text"},
                         "status": {"type": "keyword"},
                         "enrichment": {"type": "object"},
-                        "response": {"type": "object"}
+                        "response": {"type": "object"},
+                        "asset_id": {"type": "keyword"},
+                        "correlation_id": {"type": "keyword"},
+                        "related_events_count": {"type": "integer"}
+                    }
+                }
+            },
+            "city-assets": {
+                "mappings": {
+                    "properties": {
+                        "asset_id": {"type": "keyword"},
+                        "name": {"type": "text"},
+                        "asset_type": {"type": "keyword"},
+                        "asset_class": {"type": "keyword"},
+                        "criticality": {"type": "keyword"},
+                        "status": {"type": "keyword"},
+                        "device_type": {"type": "keyword"},
+                        "lifecycle_state": {"type": "keyword"},
+                        "last_seen": {"type": "date"},
+                        "last_heartbeat": {"type": "date"},
+                        "events_1h": {"type": "integer"},
+                        "alerts_open": {"type": "integer"},
+                        "risk_score": {"type": "integer"},
+                        "tags": {"type": "keyword"},
+                        "location": {
+                            "properties": {
+                                "zone": {"type": "keyword"},
+                                "subnet": {"type": "keyword"},
+                                "building": {"type": "keyword"},
+                                "floor": {"type": "keyword"},
+                                "coordinates": {"type": "object"}
+                            }
+                        },
+                        "network": {
+                            "properties": {
+                                "ip_address": {"type": "ip"},
+                                "mac_address": {"type": "keyword"},
+                                "vlan": {"type": "keyword"},
+                                "gateway": {"type": "ip"}
+                            }
+                        },
+                        "metadata": {"type": "object"}
                     }
                 }
             },
@@ -116,6 +157,8 @@ class OpenSearchClient:
                         "src_port": {"type": "integer"},
                         "dst_port": {"type": "integer"},
                         "actor_id": {"type": "keyword"},
+                        "asset_id": {"type": "keyword"},
+                        "correlation_id": {"type": "keyword"},
                         "message": {"type": "text"},
                         "metadata": {"type": "object"}
                     }

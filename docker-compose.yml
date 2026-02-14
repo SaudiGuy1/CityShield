@@ -86,6 +86,8 @@ services:
       - DEFAULT_ADMIN_PASS=${DEFAULT_ADMIN_PASS}
       - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL}
       - USE_MOCK_CITY_COMPONENTS=${USE_MOCK_CITY_COMPONENTS:-true}
+    volumes:
+      - ./backend/app:/app/app:ro
     ports:
       - "8000:8000"
     networks:

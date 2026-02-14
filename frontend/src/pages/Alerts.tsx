@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import anime from 'animejs'
+import EventDrillDown from '../components/EventDrillDown'
 
 interface AlertAnalysis {
   alert_id: string
@@ -28,6 +29,8 @@ export default function Alerts() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<AlertAnalysis | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [showEventDrillDown, setShowEventDrillDown] = useState(false)
+  const [selectedAlertForEvents, setSelectedAlertForEvents] = useState<any>(null)
   const detailRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -122,6 +125,45 @@ export default function Alerts() {
 
   const viewOnMap = (alert: any) => {
     navigate(`/?highlight=${alert.city_zone}&alert=${alert.alert_id}`)
+  }
+
+  const viewRelatedEvents = (alert: any) => {
+    setSelectedAlertForEvents(alert)
+    setShowEventDrillDown(true)
+  }
+
+  const viewDevice = (assetId: string) => {
+    navigate(`/devices?device=${assetId}`)
+  }
+
+  const viewInOpenSearch = (alert: any) => {
+    // Build OpenSearch Dashboards URL with pre-filled query
+    const triggeredAt = new Date(alert.triggered_at || alert.timestamp)
+    const startTime = new Date(triggeredAt.getTime() - 5 * 60 * 1000) // 5 min before
+    const endTime = new Date(triggeredAt.getTime() + 5 * 60 * 1000) // 5 min after
+
+    // Build query filter based on alert context
+    const filters = []
+    if (alert.component) {
+      filters.push(`component:${alert.component}`)
+    }
+    if (alert.city_zone) {
+      filters.push(`city_zone:${alert.city_zone}`)
+    }
+    if (alert.asset_id) {
+      filters.push(`asset_id:${alert.asset_id}`)
+    }
+
+    const queryString = filters.length > 0 ? filters.join(' AND ') : '*'
+
+    // OpenSearch Dashboards Discover URL
+    // Format: /app/discover#/?_g=(time:(from:START,to:END))&_a=(query:(query:'QUERY'))
+    const from = startTime.toISOString()
+    const to = endTime.toISOString()
+
+    const dashboardsUrl = `http://localhost:5601/app/discover#/?_g=(filters:!(),time:(from:'${from}',to:'${to}'))&_a=(columns:!('@timestamp',component,event_type,severity,message),filters:!(),index:'logs-*',interval:auto,query:(language:lucene,query:'${queryString}'),sort:!(!('@timestamp',desc)))`
+
+    window.open(dashboardsUrl, '_blank')
   }
 
   const getSeverityBadgeClass = (severity: string) => {
@@ -308,6 +350,28 @@ export default function Alerts() {
                           <InfoChip label="Tactic" value={analysis.tactic} color="var(--accent-warning)" />
                           <InfoChip label="Kill Chain" value={analysis.kill_chain_phase} color="var(--accent-secondary)" />
                           <InfoChip label="Component" value={analysis.component.replace('_', ' ')} color="var(--accent-primary)" />
+                          {alert.asset_id && (
+                            <div
+                              onClick={() => viewDevice(alert.asset_id)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.375rem',
+                                background: 'rgba(99,102,241,0.15)',
+                                border: '1px solid rgba(99,102,241,0.4)',
+                                borderRadius: '0.375rem',
+                                padding: '0.3rem 0.6rem',
+                                fontSize: '0.7rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.25)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(99,102,241,0.15)'}
+                            >
+                              <span style={{ color: 'var(--text-tertiary)' }}>Device:</span>
+                              <span style={{ color: 'var(--accent-secondary)', fontWeight: 600 }}>{alert.asset_id}</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* What Happened */}
@@ -348,6 +412,26 @@ export default function Alerts() {
                                   </code>
                                 </div>
                               ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* OpenSearch Query Info */}
+                        {alert.related_query && (
+                          <div style={{
+                            background: 'rgba(0, 94, 184, 0.1)',
+                            border: '1px solid rgba(0, 94, 184, 0.3)',
+                            borderRadius: '0.5rem',
+                            padding: '0.75rem',
+                          }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#005eb8', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              Detection Query
+                            </div>
+                            <code style={{ fontSize: '0.75rem', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                              {alert.related_query}
+                            </code>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                              ℹ️ Click "View in OpenSearch" to see all matching events in a ±5 minute window
                             </div>
                           </div>
                         )}
@@ -447,10 +531,30 @@ export default function Alerts() {
                         )}
 
                         {/* Actions */}
-                        <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
                           <button className="btn btn-sm btn-primary" onClick={() => viewOnMap(alert)}>
                             View on Map
                           </button>
+                          <button className="btn btn-sm btn-secondary" onClick={() => viewRelatedEvents(alert)}>
+                            View Related Events
+                          </button>
+                          <button
+                            className="btn btn-sm"
+                            style={{ background: '#005eb8', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            onClick={() => viewInOpenSearch(alert)}
+                            title="Open in OpenSearch Dashboards to investigate raw events"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="11" cy="11" r="8"></circle>
+                              <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            View in OpenSearch
+                          </button>
+                          {alert.asset_id && (
+                            <button className="btn btn-sm" style={{ background: 'var(--accent-secondary)', color: 'white' }} onClick={() => viewDevice(alert.asset_id)}>
+                              View Device
+                            </button>
+                          )}
                           {alert.status === 'open' && (
                             <button className="btn btn-sm btn-warning" onClick={() => updateStatus(alert.alert_id, 'triaged')}>
                               Mark as Triaged
@@ -472,6 +576,18 @@ export default function Alerts() {
             )
           })}
         </div>
+      )}
+
+      {/* Event Drill-Down Panel */}
+      {showEventDrillDown && selectedAlertForEvents && (
+        <EventDrillDown
+          alertId={selectedAlertForEvents.alert_id}
+          alertTriggerTime={selectedAlertForEvents.triggered_at || selectedAlertForEvents.timestamp}
+          onClose={() => {
+            setShowEventDrillDown(false)
+            setSelectedAlertForEvents(null)
+          }}
+        />
       )}
     </div>
   )

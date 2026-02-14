@@ -4,8 +4,9 @@ import asyncio
 import json
 from typing import Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException, status
 from ..db.opensearch_client import opensearch_client
+from ..core.security import decode_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -246,11 +247,34 @@ async def broadcast_telemetry_loop():
 
 
 @router.websocket("/ws/city-telemetry")
-async def websocket_city_telemetry(websocket: WebSocket):
+async def websocket_city_telemetry(websocket: WebSocket, token: Optional[str] = Query(None)):
     """
     WebSocket endpoint for real-time city asset telemetry.
     Streams asset updates every 2 seconds.
+
+    Requires authentication via token query parameter:
+    ws://localhost:8000/ws/city-telemetry?token=<jwt_token>
     """
+    # Validate token before accepting connection
+    if not token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Missing auth token")
+        logger.warning("WebSocket connection rejected: no token provided")
+        return
+
+    try:
+        # Decode and validate token
+        payload = decode_token(token)
+        username = payload.get("sub")
+        if not username:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+            logger.warning("WebSocket connection rejected: invalid token")
+            return
+        logger.info(f"WebSocket authenticated: user={username}")
+    except Exception as e:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token validation failed")
+        logger.warning(f"WebSocket connection rejected: {e}")
+        return
+
     await manager.connect(websocket)
 
     try:

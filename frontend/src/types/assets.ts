@@ -88,3 +88,69 @@ export interface AssetTelemetryMessage {
   assets?: CityAsset[]
   path?: AttackPath
 }
+
+// Device Management Types
+export interface DeviceLocation {
+  zone?: string
+  subnet?: string
+  building?: string
+  floor?: string
+  coordinates?: { lat: number; lon: number }
+}
+
+export interface DeviceNetwork {
+  ip_address?: string
+  mac_address?: string
+  vlan?: string
+  gateway?: string
+}
+
+export interface Device {
+  asset_id: string
+  name: string
+  asset_type: string
+  asset_class?: string
+  criticality: 'low' | 'medium' | 'high' | 'critical'
+  location?: DeviceLocation
+  network?: DeviceNetwork
+  status: 'active' | 'inactive' | 'maintenance' | 'decommissioned'
+  last_seen?: string
+  events_1h: number
+  alerts_open: number
+  risk_score: number
+  tags: string[]
+  device_type: 'simulated' | 'physical' | 'virtual'
+  last_heartbeat?: string
+  lifecycle_state?: string
+}
+
+export interface DeviceMetrics {
+  events_24h: number
+  events_7d: number
+  alerts_24h: number
+  alerts_7d: number
+  uptime_percentage: number
+  last_incident?: string
+}
+
+export interface RecentEvent {
+  timestamp: string
+  event_type: string
+  severity?: string
+  message?: string
+}
+
+export interface RecentAlert {
+  alert_id: string
+  triggered_at: string
+  rule_name: string
+  severity: string
+  status: string
+}
+
+export interface DeviceDetail extends Device {
+  metrics?: DeviceMetrics
+  recent_events: RecentEvent[]
+  recent_alerts: RecentAlert[]
+  metadata?: Record<string, any>
+}

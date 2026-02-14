@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Login from './pages/Login'
 import Overview from './pages/Overview'
 import Alerts from './pages/Alerts'
+import DeviceManagement from './pages/DeviceManagement'
 import ScenarioBuilder from './pages/ScenarioBuilder'
 import Rules from './pages/Rules'
 import AdminUsers from './pages/AdminUsers'
@@ -50,6 +51,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/alerts" element={<ProtectedRoute isAuth={isAuthenticated}><Alerts /></ProtectedRoute>} />
+        <Route path="/devices" element={<ProtectedRoute isAuth={isAuthenticated}><DeviceManagement /></ProtectedRoute>} />
         <Route path="/scenarios" element={
           <ProtectedRoute isAuth={isAuthenticated}>
             <ScenarioBuilder onAttackLaunched={setActiveAttack} />

@@ -9,6 +9,7 @@ export default function Nav({ user, activeAttack, onLogout }: { user: any; activ
           <span className="nav-brand">CityShield</span>
           <Link to="/">Dashboard</Link>
           <Link to="/alerts">Alerts</Link>
+          <Link to="/devices">Devices</Link>
           <Link to="/scenarios">Scenarios</Link>
           <Link to="/rules">Rules</Link>
           {user?.role === 'Administrator' && (
