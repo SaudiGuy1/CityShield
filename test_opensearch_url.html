@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenSearch Dashboards URL Test</title>
+</head>
+<body>
+    <h1>OpenSearch Dashboards URL Test</h1>
+    <button onclick="testUrl()">Test OpenSearch URL</button>
+
+    <div id="output"></div>
+
+    <script>
+    function testUrl() {
+        // Test parameters
+        const from = new Date(Date.now() - 5 * 60 * 1000).toISOString(); // 5 min ago
+        const to = new Date().toISOString();
+        const query = 'component:network_infrastructure';
+
+        // Method 1: Minimal URL
+        const url1 = `http://localhost:5601/app/discover#/?_g=(time:(from:'${from}',to:'${to}'))&_a=(index:'logs-*',query:(language:lucene,query:'${encodeURIComponent(query)}'))`;
+
+        // Method 2: Full URL with all parameters
+        const url2 = `http://localhost:5601/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:'${from}',to:'${to}'))&_a=(columns:!('@timestamp',component,event_type,severity,message),filters:!(),index:'logs-*',interval:auto,query:(language:lucene,query:'${encodeURIComponent(query)}'),sort:!(!('@timestamp',desc)))`;
+
+        // Method 3: Use default index (no index specified)
+        const url3 = `http://localhost:5601/app/discover#/?_g=(time:(from:'${from}',to:'${to}'))&_a=(query:(language:lucene,query:'${encodeURIComponent(query)}'))`;
+
+        document.getElementById('output').innerHTML = `
+            <h2>Generated URLs:</h2>
+            <h3>Method 1 (Minimal):</h3>
+            <a href="${url1}" target="_blank">${url1}</a>
+
+            <h3>Method 2 (Full):</h3>
+            <a href="${url2}" target="_blank">${url2}</a>
+
+            <h3>Method 3 (Default Index):</h3>
+            <a href="${url3}" target="_blank">${url3}</a>
+        `;
+    }
+    </script>
+</body>
+</html>

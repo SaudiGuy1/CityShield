@@ -5,6 +5,7 @@ import Overview from './pages/Overview'
 import Alerts from './pages/Alerts'
 import DeviceManagement from './pages/DeviceManagement'
 import ScenarioBuilder from './pages/ScenarioBuilder'
+import CustomScenarioBuilder from './pages/CustomScenarioBuilder'
 import Rules from './pages/Rules'
 import AdminUsers from './pages/AdminUsers'
 import Nav from './components/Nav'
@@ -55,6 +56,11 @@ function App() {
         <Route path="/scenarios" element={
           <ProtectedRoute isAuth={isAuthenticated}>
             <ScenarioBuilder onAttackLaunched={setActiveAttack} />
+          </ProtectedRoute>
+        } />
+        <Route path="/scenarios/custom" element={
+          <ProtectedRoute isAuth={isAuthenticated}>
+            <CustomScenarioBuilder />
           </ProtectedRoute>
         } />
         <Route path="/rules" element={<ProtectedRoute isAuth={isAuthenticated}><Rules /></ProtectedRoute>} />

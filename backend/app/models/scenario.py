@@ -50,6 +50,7 @@ class ScenarioRunCreate(BaseModel):
     """Scenario run creation model."""
     scenario_id: str
     target_device_id: Optional[str] = None
+    custom_parameters: Optional[Dict[str, Any]] = None  # Custom attack parameters
 
 
 class ScenarioRun(ScenarioRunBase):
@@ -61,6 +62,23 @@ class ScenarioRun(ScenarioRunBase):
     target_device_id: Optional[str] = None
     target_component_id: Optional[str] = None
     stages: Optional[List[Dict[str, Any]]] = None
+    custom_parameters: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True
+
+
+class AttackConfiguration(BaseModel):
+    """Attack configuration for custom scenarios."""
+    technique: str  # brute_force, port_scan, c2_beacon, data_exfiltration
+    parameters: Dict[str, Any]  # Technique-specific parameters
+
+
+class CustomScenarioCreate(BaseModel):
+    """Create a fully custom scenario."""
+    name: str
+    description: str
+    target_component: str
+    target_device_id: Optional[str] = None
+    attack_chain: List[AttackConfiguration]
+    duration_seconds: Optional[int] = None  # Optional, calculated from chain if not provided

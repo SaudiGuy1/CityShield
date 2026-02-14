@@ -210,41 +210,64 @@ class ScenarioService:
 
 
 async def simulate_scenario_execution(run_id: str, scenario: Scenario):
-    """Background task that iterates through stages with timed delays."""
-    try:
-        duration = scenario.duration_seconds
-        stage_duration = duration / 4
+    """Execute real attack scenario with actual traffic generation."""
+    from .attack_engine import AttackExecutionEngine
 
+    try:
         # Mark run as running
         ScenarioService.update_run_status(run_id, "running")
 
-        # Get current run doc to retrieve stages
+        # Get current run doc to retrieve stages and config
         doc = ScenarioService.get_run_raw(run_id)
         if not doc:
             return
-        stages = doc.get("stages", [])
-        if not stages:
-            return
 
-        for i, stage in enumerate(stages):
+        stages = doc.get("stages", [])
+        target_device = doc.get("target_device_id")
+
+        # Map scenario attack pattern to real attack techniques
+        attack_techniques = _map_scenario_to_techniques(scenario, target_device)
+
+        # Create attack engine
+        engine = AttackExecutionEngine(run_id, {
+            'scenario_id': scenario.scenario_id,
+            'target_device': target_device,
+            'component': scenario.components[0] if scenario.components else 'network_infrastructure'
+        })
+
+        # Update stages as we execute
+        for i, (stage, tech_config) in enumerate(zip(stages, attack_techniques)):
             # Mark stage as running
             stages[i]["status"] = "running"
             stages[i]["started_at"] = datetime.utcnow().isoformat()
             ScenarioService.update_run_stages(run_id, stages)
 
-            # Wait for stage duration
-            await asyncio.sleep(stage_duration)
+            # Execute real attack for this stage
+            logger.info(f"Executing stage {i+1}/{len(stages)}: {stage['name']}")
+
+            # Execute the attack technique
+            await engine.execute_attack_chain([tech_config])
 
             # Mark stage as success
             stages[i]["status"] = "success"
             stages[i]["completed_at"] = datetime.utcnow().isoformat()
+            stages[i]["events_generated"] = tech_config.get('events_generated', 0)
             ScenarioService.update_run_stages(run_id, stages)
 
-            # Generate a mock alert for this stage
-            _generate_stage_alert(run_id, scenario, i, doc.get("target_device_id"))
+        # Get final results from attack engine
+        results = engine.results
 
-        # Mark run as completed
-        ScenarioService.update_run_status(run_id, "completed", {"stages_completed": len(stages)})
+        # Mark run as completed with detailed results
+        ScenarioService.update_run_status(run_id, "completed", {
+            "stages_completed": len(stages),
+            "total_events_generated": results['total_events_generated'],
+            "alerts_triggered": results['alerts_triggered'],
+            "detection_rate": results['alerts_triggered'] / max(len(attack_techniques), 1) * 100,
+            "detection_gaps": results['detection_gaps'],
+            "techniques_executed": [t['technique'] for t in results['techniques_executed']]
+        })
+
+        logger.info(f"Scenario {run_id} completed: {results['total_events_generated']} events, {results['alerts_triggered']} alerts")
 
     except Exception as e:
         logger.error(f"Scenario execution error for run {run_id}: {e}")
@@ -252,6 +275,121 @@ async def simulate_scenario_execution(run_id: str, scenario: Scenario):
             ScenarioService.update_run_status(run_id, "failed", {"error": str(e)})
         except Exception:
             pass
+
+
+def _map_scenario_to_techniques(scenario: Scenario, target_device: Optional[str]) -> List[Dict[str, Any]]:
+    """Map a scenario to executable attack techniques."""
+    attack_pattern = scenario.attack_pattern.lower()
+    component = scenario.components[0] if scenario.components else 'network_infrastructure'
+
+    # Map scenario patterns to real attack techniques
+    if 'brute' in attack_pattern or 'password' in attack_pattern:
+        return [
+            {
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': _get_zone_for_component(component),
+                'scan_type': 'syn',
+                'ports': [22, 80, 443],
+                'target_hosts': 5,
+                'delay_after': 5
+            },
+            {
+                'technique': 'brute_force',
+                'target_device': target_device,
+                'component': component,
+                'zone': _get_zone_for_component(component),
+                'attempts': 30,
+                'delay_ms': 200,
+                'allow_success': False,
+                'delay_after': 10
+            }
+        ]
+    elif 'scan' in attack_pattern or 'reconnaissance' in attack_pattern:
+        return [
+            {
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': _get_zone_for_component(component),
+                'scan_type': 'syn',
+                'ports': [22, 80, 443, 1883, 502, 8080, 8443, 3389],
+                'target_hosts': 15,
+                'delay_after': 10
+            }
+        ]
+    elif 'c2' in attack_pattern or 'command' in attack_pattern or 'botnet' in attack_pattern:
+        return [
+            {
+                'technique': 'c2_beacon',
+                'target_device': target_device,
+                'component': component,
+                'zone': _get_zone_for_component(component),
+                'beacon_interval_seconds': 30,
+                'duration_seconds': 180,
+                'protocol': 'https',
+                'jitter_percent': 15,
+                'delay_after': 10
+            }
+        ]
+    elif 'exfil' in attack_pattern or 'data' in attack_pattern:
+        return [
+            {
+                'technique': 'data_exfiltration',
+                'target_device': target_device,
+                'component': component,
+                'zone': _get_zone_for_component(component),
+                'data_volume_mb': 50,
+                'method': 'https',
+                'delay_after': 5
+            }
+        ]
+    else:
+        # Default: multi-stage attack chain
+        return [
+            {
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': _get_zone_for_component(component),
+                'scan_type': 'syn',
+                'ports': [22, 80, 443],
+                'target_hosts': 5,
+                'delay_after': 5
+            },
+            {
+                'technique': 'brute_force',
+                'target_device': target_device,
+                'component': component,
+                'zone': _get_zone_for_component(component),
+                'attempts': 20,
+                'delay_ms': 300,
+                'delay_after': 5
+            },
+            {
+                'technique': 'c2_beacon',
+                'target_device': target_device,
+                'component': component,
+                'zone': _get_zone_for_component(component),
+                'beacon_interval_seconds': 60,
+                'duration_seconds': 120,
+                'protocol': 'https',
+                'delay_after': 5
+            }
+        ]
+
+
+def _get_zone_for_component(component: str) -> str:
+    """Get zone for component."""
+    zone_map = {
+        "traffic_management": "zone-a",
+        "iot_sensors": "zone-b",
+        "network_infrastructure": "zone-c",
+        "security": "zone-d",
+        "industrial_systems": "zone-e",
+    }
+    return zone_map.get(component, "zone-a")
 
 
 def _generate_stage_alert(run_id: str, scenario: Scenario, stage_index: int, target_device_id: Optional[str]):

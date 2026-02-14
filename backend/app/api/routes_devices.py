@@ -61,17 +61,22 @@ async def _get_device_metrics(asset_id: str) -> DeviceMetrics:
     """Calculate device metrics from events and alerts."""
     now = datetime.utcnow()
 
-    # Count events in last 24 hours
+    # Count events in last 24 hours (check both actor_id and asset_id fields)
     events_24h_query = {
-        "query": {
-            "bool": {
-                "must": [
-                    {"term": {"asset_id": asset_id}},
-                    {"range": {"@timestamp": {"gte": (now - timedelta(hours=24)).isoformat() + "Z"}}}
-                ]
-            }
-        },
-        "size": 0
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"actor_id.keyword": asset_id}},
+                            {"term": {"asset_id.keyword": asset_id}}
+                        ],
+                        "minimum_should_match": 1
+                    }
+                },
+                {"range": {"@timestamp": {"gte": (now - timedelta(hours=24)).isoformat() + "Z"}}}
+            ]
+        }
     }
     try:
         events_24h = opensearch_client.count("logs-*", events_24h_query)
@@ -80,32 +85,42 @@ async def _get_device_metrics(asset_id: str) -> DeviceMetrics:
 
     # Count events in last 7 days
     events_7d_query = {
-        "query": {
-            "bool": {
-                "must": [
-                    {"term": {"asset_id": asset_id}},
-                    {"range": {"@timestamp": {"gte": (now - timedelta(days=7)).isoformat() + "Z"}}}
-                ]
-            }
-        },
-        "size": 0
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"actor_id.keyword": asset_id}},
+                            {"term": {"asset_id.keyword": asset_id}}
+                        ],
+                        "minimum_should_match": 1
+                    }
+                },
+                {"range": {"@timestamp": {"gte": (now - timedelta(days=7)).isoformat() + "Z"}}}
+            ]
+        }
     }
     try:
         events_7d = opensearch_client.count("logs-*", events_7d_query)
     except:
         events_7d = 0
 
-    # Count alerts in last 24 hours
+    # Count alerts in last 24 hours (check both actor_id and asset_id)
     alerts_24h_query = {
-        "query": {
-            "bool": {
-                "must": [
-                    {"term": {"asset_id": asset_id}},
-                    {"range": {"triggered_at": {"gte": (now - timedelta(hours=24)).isoformat() + "Z"}}}
-                ]
-            }
-        },
-        "size": 0
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"actor_id.keyword": asset_id}},
+                            {"term": {"asset_id.keyword": asset_id}}
+                        ],
+                        "minimum_should_match": 1
+                    }
+                },
+                {"range": {"triggered_at": {"gte": (now - timedelta(hours=24)).isoformat() + "Z"}}}
+            ]
+        }
     }
     try:
         alerts_24h = opensearch_client.count("alerts", alerts_24h_query)
@@ -114,15 +129,20 @@ async def _get_device_metrics(asset_id: str) -> DeviceMetrics:
 
     # Count alerts in last 7 days
     alerts_7d_query = {
-        "query": {
-            "bool": {
-                "must": [
-                    {"term": {"asset_id": asset_id}},
-                    {"range": {"triggered_at": {"gte": (now - timedelta(days=7)).isoformat() + "Z"}}}
-                ]
-            }
-        },
-        "size": 0
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"actor_id.keyword": asset_id}},
+                            {"term": {"asset_id.keyword": asset_id}}
+                        ],
+                        "minimum_should_match": 1
+                    }
+                },
+                {"range": {"triggered_at": {"gte": (now - timedelta(days=7)).isoformat() + "Z"}}}
+            ]
+        }
     }
     try:
         alerts_7d = opensearch_client.count("alerts", alerts_7d_query)
@@ -141,7 +161,15 @@ async def _get_device_metrics(asset_id: str) -> DeviceMetrics:
 async def _get_recent_events(asset_id: str, limit: int = 10) -> List[RecentEvent]:
     """Get recent events for a device."""
     query = {
-        "query": {"term": {"asset_id": asset_id}},
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"actor_id.keyword": asset_id}},
+                    {"term": {"asset_id.keyword": asset_id}}
+                ],
+                "minimum_should_match": 1
+            }
+        },
         "size": limit,
         "sort": [{"@timestamp": {"order": "desc"}}]
     }
@@ -165,7 +193,15 @@ async def _get_recent_events(asset_id: str, limit: int = 10) -> List[RecentEvent
 async def _get_recent_alerts(asset_id: str, limit: int = 5) -> List[RecentAlert]:
     """Get recent alerts for a device."""
     query = {
-        "query": {"term": {"asset_id": asset_id}},
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"actor_id.keyword": asset_id}},
+                    {"term": {"asset_id.keyword": asset_id}}
+                ],
+                "minimum_should_match": 1
+            }
+        },
         "size": limit,
         "sort": [{"triggered_at": {"order": "desc"}}]
     }
@@ -192,34 +228,44 @@ async def _calculate_realtime_metrics(doc: dict) -> dict:
     asset_id = doc.get("asset_id")
     now = datetime.utcnow()
 
-    # Count events in last hour
+    # Count events in last hour (check both actor_id and asset_id)
     events_1h_query = {
-        "query": {
-            "bool": {
-                "must": [
-                    {"term": {"asset_id": asset_id}},
-                    {"range": {"@timestamp": {"gte": (now - timedelta(hours=1)).isoformat() + "Z"}}}
-                ]
-            }
-        },
-        "size": 0
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"actor_id.keyword": asset_id}},
+                            {"term": {"asset_id.keyword": asset_id}}
+                        ],
+                        "minimum_should_match": 1
+                    }
+                },
+                {"range": {"@timestamp": {"gte": (now - timedelta(hours=1)).isoformat() + "Z"}}}
+            ]
+        }
     }
     try:
         events_1h = opensearch_client.count("logs-*", events_1h_query)
     except:
         events_1h = 0
 
-    # Count open alerts
+    # Count open alerts (check both actor_id and asset_id)
     alerts_query = {
-        "query": {
-            "bool": {
-                "must": [
-                    {"term": {"asset_id": asset_id}},
-                    {"term": {"status": "open"}}
-                ]
-            }
-        },
-        "size": 0
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"actor_id.keyword": asset_id}},
+                            {"term": {"asset_id.keyword": asset_id}}
+                        ],
+                        "minimum_should_match": 1
+                    }
+                },
+                {"term": {"status.keyword": "open"}}
+            ]
+        }
     }
     try:
         alerts_open = opensearch_client.count("alerts", alerts_query)
@@ -397,7 +443,15 @@ async def get_device_events(
         raise HTTPException(status_code=404, detail="Device not found")
 
     query = {
-        "query": {"term": {"asset_id": asset_id}},
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"actor_id.keyword": asset_id}},
+                    {"term": {"asset_id.keyword": asset_id}}
+                ],
+                "minimum_should_match": 1
+            }
+        },
         "size": limit,
         "sort": [{"@timestamp": {"order": "desc"}}]
     }
@@ -423,9 +477,19 @@ async def get_device_alerts(
     if not doc:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    must_clauses = [{"term": {"asset_id": asset_id}}]
+    must_clauses = [
+        {
+            "bool": {
+                "should": [
+                    {"term": {"actor_id.keyword": asset_id}},
+                    {"term": {"asset_id.keyword": asset_id}}
+                ],
+                "minimum_should_match": 1
+            }
+        }
+    ]
     if status:
-        must_clauses.append({"term": {"status": status}})
+        must_clauses.append({"term": {"status.keyword": status}})
 
     query = {
         "query": {"bool": {"must": must_clauses}},

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import anime from 'animejs'
 import type { ActiveAttack } from '../App'
+import AttackEffectivenessAnalyzer from '../components/AttackEffectivenessAnalyzer'
 
 interface ScenarioBuilderProps {
   onAttackLaunched: (attack: ActiveAttack) => void
@@ -21,6 +22,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
   const [running, setRunning] = useState<{ [key: string]: boolean }>({})
   const [targetModal, setTargetModal] = useState<{ scenarioId: string; targetComponent: string } | null>(null)
   const [devices, setDevices] = useState<DeviceTarget[]>([])
+  const [analysisRunId, setAnalysisRunId] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -183,6 +185,14 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
           <h1>Attack Scenario Builder</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Launch cyber attack simulations and watch them unfold on the 3D city map</p>
         </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => navigate('/scenarios/custom')}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+          Custom Scenario Builder
+        </button>
       </div>
 
       {/* Target Selection Modal */}
@@ -331,6 +341,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                   <th>Target</th>
                   <th>Started</th>
                   <th>Duration</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -363,6 +374,19 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                       <td>
                         {scenario ? `${scenario.duration_seconds}s` : '-'}
                       </td>
+                      <td>
+                        {run.status === 'completed' && run.results ? (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setAnalysisRunId(run.run_id)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+                          >
+                            📊 View Analysis
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>-</span>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
@@ -371,6 +395,14 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
           </div>
         )}
       </div>
+
+      {/* Attack Effectiveness Analyzer */}
+      {analysisRunId && (
+        <AttackEffectivenessAnalyzer
+          runId={analysisRunId}
+          onClose={() => setAnalysisRunId(null)}
+        />
+      )}
     </div>
   )
 }

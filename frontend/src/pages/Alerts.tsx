@@ -161,7 +161,18 @@ export default function Alerts() {
     const from = startTime.toISOString()
     const to = endTime.toISOString()
 
-    const dashboardsUrl = `http://localhost:5601/app/discover#/?_g=(filters:!(),time:(from:'${from}',to:'${to}'))&_a=(columns:!('@timestamp',component,event_type,severity,message),filters:!(),index:'logs-*',interval:auto,query:(language:lucene,query:'${queryString}'),sort:!(!('@timestamp',desc)))`
+    // Build OpenSearch Dashboards Discover URL using RISON format
+    // RISON is used by OpenSearch Dashboards - don't encode the RISON syntax itself
+
+    // Build global state - time range and filters
+    const globalState = `(filters:!(),time:(from:'${from}',to:'${to}'))`
+
+    // Build app state - index pattern, columns, and query
+    // Only encode the query value, not the RISON structure
+    const appState = `(columns:!('@timestamp',component,event_type,severity,message),index:'logs-*',interval:auto,query:(language:lucene,query:'${queryString}'))`
+
+    // Full URL - do NOT use encodeURIComponent on the entire state objects
+    const dashboardsUrl = `http://localhost:5601/app/discover#/?_g=${globalState}&_a=${appState}`
 
     window.open(dashboardsUrl, '_blank')
   }
