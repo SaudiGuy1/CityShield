@@ -139,10 +139,24 @@ export default function Alerts() {
   const viewInOpenSearch = (alert: any) => {
     // Build OpenSearch Dashboards URL with pre-filled query
     const triggeredAt = new Date(alert.triggered_at || alert.timestamp)
-    const startTime = new Date(triggeredAt.getTime() - 5 * 60 * 1000) // 5 min before
-    const endTime = new Date(triggeredAt.getTime() + 5 * 60 * 1000) // 5 min after
+    const now = new Date()
 
-    // Build query filter based on alert context
+    // Smart time range: use last 30 minutes if alert is old, otherwise use ±15 min around alert
+    const alertAge = now.getTime() - triggeredAt.getTime()
+    const useRecentData = alertAge > 30 * 60 * 1000 // If alert is > 30 min old
+
+    let startTime, endTime
+    if (useRecentData) {
+      // Alert is old, show recent data instead
+      endTime = now
+      startTime = new Date(now.getTime() - 30 * 60 * 1000) // Last 30 minutes
+    } else {
+      // Alert is recent, show time window around it
+      startTime = new Date(triggeredAt.getTime() - 15 * 60 * 1000)
+      endTime = new Date(triggeredAt.getTime() + 15 * 60 * 1000)
+    }
+
+    // Build query filter based on alert context - use OR for better results
     const filters = []
     if (alert.component) {
       filters.push(`component:${alert.component}`)
@@ -151,25 +165,22 @@ export default function Alerts() {
       filters.push(`city_zone:${alert.city_zone}`)
     }
     if (alert.asset_id) {
-      filters.push(`asset_id:${alert.asset_id}`)
+      // Search both asset_id and actor_id
+      filters.push(`(asset_id:${alert.asset_id} OR actor_id:${alert.asset_id})`)
     }
 
-    const queryString = filters.length > 0 ? filters.join(' AND ') : '*'
+    // Use OR instead of AND for more permissive matching
+    const queryString = filters.length > 0 ? filters.join(' OR ') : '*'
 
-    // OpenSearch Dashboards Discover URL
-    // Format: /app/discover#/?_g=(time:(from:START,to:END))&_a=(query:(query:'QUERY'))
     const from = startTime.toISOString()
     const to = endTime.toISOString()
 
     // Build OpenSearch Dashboards Discover URL using RISON format
-    // RISON is used by OpenSearch Dashboards - don't encode the RISON syntax itself
-
     // Build global state - time range and filters
-    const globalState = `(filters:!(),time:(from:'${from}',to:'${to}'))`
+    const globalState = `(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:'${from}',to:'${to}'))`
 
     // Build app state - index pattern, columns, and query
-    // Only encode the query value, not the RISON structure
-    const appState = `(columns:!('@timestamp',component,event_type,severity,message),index:'logs-*',interval:auto,query:(language:lucene,query:'${queryString}'))`
+    const appState = `(columns:!('@timestamp',component,event_type,severity,message,city_zone),index:'logs-*',interval:auto,query:(language:lucene,query:'${queryString}'),sort:!(!('@timestamp',desc)))`
 
     // Full URL - do NOT use encodeURIComponent on the entire state objects
     const dashboardsUrl = `http://localhost:5601/app/discover#/?_g=${globalState}&_a=${appState}`
