@@ -20,3 +20,13 @@ techniques:
     name: Brute Force
     tactic: Credential Access
     description: Adversaries may use brute force techniques to gain access to accounts
+
+  T1071:
+    name: Application Layer Protocol
+    tactic: Command and Control
+    description: Adversaries may communicate using application layer protocols to avoid detection
+
+  T1041:
+    name: Exfiltration Over C2 Channel
+    tactic: Exfiltration
+    description: Adversaries may steal data by exfiltrating it over an existing command and control channel

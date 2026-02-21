@@ -63,6 +63,72 @@ def get_threat_intel_provider():
         return MockThreatIntelProvider()
 
 
+def _ensure_logs_template(client: OpenSearch):
+    """Create an index template for logs-* indices with explicit field mappings.
+
+    Simulators create logs-traffic, logs-iot, logs-network via plain HTTP POST
+    with no mappings. OpenSearch auto-maps strings as 'text' type, which silently
+    breaks terms aggregations (fielddata disabled). This template ensures all
+    logs-* indices get consistent, explicit mappings.
+
+    Fields are mapped as text + keyword sub-field so that _agg_field() in
+    rule_runtime.py can use the .keyword suffix on both old and new indices.
+    """
+    template_body = {
+        "index_patterns": ["logs-*"],
+        "order": 0,
+        "mappings": {
+            "properties": {
+                "@timestamp": {"type": "date"},
+                "component": {
+                    "type": "text",
+                    "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                },
+                "event_type": {
+                    "type": "text",
+                    "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                },
+                "severity": {"type": "keyword"},
+                "city_zone": {
+                    "type": "text",
+                    "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                },
+                "src_ip": {
+                    "type": "text",
+                    "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                },
+                "dst_ip": {
+                    "type": "text",
+                    "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                },
+                "src_port": {"type": "integer"},
+                "dst_port": {"type": "integer"},
+                "actor_id": {
+                    "type": "text",
+                    "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                },
+                "asset_id": {
+                    "type": "text",
+                    "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                },
+                "sensor_id": {
+                    "type": "text",
+                    "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}
+                },
+                "correlation_id": {"type": "keyword"},
+                "message": {"type": "text"},
+                "metadata": {"type": "object"}
+            }
+        }
+    }
+
+    try:
+        client.indices.put_template(name="logs-template", body=template_body)
+        logger.info("Created/updated logs-* index template")
+    except Exception as e:
+        logger.warning(f"Could not create logs-* index template: {e}")
+
+
 def main():
     """Main detection engine loop."""
     logger.info("Starting CityShield Detection Engine...")
@@ -92,6 +158,10 @@ def main():
             else:
                 logger.error("Failed to connect to OpenSearch")
                 raise
+
+    # Ensure index template for logs-* so new indices get explicit field mappings.
+    # Existing auto-mapped indices still work because rule_runtime uses .keyword suffix.
+    _ensure_logs_template(client)
 
     # Load rules
     rules = load_rules()

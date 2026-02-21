@@ -18,7 +18,9 @@
     "three": "^0.160.0",
     "@react-three/fiber": "^8.15.12",
     "@react-three/drei": "^9.93.0",
-    "@react-three/postprocessing": "^2.16.2"
+    "@react-three/postprocessing": "^2.16.2",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.48",

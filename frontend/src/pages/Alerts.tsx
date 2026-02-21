@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import anime from 'animejs'
 import EventDrillDown from '../components/EventDrillDown'
+import { formatDateTimeWithSeconds } from '../utils/datetime'
 
 interface AlertAnalysis {
   alert_id: string
@@ -322,7 +323,7 @@ export default function Alerts() {
                         <span>ID: {alert.alert_id.substring(0, 12)}</span>
                         <span>{alert.component?.replace('_', ' ')}</span>
                         <span>{alert.city_zone}</span>
-                        <span>{new Date(alert.triggered_at || alert.timestamp).toLocaleString()}</span>
+                        <span>{formatDateTimeWithSeconds(alert.triggered_at || alert.timestamp)}</span>
                       </div>
                     </div>
 

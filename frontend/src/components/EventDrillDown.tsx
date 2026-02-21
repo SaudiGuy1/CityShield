@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import anime from 'animejs'
+import { formatDateTimeWithSeconds } from '../utils/datetime'
 
 interface Event {
   '@timestamp': string
@@ -354,7 +355,7 @@ export default function EventDrillDown({ alertId, alertTriggerTime, onClose }: E
                                   )}
                                 </div>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: '0.25rem' }}>
-                                  {new Date(event['@timestamp']).toLocaleString()}
+                                  {formatDateTimeWithSeconds(event['@timestamp'])}
                                 </div>
                                 {event.message && (
                                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>

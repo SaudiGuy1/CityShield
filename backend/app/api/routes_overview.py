@@ -1,7 +1,8 @@
 """Overview routes - Production version with real asset queries."""
 import logging
+import requests as http_requests
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from ..core.security import get_current_user
 from ..db.opensearch_client import opensearch_client
@@ -248,12 +249,108 @@ async def get_overview_stats(current_user: dict = Depends(get_current_user)):
         }
 
 
-def init_opensearch_dashboards():
+DASHBOARDS_URL = "http://dashboards:5601"
+
+INDEX_PATTERNS = [
+    ("logs-*", "logs-*", "@timestamp"),
+    ("logs-network", "logs-network", "@timestamp"),
+    ("logs-traffic", "logs-traffic", "@timestamp"),
+    ("logs-iot", "logs-iot", "@timestamp"),
+    ("alerts", "alerts", "triggered_at"),
+    ("city-assets", "city-assets", None),
+    ("scenario_runs", "scenario_runs", "started_at"),
+]
+
+
+def _create_index_pattern(pattern_id: str, title: str, time_field: Optional[str] = None) -> bool:
+    """Create a single index pattern in OpenSearch Dashboards."""
+    url = f"{DASHBOARDS_URL}/api/saved_objects/index-pattern/{pattern_id}"
+    headers = {"osd-xsrf": "true", "Content-Type": "application/json"}
+    attributes = {"title": title}
+    if time_field:
+        attributes["timeFieldName"] = time_field
+
+    try:
+        response = http_requests.post(url, json={"attributes": attributes}, headers=headers, timeout=10)
+        if response.status_code in [200, 409]:
+            return True
+        logger.warning(f"Index pattern {title}: HTTP {response.status_code}")
+        return False
+    except Exception as e:
+        logger.warning(f"Index pattern {title}: {e}")
+        return False
+
+
+def init_opensearch_dashboards() -> Optional[List[str]]:
     """
-    Initialize OpenSearch Dashboards index patterns and visualizations.
-    Called during application startup.
+    Initialize OpenSearch Dashboards index patterns.
+    Called during application startup. Returns list of created patterns or None.
     """
-    logger.info("OpenSearch Dashboards initialization placeholder")
-    # This is called from main.py startup
-    # In production, dashboards are initialized via UI or separate script
-    pass
+    # Check if Dashboards is reachable
+    try:
+        health = http_requests.get(f"{DASHBOARDS_URL}/api/status", timeout=5)
+        if health.status_code != 200:
+            logger.debug("OpenSearch Dashboards not ready yet, skipping init")
+            return None
+    except Exception:
+        logger.debug("OpenSearch Dashboards not reachable, skipping init")
+        return None
+
+    created = []
+    for pattern_id, title, time_field in INDEX_PATTERNS:
+        if _create_index_pattern(pattern_id, title, time_field):
+            created.append(title)
+
+    # Set default index pattern
+    try:
+        http_requests.post(
+            f"{DASHBOARDS_URL}/api/opensearch-dashboards/settings/defaultIndex",
+            json={"value": "logs-*"},
+            headers={"osd-xsrf": "true", "Content-Type": "application/json"},
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+    logger.info(f"Dashboards init: {len(created)}/{len(INDEX_PATTERNS)} index patterns")
+    return created
+
+
+@router.post("/init-dashboards")
+async def init_dashboards_endpoint(current_user: dict = Depends(get_current_user)):
+    """Initialize OpenSearch Dashboards index patterns on demand."""
+    # Check if Dashboards is reachable
+    try:
+        health = http_requests.get(f"{DASHBOARDS_URL}/api/status", timeout=5)
+        if health.status_code != 200:
+            raise HTTPException(status_code=503, detail="OpenSearch Dashboards is not ready")
+    except http_requests.exceptions.ConnectionError:
+        raise HTTPException(status_code=503, detail="Cannot connect to OpenSearch Dashboards. Ensure the dashboards service is running.")
+    except http_requests.exceptions.Timeout:
+        raise HTTPException(status_code=503, detail="OpenSearch Dashboards connection timed out")
+
+    created = []
+    failed = []
+    for pattern_id, title, time_field in INDEX_PATTERNS:
+        if _create_index_pattern(pattern_id, title, time_field):
+            created.append(title)
+        else:
+            failed.append(title)
+
+    # Set default index
+    try:
+        http_requests.post(
+            f"{DASHBOARDS_URL}/api/opensearch-dashboards/settings/defaultIndex",
+            json={"value": "logs-*"},
+            headers={"osd-xsrf": "true", "Content-Type": "application/json"},
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+    return {
+        "status": "ok",
+        "created": created,
+        "failed": failed,
+        "message": f"Initialized {len(created)}/{len(INDEX_PATTERNS)} index patterns"
+    }

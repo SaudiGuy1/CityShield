@@ -301,11 +301,11 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                   })
+                  const data = await res.json()
                   if (res.ok) {
-                    const data = await res.json()
-                    alert(`Dashboards initialized: ${data.created?.length || 0} objects created`)
+                    alert(`Dashboards initialized: ${data.created?.length || 0} index patterns created`)
                   } else {
-                    alert('Failed to initialize dashboards')
+                    alert(`Failed to initialize dashboards: ${data.detail || 'Unknown error'}`)
                   }
                 } catch {
                   alert('Error connecting to server')

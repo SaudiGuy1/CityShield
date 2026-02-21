@@ -291,7 +291,7 @@ def _map_scenario_to_techniques(scenario: Scenario, target_device: Optional[str]
                 'component': component,
                 'zone': _get_zone_for_component(component),
                 'scan_type': 'syn',
-                'ports': [22, 80, 443],
+                'ports': [22, 80, 443, 1883, 502, 8080],
                 'target_hosts': 5,
                 'delay_after': 5
             },
@@ -354,7 +354,7 @@ def _map_scenario_to_techniques(scenario: Scenario, target_device: Optional[str]
                 'component': component,
                 'zone': _get_zone_for_component(component),
                 'scan_type': 'syn',
-                'ports': [22, 80, 443],
+                'ports': [22, 80, 443, 1883, 502, 8080],
                 'target_hosts': 5,
                 'delay_after': 5
             },

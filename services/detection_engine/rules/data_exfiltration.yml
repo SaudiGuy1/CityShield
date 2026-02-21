@@ -1,0 +1,19 @@
+rule_id: data_exfil_001
+name: Data Exfiltration Detection
+description: Detects large outbound data transfers indicating data exfiltration activity
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: data_exfiltration
+  parameters:
+    threshold: 3
+    group_by: src_ip
+    event_types:
+      - data_exfiltration
+      - data_staging
+technique_id: T1041
+technique_name: "Exfiltration Over C2 Channel"
+response_actions:
+  - block_ip
+  - isolate_service

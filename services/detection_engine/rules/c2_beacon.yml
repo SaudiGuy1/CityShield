@@ -1,0 +1,18 @@
+rule_id: c2_beacon_001
+name: Command and Control Beaconing Detection
+description: Detects periodic outbound connections to external IPs indicating C2 beaconing activity
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: c2_beacon
+  parameters:
+    threshold: 3
+    group_by: src_ip
+    event_types:
+      - c2_beacon
+technique_id: T1071
+technique_name: "Application Layer Protocol"
+response_actions:
+  - block_ip
+  - isolate_service

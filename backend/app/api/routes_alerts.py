@@ -310,16 +310,28 @@ _mock_seeded = False
 
 
 def _ensure_mock_alerts():
-    """Seed mock alerts into OpenSearch if in mock mode."""
+    """Seed mock alerts into OpenSearch only if no real alerts exist."""
     global _mock_seeded
     if _mock_seeded:
         return
     _mock_seeded = True
 
+    # Skip seeding if real alerts already exist
+    try:
+        real_alerts = opensearch_client.search("alerts", {
+            "query": {"bool": {"must_not": {"prefix": {"alert_id": "mock-"}}}},
+            "size": 1
+        })
+        if len(real_alerts) > 0:
+            logger.debug("Skipping mock alert seeding: real alerts exist")
+            return
+    except Exception:
+        pass  # Index may not exist yet, proceed with seeding
+
     now = datetime.utcnow()
     for i, alert in enumerate(MOCK_ALERTS):
-        # Spread alerts over the last 2 hours
-        alert_time = now - timedelta(minutes=120 - i * 10)
+        # Spread alerts over the last 15 minutes so timestamps appear recent
+        alert_time = now - timedelta(seconds=len(MOCK_ALERTS) * 60 - i * 60)
         doc = dict(alert)
         doc["triggered_at"] = alert_time.isoformat() + "Z"
         try:

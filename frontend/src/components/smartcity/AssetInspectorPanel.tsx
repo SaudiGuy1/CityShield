@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { CityAsset } from '../../types/assets'
+import { formatDateTimeWithSeconds, formatTimeWithSeconds } from '../../utils/datetime'
 
 interface AssetInspectorPanelProps {
   asset: CityAsset
@@ -126,7 +127,7 @@ export default function AssetInspectorPanel({ asset, onClose }: AssetInspectorPa
                   </span>
                 </div>
                 <div style={alertTimeStyle}>
-                  {new Date(alert.timestamp).toLocaleString()}
+                  {formatDateTimeWithSeconds(alert.timestamp)}
                 </div>
                 {alert.description && (
                   <div style={alertDescStyle}>{alert.description}</div>
@@ -149,7 +150,7 @@ export default function AssetInspectorPanel({ asset, onClose }: AssetInspectorPa
             {events.slice(0, 10).map((event, i) => (
               <div key={i} style={eventRowStyle}>
                 <div style={eventTimeStyle}>
-                  {new Date(event.timestamp).toLocaleTimeString()}
+                  {formatTimeWithSeconds(event.timestamp)}
                 </div>
                 <div style={eventTypeStyle}>{event.event_type}</div>
                 <div style={eventMessageStyle}>{event.message}</div>

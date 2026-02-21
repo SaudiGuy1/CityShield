@@ -7,13 +7,14 @@ query_window_seconds: 300
 match_logic:
   type: net_scan
   parameters:
-    threshold: 10
+    threshold: 5
     field: dst_port
     group_by: src_ip
     event_types:
       - port_scan
       - network_probe
       - network_connection
+      - scan_complete
 technique_id: T1046
 technique_name: "Network Service Scanning"
 response_actions:

@@ -14,10 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 
-# Create non-root user
-RUN useradd -m -u 1000 cityshield && chown -R cityshield:cityshield /app
-USER cityshield
-
 # Expose port
 EXPOSE 8000
 

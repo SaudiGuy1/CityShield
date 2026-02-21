@@ -88,6 +88,7 @@ services:
       - USE_MOCK_CITY_COMPONENTS=${USE_MOCK_CITY_COMPONENTS:-true}
     volumes:
       - ./backend/app:/app/app:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8000:8000"
     networks:
@@ -244,3 +245,11 @@ services:
       - iot_sim
       - network_emulator
       - opensearch
+
+  researcher-lab-image:
+    build: ./services/researcher-lab
+    image: cityshield-lab:latest
+    entrypoint: ["true"]
+    restart: "no"
+    networks:
+      - cityshield_network

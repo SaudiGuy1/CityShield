@@ -1,0 +1,20 @@
+rule_id: brute_force_001
+name: Brute Force Authentication Detection
+description: Detects multiple failed authentication attempts from a single source IP, indicating credential brute force attack
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: brute_force
+  parameters:
+    threshold: 5
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - auth_failure
+      - auth_success
+technique_id: T1110
+technique_name: "Brute Force"
+response_actions:
+  - block_ip
+  - revoke_token

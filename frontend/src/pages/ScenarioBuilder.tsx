@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import anime from 'animejs'
 import type { ActiveAttack } from '../App'
 import AttackEffectivenessAnalyzer from '../components/AttackEffectivenessAnalyzer'
+import ResearchLab from '../components/ResearchLab'
+import { formatDateTimeWithSeconds } from '../utils/datetime'
 
 interface ScenarioBuilderProps {
   onAttackLaunched: (attack: ActiveAttack) => void
@@ -23,6 +25,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
   const [targetModal, setTargetModal] = useState<{ scenarioId: string; targetComponent: string } | null>(null)
   const [devices, setDevices] = useState<DeviceTarget[]>([])
   const [analysisRunId, setAnalysisRunId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'scenarios' | 'lab'>('scenarios')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -183,17 +186,54 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
       <div className="page-header">
         <div>
           <h1>Attack Scenario Builder</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Launch cyber attack simulations and watch them unfold on the 3D city map</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Launch attack simulations or open your personal research lab</p>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => navigate('/scenarios/custom')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <span style={{ fontSize: '1.2rem' }}>⚙️</span>
-          Custom Scenario Builder
-        </button>
+        {activeTab === 'scenarios' && (
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/scenarios/custom')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+            Custom Scenario Builder
+          </button>
+        )}
       </div>
+
+      {/* Tab Bar */}
+      <div style={{
+        display: 'flex',
+        gap: '0',
+        marginBottom: '1.5rem',
+        borderBottom: '1px solid var(--border-color)',
+      }}>
+        {([
+          { key: 'scenarios' as const, label: 'Attack Scenarios' },
+          { key: 'lab' as const, label: 'Research Lab' },
+        ]).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === tab.key ? '2px solid var(--accent-primary)' : '2px solid transparent',
+              color: activeTab === tab.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              fontWeight: activeTab === tab.key ? 600 : 400,
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'lab' && <ResearchLab />}
+
+      {activeTab === 'scenarios' && <>
 
       {/* Target Selection Modal */}
       {targetModal && (
@@ -369,7 +409,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                         <code style={{ fontSize: '0.8rem' }}>{run.target_device_id || '-'}</code>
                       </td>
                       <td style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-                        {new Date(run.started_at).toLocaleString()}
+                        {formatDateTimeWithSeconds(run.started_at)}
                       </td>
                       <td>
                         {scenario ? `${scenario.duration_seconds}s` : '-'}
@@ -403,6 +443,8 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
           onClose={() => setAnalysisRunId(null)}
         />
       )}
+
+      </>}
     </div>
   )
 }

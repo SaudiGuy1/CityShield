@@ -398,8 +398,8 @@ class AttackExecutionEngine:
 
     async def _analyze_detection_effectiveness(self):
         """Analyze what was detected vs what wasn't."""
-        # Wait for detection engine to process
-        await asyncio.sleep(10)
+        # Wait for detection engine to process (must exceed its poll interval, default 30s)
+        await asyncio.sleep(35)
 
         # Query for alerts with this correlation_id
         query = {

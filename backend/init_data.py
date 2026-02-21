@@ -227,6 +227,77 @@ MITRE_RULES = [
         },
         "response_actions": ["create_alert", "isolate_system"],
         "mitre_url": "https://attack.mitre.org/techniques/T1562/001/"
+    },
+    # Detection engine YAML rules — indexed here so response_manager can look up response_actions
+    {
+        "rule_id": "net_scan_001",
+        "name": "Network Port Scan Detection",
+        "description": "Detects network port scanning from a single source IP hitting multiple distinct destination ports",
+        "technique_id": "T1046",
+        "technique_name": "Network Service Scanning",
+        "tactic": "Discovery",
+        "severity": "high",
+        "component": "network_infrastructure",
+        "enabled": True,
+        "match_logic": {"type": "net_scan", "parameters": {"threshold": 5, "field": "dst_port", "group_by": "src_ip", "event_types": ["port_scan", "network_probe", "network_connection", "scan_complete"]}},
+        "response_actions": ["block_ip"],
+        "mitre_url": "https://attack.mitre.org/techniques/T1046/"
+    },
+    {
+        "rule_id": "iot_anomaly_001",
+        "name": "IoT Sensor Anomaly Detection",
+        "description": "Detects anomalous IoT sensor behavior such as excessive event bursts or out-of-range values",
+        "technique_id": "T1565",
+        "technique_name": "Data Manipulation",
+        "tactic": "Impact",
+        "severity": "high",
+        "component": "iot_sensors",
+        "enabled": True,
+        "match_logic": {"type": "iot_anomaly", "parameters": {"threshold": 5, "field": "actor_id", "event_types": ["sensor_anomaly", "data_tampering"]}},
+        "response_actions": ["isolate_service"],
+        "mitre_url": "https://attack.mitre.org/techniques/T1565/"
+    },
+    {
+        "rule_id": "brute_force_001",
+        "name": "Brute Force Authentication Detection",
+        "description": "Detects multiple failed authentication attempts from a single source IP",
+        "technique_id": "T1110",
+        "technique_name": "Brute Force",
+        "tactic": "Credential Access",
+        "severity": "high",
+        "component": "network_infrastructure",
+        "enabled": True,
+        "match_logic": {"type": "brute_force", "parameters": {"threshold": 5, "group_by": "src_ip", "event_types": ["auth_failure", "auth_success"]}},
+        "response_actions": ["block_ip", "revoke_token"],
+        "mitre_url": "https://attack.mitre.org/techniques/T1110/"
+    },
+    {
+        "rule_id": "c2_beacon_001",
+        "name": "Command and Control Beaconing Detection",
+        "description": "Detects periodic outbound connections indicating C2 beaconing activity",
+        "technique_id": "T1071",
+        "technique_name": "Application Layer Protocol",
+        "tactic": "Command and Control",
+        "severity": "critical",
+        "component": "network_infrastructure",
+        "enabled": True,
+        "match_logic": {"type": "c2_beacon", "parameters": {"threshold": 3, "group_by": "src_ip", "event_types": ["c2_beacon"]}},
+        "response_actions": ["block_ip", "isolate_service"],
+        "mitre_url": "https://attack.mitre.org/techniques/T1071/"
+    },
+    {
+        "rule_id": "data_exfil_001",
+        "name": "Data Exfiltration Detection",
+        "description": "Detects large outbound data transfers indicating data exfiltration",
+        "technique_id": "T1041",
+        "technique_name": "Exfiltration Over C2 Channel",
+        "tactic": "Exfiltration",
+        "severity": "critical",
+        "component": "network_infrastructure",
+        "enabled": True,
+        "match_logic": {"type": "data_exfiltration", "parameters": {"threshold": 3, "group_by": "src_ip", "event_types": ["data_exfiltration", "data_staging"]}},
+        "response_actions": ["block_ip", "isolate_service"],
+        "mitre_url": "https://attack.mitre.org/techniques/T1041/"
     }
 ]
 

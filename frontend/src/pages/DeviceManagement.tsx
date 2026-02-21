@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Device, DeviceDetail } from '../types/assets'
 import DeviceStatusBadge from '../components/DeviceStatusBadge'
 import RiskScoreBar from '../components/RiskScoreBar'
+import { formatDateTimeWithSeconds } from '../utils/datetime'
 
 export default function DeviceManagement() {
   const [devices, setDevices] = useState<Device[]>([])
@@ -535,7 +536,7 @@ export default function DeviceManagement() {
                               )}
                             </div>
                             <div style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>
-                              {new Date(event.timestamp).toLocaleString()}
+                              {formatDateTimeWithSeconds(event.timestamp)}
                             </div>
                             {event.message && (
                               <div style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
@@ -580,7 +581,7 @@ export default function DeviceManagement() {
                               </span>
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
-                              {new Date(alert.triggered_at).toLocaleString()}
+                              {formatDateTimeWithSeconds(alert.triggered_at)}
                             </div>
                             <div style={{ marginTop: '0.25rem' }}>
                               <span className={`badge badge-${alert.status === 'open' ? 'danger' : alert.status === 'triaged' ? 'warning' : 'success'}`} style={{ fontSize: '0.65rem' }}>

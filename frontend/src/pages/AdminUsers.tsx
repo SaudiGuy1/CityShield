@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatDateOnly } from '../utils/datetime'
 
 export default function AdminUsers({ user }: { user: any }) {
   const [users, setUsers] = useState<any[]>([])
@@ -295,7 +296,7 @@ export default function AdminUsers({ user }: { user: any }) {
                       )}
                     </td>
                     <td style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}
+                      {u.created_at ? formatDateOnly(u.created_at) : '-'}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
