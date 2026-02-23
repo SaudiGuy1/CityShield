@@ -1,6 +1,9 @@
 networks:
   cityshield_network:
     driver: bridge
+  cyber_range_net:
+    driver: bridge
+    internal: true
 
 volumes:
   opensearch_data:
@@ -245,6 +248,44 @@ services:
       - iot_sim
       - network_emulator
       - opensearch
+
+  metasploitable:
+    image: tleemcjr/metasploitable2
+    container_name: metasploitable
+    networks:
+      - cyber_range_net
+    restart: unless-stopped
+    labels:
+      - cityshield.role=training-target
+
+  attacker:
+    build: ./services/attacker
+    container_name: attacker
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    networks:
+      - cyber_range_net
+    restart: unless-stopped
+    labels:
+      - cityshield.role=training-attacker
+
+  range_logger:
+    build: ./services/range_logger
+    container_name: cityshield_range_logger
+    networks:
+      - cyber_range_net
+      - cityshield_network
+    volumes:
+      - logs_volume:/data/logs
+    depends_on:
+      - metasploitable
+      - attacker
+    restart: unless-stopped
+    labels:
+      - cityshield.role=training-logger
 
   researcher-lab-image:
     build: ./services/researcher-lab

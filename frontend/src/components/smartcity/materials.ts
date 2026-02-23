@@ -15,6 +15,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   network: '#3b82f6',
   security: '#8b5cf6',
   industrial: '#f97316',
+  training: '#06b6d4',
 } as const
 
 // Shared ground material

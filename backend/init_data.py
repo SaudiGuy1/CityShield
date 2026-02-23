@@ -475,6 +475,27 @@ ATTACK_SCENARIOS = [
         "severity": "critical"
     },
     {
+        "scenario_id": "scenario-cyber-range-portscan",
+        "name": "Cyber Range: Port Scan",
+        "description": "Attacker runs nmap against Metasploitable target in the isolated Cyber Range network. Generates port_scan events picked up by the detection engine's net_scan rule.",
+        "attack_pattern": "Port Scan",
+        "mitre_technique": "T1046",
+        "target_component": "cyber_range",
+        "components": ["cyber_range"],
+        "duration_seconds": 60,
+        "intensity": "medium",
+        "parameters": {
+            "scan_type": "tcp_syn",
+            "port_range": "1-1024",
+            "scan_rate": "100_per_second",
+            "targets": "metasploitable",
+            "attacker_container": "attacker",
+            "target_container": "metasploitable"
+        },
+        "expected_alerts": ["net_scan_001"],
+        "severity": "high"
+    },
+    {
         "scenario_id": "scenario-wind-farm-hack",
         "name": "Wind Farm Controller Takeover",
         "description": "Remote exploitation of wind farm SCADA controller to manipulate turbine operations and cause physical damage.",
@@ -574,6 +595,48 @@ def initialize_scenarios():
     print(f"\n✅ Initialized {success_count}/{len(ATTACK_SCENARIOS)} attack scenarios")
 
 
+def initialize_cyber_range_assets():
+    """Seed cyber range training assets into city-assets index."""
+    print("\n🎯 Initializing Cyber Range Assets...")
+    create_index_if_not_exists("city-assets")
+
+    cyber_range_device = {
+        "asset_id": "cyber-range-metasploitable",
+        "name": "Metasploitable (Training)",
+        "asset_type": "training_target",
+        "asset_class": "network_service",
+        "criticality": "low",
+        "location": {
+            "zone": "cyber-range",
+            "subnet": "172.20.0.0/16",
+            "building": "Cyber Range Lab",
+        },
+        "network": {
+            "ip_address": "172.20.0.2",
+            "mac_address": "02:42:ac:14:00:02",
+            "hostname": "metasploitable",
+        },
+        "tags": ["training", "vulnerable-by-design", "cyber-range"],
+        "is_training_asset": True,
+        "@timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+    # Only index if not already present
+    try:
+        check = requests.get(
+            f"{OPENSEARCH_URL}/city-assets/_doc/cyber-range-metasploitable"
+        )
+        if check.status_code == 200 and check.json().get("found"):
+            print("  ℹ️  Cyber range device already exists, skipping")
+            return
+    except Exception:
+        pass
+
+    if index_document("city-assets", cyber_range_device, doc_id="cyber-range-metasploitable"):
+        print("  ✅ cyber-range-metasploitable: Metasploitable (Training)")
+    print("✅ Cyber Range assets initialized")
+
+
 def verify_initialization():
     """Verify that data was initialized correctly."""
     print("\n🔍 Verifying Initialization...")
@@ -607,6 +670,9 @@ def main():
 
     # Initialize scenarios
     initialize_scenarios()
+
+    # Initialize cyber range assets
+    initialize_cyber_range_assets()
 
     # Verify
     if verify_initialization():

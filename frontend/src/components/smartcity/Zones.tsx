@@ -21,6 +21,7 @@ const ZONE_CONFIG: Record<string, { center: [number, number]; label: string }> =
   'zone-c': { center: [-8, 8], label: 'Network' },
   'zone-d': { center: [8, 8], label: 'Security' },
   'zone-e': { center: [0, 0], label: 'Industrial' },
+  'cyber-range': { center: [20, 0], label: 'Cyber Range' },
 }
 
 // Place buildings in a grid within their zone

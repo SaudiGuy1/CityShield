@@ -13,7 +13,7 @@ export interface CityAsset {
 
   // Classification
   zone: string
-  category: 'traffic' | 'iot' | 'network' | 'security' | 'industrial'
+  category: 'traffic' | 'iot' | 'network' | 'security' | 'industrial' | 'training'
   criticality: 'low' | 'medium' | 'high' | 'critical'
 
   // Real-Time Metrics

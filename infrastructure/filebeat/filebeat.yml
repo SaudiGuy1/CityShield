@@ -10,6 +10,17 @@ filebeat.inputs:
       log_source: cityshield_simulators
     fields_under_root: true
 
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/cityshield/*.log
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.message_key: message
+    fields:
+      log_source: cyber_range
+    fields_under_root: true
+
 processors:
   - add_host_metadata:
       when.not.contains.tags: forwarded

@@ -37,6 +37,7 @@ const CATEGORY_WIDTH: Record<string, number> = {
   network: 0.65,
   security: 0.8,
   industrial: 0.75,
+  training: 0.7,
 }
 
 export default function Building({ component, position, selected, isUnderAttack, onSelect, onHover }: BuildingProps) {

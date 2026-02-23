@@ -30,6 +30,8 @@ ASSET_TYPE_CATEGORY_MAP = {
     "edr": "security",
     "vulnerability_scanner": "security",
     "authentication_server": "security",
+    "training_server": "training",
+    "training_target": "training",
     "scada_master": "industrial",
     "scada_hmi": "industrial",
     "plc": "industrial",

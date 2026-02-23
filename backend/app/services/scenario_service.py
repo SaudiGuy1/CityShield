@@ -59,10 +59,14 @@ DEFAULT_STAGES = [
 # Map target_component values to possible device IDs
 COMPONENT_DEVICE_MAP: Dict[str, List[str]] = {
     "traffic_management": ["traffic-ctrl-01", "traffic-cam-02", "traffic-sig-03", "traffic-sig-04", "traffic-park-05"],
+    "traffic_sim": ["traffic-ctrl-01", "traffic-cam-02", "traffic-sig-03", "traffic-sig-04", "traffic-park-05"],
     "iot_sensors": ["iot-hub-01", "iot-env-02", "iot-water-03", "iot-air-04", "iot-waste-05", "iot-energy-06"],
+    "iot_sim": ["iot-hub-01", "iot-env-02", "iot-water-03", "iot-air-04", "iot-waste-05", "iot-energy-06"],
     "network_infrastructure": ["net-fw-01", "net-switch-02", "net-ids-03", "net-vpn-04", "net-dns-05"],
+    "network_emulator": ["net-fw-01", "net-switch-02", "net-ids-03", "net-vpn-04", "net-dns-05"],
     "security": ["sec-siem-01", "sec-edr-02", "sec-scan-03", "sec-auth-04"],
     "industrial_systems": ["ind-power-01", "ind-scada-02", "ind-plc-03", "ind-wind-04", "ind-grid-05", "ind-rail-06"],
+    "cyber_range": ["cyber-range-metasploitable"],
 }
 
 
@@ -209,6 +213,47 @@ class ScenarioService:
         opensearch_client.update_document(ScenarioService.RUN_INDEX, run_id, {"stages": stages})
 
 
+def _exec_cyber_range_commands(target_host: str = "metasploitable") -> dict:
+    """Execute real commands on the attacker container via Docker API.
+
+    Returns a summary dict with stdout/stderr from each command.
+    The range_logger captures the resulting network traffic.
+    """
+    results = {"commands": [], "success": False}
+    try:
+        import docker as docker_sdk
+        client = docker_sdk.from_env()
+        container = client.containers.get("attacker")
+
+        commands = [
+            ["ping", "-c", "4", "-W", "2", target_host],
+            ["nmap", "-sT", "-T4", "--top-ports", "20", "-Pn", target_host],
+        ]
+
+        for cmd in commands:
+            cmd_str = " ".join(cmd)
+            try:
+                exit_code, output = container.exec_run(cmd, demux=False, timeout=30)
+                results["commands"].append({
+                    "cmd": cmd_str,
+                    "exit_code": exit_code,
+                    "output": output.decode("utf-8", errors="replace")[:2000] if output else "",
+                })
+            except Exception as cmd_err:
+                results["commands"].append({
+                    "cmd": cmd_str,
+                    "exit_code": -1,
+                    "output": str(cmd_err)[:500],
+                })
+
+        results["success"] = True
+    except Exception as e:
+        logger.warning(f"Cyber range Docker exec failed (non-fatal): {e}")
+        results["error"] = str(e)[:500]
+
+    return results
+
+
 async def simulate_scenario_execution(run_id: str, scenario: Scenario):
     """Execute real attack scenario with actual traffic generation."""
     from .attack_engine import AttackExecutionEngine
@@ -224,6 +269,16 @@ async def simulate_scenario_execution(run_id: str, scenario: Scenario):
 
         stages = doc.get("stages", [])
         target_device = doc.get("target_device_id")
+
+        # For cyber_range scenarios, also exec real commands on the attacker container
+        component = scenario.components[0] if scenario.components else ""
+        if component == "cyber_range":
+            import asyncio
+            loop = asyncio.get_event_loop()
+            docker_results = await loop.run_in_executor(
+                None, _exec_cyber_range_commands, "metasploitable"
+            )
+            logger.info(f"Cyber range Docker exec results: {len(docker_results.get('commands', []))} commands")
 
         # Map scenario attack pattern to real attack techniques
         attack_techniques = _map_scenario_to_techniques(scenario, target_device)
@@ -284,110 +339,235 @@ def _map_scenario_to_techniques(scenario: Scenario, target_device: Optional[str]
 
     # Map scenario patterns to real attack techniques
     if 'brute' in attack_pattern or 'password' in attack_pattern:
+        zone = _get_zone_for_component(component)
         return [
-            {
+            {   # Stage 1: Target Enumeration
                 'technique': 'port_scan',
                 'target_device': target_device,
                 'component': component,
-                'zone': _get_zone_for_component(component),
+                'zone': zone,
                 'scan_type': 'syn',
                 'ports': [22, 80, 443, 1883, 502, 8080],
                 'target_hosts': 5,
-                'delay_after': 5
+                'delay_after': 3
             },
-            {
+            {   # Stage 2: Credential Spray
                 'technique': 'brute_force',
                 'target_device': target_device,
                 'component': component,
-                'zone': _get_zone_for_component(component),
-                'attempts': 30,
-                'delay_ms': 200,
+                'zone': zone,
+                'attempts': 15,
+                'delay_ms': 300,
                 'allow_success': False,
-                'delay_after': 10
-            }
+                'delay_after': 5
+            },
+            {   # Stage 3: Intensive Attack
+                'technique': 'brute_force',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'attempts': 50,
+                'delay_ms': 100,
+                'allow_success': False,
+                'delay_after': 5
+            },
+            {   # Stage 4: Access Breach
+                'technique': 'brute_force',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'attempts': 10,
+                'delay_ms': 500,
+                'allow_success': True,
+                'delay_after': 3
+            },
         ]
     elif 'scan' in attack_pattern or 'reconnaissance' in attack_pattern:
+        zone = _get_zone_for_component(component)
         return [
-            {
+            {   # Stage 1: Host Discovery
                 'technique': 'port_scan',
                 'target_device': target_device,
                 'component': component,
-                'zone': _get_zone_for_component(component),
+                'zone': zone,
+                'scan_type': 'syn',
+                'ports': [0],
+                'target_hosts': 10,
+                'delay_after': 3
+            },
+            {   # Stage 2: Port Enumeration
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
                 'scan_type': 'syn',
                 'ports': [22, 80, 443, 1883, 502, 8080, 8443, 3389],
                 'target_hosts': 15,
-                'delay_after': 10
-            }
-        ]
-    elif 'c2' in attack_pattern or 'command' in attack_pattern or 'botnet' in attack_pattern:
-        return [
-            {
-                'technique': 'c2_beacon',
-                'target_device': target_device,
-                'component': component,
-                'zone': _get_zone_for_component(component),
-                'beacon_interval_seconds': 30,
-                'duration_seconds': 180,
-                'protocol': 'https',
-                'jitter_percent': 15,
-                'delay_after': 10
-            }
-        ]
-    elif 'exfil' in attack_pattern or 'data' in attack_pattern:
-        return [
-            {
-                'technique': 'data_exfiltration',
-                'target_device': target_device,
-                'component': component,
-                'zone': _get_zone_for_component(component),
-                'data_volume_mb': 50,
-                'method': 'https',
-                'delay_after': 5
-            }
-        ]
-    else:
-        # Default: multi-stage attack chain
-        return [
-            {
+                'delay_after': 3
+            },
+            {   # Stage 3: Service Detection
                 'technique': 'port_scan',
                 'target_device': target_device,
                 'component': component,
-                'zone': _get_zone_for_component(component),
+                'zone': zone,
                 'scan_type': 'syn',
-                'ports': [22, 80, 443, 1883, 502, 8080],
+                'ports': [21, 22, 23, 25, 80, 110, 139, 443, 445, 3306, 5432, 8080],
                 'target_hosts': 5,
+                'delay_after': 3
+            },
+            {   # Stage 4: Vulnerability Mapping
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'scan_type': 'syn',
+                'ports': [22, 80, 443, 502, 8080],
+                'target_hosts': 8,
+                'delay_after': 2
+            },
+        ]
+    elif 'c2' in attack_pattern or 'command' in attack_pattern or 'botnet' in attack_pattern:
+        zone = _get_zone_for_component(component)
+        return [
+            {   # Stage 1: Initial Delivery
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'scan_type': 'syn',
+                'ports': [80, 443, 8080, 8443],
+                'target_hosts': 3,
+                'delay_after': 3
+            },
+            {   # Stage 2: Execution (establish C2)
+                'technique': 'c2_beacon',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'beacon_interval_seconds': 30,
+                'duration_seconds': 90,
+                'protocol': 'https',
+                'jitter_percent': 15,
                 'delay_after': 5
             },
-            {
+            {   # Stage 3: Lateral Movement
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'scan_type': 'syn',
+                'ports': [22, 445, 3389, 5985],
+                'target_hosts': 8,
+                'delay_after': 5
+            },
+            {   # Stage 4: Data Exfiltration
+                'technique': 'data_exfiltration',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'data_volume_mb': 30,
+                'method': 'https',
+                'delay_after': 3
+            },
+        ]
+    elif 'exfil' in attack_pattern or 'data' in attack_pattern:
+        zone = _get_zone_for_component(component)
+        return [
+            {   # Stage 1: Access Established
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'scan_type': 'syn',
+                'ports': [22, 80, 443, 3306, 5432, 1433],
+                'target_hosts': 5,
+                'delay_after': 3
+            },
+            {   # Stage 2: Data Collection
                 'technique': 'brute_force',
                 'target_device': target_device,
                 'component': component,
-                'zone': _get_zone_for_component(component),
+                'zone': zone,
+                'attempts': 20,
+                'delay_ms': 200,
+                'allow_success': True,
+                'delay_after': 5
+            },
+            {   # Stage 3: Staging
+                'technique': 'c2_beacon',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'beacon_interval_seconds': 20,
+                'duration_seconds': 60,
+                'protocol': 'https',
+                'jitter_percent': 10,
+                'delay_after': 5
+            },
+            {   # Stage 4: Exfiltration
+                'technique': 'data_exfiltration',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'data_volume_mb': 50,
+                'method': 'https',
+                'delay_after': 3
+            },
+        ]
+    else:
+        # Default: full 4-stage attack chain (DDoS, Ransomware, etc.)
+        zone = _get_zone_for_component(component)
+        return [
+            {   # Stage 1: Reconnaissance / Botnet Activation / Initial Compromise
+                'technique': 'port_scan',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'scan_type': 'syn',
+                'ports': [22, 80, 443, 1883, 502, 8080],
+                'target_hosts': 5,
+                'delay_after': 3
+            },
+            {   # Stage 2: Initial Access / Traffic Flood / Privilege Escalation
+                'technique': 'brute_force',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
                 'attempts': 20,
                 'delay_ms': 300,
                 'delay_after': 5
             },
-            {
+            {   # Stage 3: Execution / Service Degradation / Encryption
                 'technique': 'c2_beacon',
                 'target_device': target_device,
                 'component': component,
-                'zone': _get_zone_for_component(component),
+                'zone': zone,
                 'beacon_interval_seconds': 60,
                 'duration_seconds': 120,
                 'protocol': 'https',
                 'delay_after': 5
-            }
+            },
+            {   # Stage 4: Impact / Full Denial / Ransom Demand
+                'technique': 'data_exfiltration',
+                'target_device': target_device,
+                'component': component,
+                'zone': zone,
+                'data_volume_mb': 25,
+                'method': 'https',
+                'delay_after': 3
+            },
         ]
 
 
 def _get_zone_for_component(component: str) -> str:
     """Get zone for component."""
     zone_map = {
-        "traffic_management": "zone-a",
-        "iot_sensors": "zone-b",
-        "network_infrastructure": "zone-c",
+        "traffic_management": "zone-a", "traffic_sim": "zone-a",
+        "iot_sensors": "zone-b", "iot_sim": "zone-b",
+        "network_infrastructure": "zone-c", "network_emulator": "zone-c",
         "security": "zone-d",
         "industrial_systems": "zone-e",
+        "cyber_range": "cyber-range",
     }
     return zone_map.get(component, "zone-a")
 
@@ -405,6 +585,7 @@ def _generate_stage_alert(run_id: str, scenario: Scenario, stage_index: int, tar
         "network_infrastructure": "zone-c", "network_emulator": "zone-c",
         "security": "zone-d",
         "industrial_systems": "zone-e",
+        "cyber_range": "cyber-range",
     }
     city_zone = zone_map.get(target_component, "zone-a")
 

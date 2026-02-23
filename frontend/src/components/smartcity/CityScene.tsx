@@ -191,6 +191,7 @@ function SceneContent({
             'zone-c': [-8, 8],
             'zone-d': [8, 8],
             'zone-e': [0, 0],
+            'cyber-range': [20, 0],
           }}
         />
       )}

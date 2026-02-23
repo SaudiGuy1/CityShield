@@ -75,6 +75,8 @@ ASSET_TYPE_CATEGORY_MAP = {
     "turbine_controller": "industrial",
     "grid_controller": "industrial",
     "rail_controller": "industrial",
+    "training_server": "training",
+    "training_target": "training",
 }
 
 # Map criticality to status

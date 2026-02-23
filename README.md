@@ -7,33 +7,34 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 ## Features
 
 - **Modular Simulation Layer**: Traffic management, IoT sensors, and network emulator services that generate realistic event streams
+- **Cyber Range**: Isolated attack/defense lab with a real Metasploitable target and Kali-based attacker container, with live packet capture via `range_logger`
 - **Centralized Logging**: Filebeat ships logs to OpenSearch for analysis
-- **Threat Detection**: Rule-based detection engine with MITRE ATT&CK mapping and threat intelligence enrichment
+- **Threat Detection**: 15 rule-based detection rules with MITRE ATT&CK mapping and optional threat intelligence enrichment (AbuseIPDB)
 - **Automated Response**: Python-based response manager executes Ansible playbooks for containment actions
-- **Interactive 3D City Visualization**: Real-time 3D smart city powered by Three.js / React Three Fiber with orbit controls, hover/click interactions, and live data-driven building states
+- **Interactive 3D City Visualization**: Real-time 3D smart city powered by Three.js / React Three Fiber with 6 zones (Traffic, IoT, Network, Security, Industrial, Cyber Range), orbit controls, hover/click interactions, and live data-driven building states
+- **Attack Scenario Engine**: 11 built-in scenarios with real-time stage progression, 4-stage execution per scenario, and live progress tracking in the UI
 - **Interactive Web UI**: React-based dashboard for monitoring, alert investigation, and scenario management
 - **Role-Based Access Control**: Administrator, Analyst, and Researcher roles with appropriate permissions
 - **Evaluation Metrics**: MTTD, MTTR, detection accuracy, false positive rate, and resource utilization tracking
-- **Scenario Builder**: Create and run custom attack scenarios programmatically
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        UI Layer (React)                         │
-│  Dashboard │ Alerts │ Scenarios │ Rules │ Admin                │
+│  Dashboard │ Alerts │ Scenarios │ Devices │ 3D City Map        │
 └──────────────────────────┬──────────────────────────────────────┘
-                           │
+                           │ REST + WebSocket
                            ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                Backend API (FastAPI + JWT + RBAC)                │
-│  Auth │ Users │ Rules │ Scenarios │ Alerts │ Metrics            │
+│  Auth │ Users │ Rules │ Scenarios │ Alerts │ Metrics │ WS      │
 └──────────┬───────────────────────────────────────────────────────┘
            │
            ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                Data Layer (OpenSearch + Dashboards)              │
-│  logs-* │ alerts │ rules │ scenarios │ users                    │
+│  logs-* │ alerts │ rules │ scenarios │ users │ city-assets      │
 └──────────┬───────────────────────────────────────────────────────┘
            │
            ├──────────────────┬─────────────────┬──────────────────┐
@@ -43,14 +44,26 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
     │  Engine    │     │  Manager   │    │  Runner  │    │ Log Shipper  │
     └────────────┘     └────────────┘    └──────────┘    └──────┬───────┘
                                                                   │
-                            ┌─────────────────────────────────────┘
-                            │
-           ┌────────────────┼────────────────┐
+           ┌──────────────────────────────────────────────────────┘
+           │
+           ├────────────────┬────────────────┐
            ▼                ▼                ▼
     ┌────────────┐   ┌────────────┐   ┌──────────────┐
     │  Traffic   │   │    IoT     │   │   Network    │
     │ Simulator  │   │ Simulator  │   │  Emulator    │
     └────────────┘   └────────────┘   └──────────────┘
+
+    ┌──────── Cyber Range (isolated network) ────────┐
+    │  ┌──────────┐   ┌───────────────┐              │
+    │  │ Attacker │──▶│ Metasploitable│              │
+    │  │  (Kali)  │   │  (Target)     │              │
+    │  └──────────┘   └───────────────┘              │
+    │       ▲ tcpdump                                 │
+    │  ┌──────────┐                                   │
+    │  │  Range   │──▶ Filebeat ──▶ OpenSearch        │
+    │  │  Logger  │                                   │
+    │  └──────────┘                                   │
+    └─────────────────────────────────────────────────┘
 ```
 
 ## Prerequisites
@@ -90,21 +103,24 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Wait for all services to become healthy (2-3 minutes). You'll see:
+Wait for all services to become healthy (2-3 minutes). Core services:
 
-```
-✓ opensearch        Started
-✓ dashboards        Started
-✓ filebeat          Started
-✓ backend           Started
-✓ frontend          Started
-✓ traffic_sim       Started
-✓ iot_sim           Started
-✓ network_emulator  Started
-✓ detection_engine  Started
-✓ response_manager  Started
-✓ scenario_runner   Started
-```
+| Service | Port | Purpose |
+|---|---|---|
+| `frontend` | 3000 | React UI (nginx) |
+| `backend` | 8000 | FastAPI + WebSocket |
+| `opensearch` | 9200 | Data store |
+| `dashboards` | 5601 | OpenSearch Dashboards |
+| `traffic_sim` | 8001 | Traffic event simulator |
+| `iot_sim` | 8002 | IoT event simulator |
+| `network_emulator` | 8003 | Network event simulator |
+| `detection_engine` | — | MITRE ATT&CK rule engine |
+| `response_manager` | — | Ansible playbook executor |
+| `scenario_runner` | — | Scenario orchestration |
+| `filebeat` | — | Log shipper |
+| `metasploitable` | — | Vulnerable training target |
+| `attacker` | — | Kali Linux attack container |
+| `range_logger` | — | Cyber range packet capture |
 
 ### 4. Access the Platform
 
@@ -121,62 +137,29 @@ Wait for all services to become healthy (2-3 minutes). You'll see:
 
 ## Using CityShield
 
-### Running Your First Scenario
+### Running Attack Scenarios
 
 1. Login to the web UI at http://localhost:3000
 2. Navigate to **Scenarios**
-3. Select a built-in scenario:
-   - **Traffic Network Scan**: Simulates port scanning attack
-   - **IoT Anomaly Burst**: Simulates anomalous sensor behavior
-4. Click **Run Scenario**
+3. Select a built-in scenario (11 available):
+
+| Scenario | Pattern | Target | Severity |
+|---|---|---|---|
+| SSH Brute Force Attack | Brute Force | Traffic Management | High |
+| DDoS Against Traffic Control | DDoS | Traffic Management | Critical |
+| Network Reconnaissance - Port Scan | Port Scan | Network Infrastructure | Medium |
+| IoT Botnet Recruitment | Malware | IoT Sensors | Critical |
+| Ransomware Attack on Traffic Systems | Ransomware | Traffic Management | Critical |
+| Man-in-the-Middle Attack | Data Exfiltration | Network Infrastructure | High |
+| Sensor Overload DoS | DoS | IoT Sensors | High |
+| Cryptojacking IoT Devices | Resource Hijacking | IoT Sensors | Medium |
+| SCADA System Compromise | Data Exfiltration | Industrial Systems | Critical |
+| Wind Farm Controller Takeover | Malware | Industrial Systems | Critical |
+| **Cyber Range: Port Scan** | Port Scan | **Metasploitable** | High |
+
+4. Click **Run Scenario** — the 3D city map shows real-time stage progression (4 stages per scenario)
 5. Navigate to **Alerts** to see detected threats
-6. Navigate to **OpenSearch Dashboards** to visualize logs
-
-### Command Line Scenario Execution
-
-```bash
-# List available scenarios
-python scripts/run_scenario.py --list
-
-# Run a scenario
-python scripts/run_scenario.py traffic_scan_001 --wait
-```
-
-### Generating Labeled Dataset
-
-```bash
-# Generate labeled dataset for evaluation
-python scripts/generate_dataset.py
-
-# This will:
-# 1. Run multiple scenarios
-# 2. Collect logs with is_attack labels
-# 3. Export to data/datasets/labeled_events.jsonl
-```
-
-### Computing Evaluation Metrics
-
-```bash
-# Compute MTTD, MTTR, accuracy, etc.
-python scripts/compute_metrics.py
-
-# Metrics include:
-# - Mean Time To Detect (MTTD)
-# - Mean Time To Respond (MTTR)
-# - Detection accuracy and false positive rate
-# - Resource utilization
-# - Log ingestion rate
-```
-
-### Importing Dashboards
-
-```bash
-# Import pre-configured OpenSearch Dashboards
-./scripts/import_dashboards.sh
-
-# Access dashboards at:
-# http://localhost:5601/app/dashboards
-```
+6. Navigate to **OpenSearch Dashboards** (http://localhost:5601) to query logs
 
 ## User Roles
 
@@ -188,10 +171,17 @@ python scripts/compute_metrics.py
 
 ## Detection Rules
 
-CityShield includes built-in detection rules mapped to MITRE ATT&CK:
+CityShield includes 15 detection rules mapped to MITRE ATT&CK, including:
 
-1. **Network Port Scan** (T1046): Detects scanning of multiple ports from single source
-2. **IoT Sensor Anomaly** (T1565): Detects anomalous sensor readings or tampering
+| Rule | Technique | Tactic | Severity |
+|---|---|---|---|
+| Brute Force Authentication | T1110 | Credential Access | High |
+| Active Scanning - Port Scan | T1595.001 | Reconnaissance | Medium |
+| Network Denial of Service | T1498 | Impact | Critical |
+| Application Layer Protocol Abuse | T1071.001 | Command and Control | High |
+| Network Port Scan Detection | T1046 | Discovery | High |
+| Data Exfiltration Detection | T1041 | Exfiltration | Critical |
+| Data Encrypted for Impact | T1486 | Impact | Critical |
 
 See [docs/detection-rules.md](docs/detection-rules.md) for details on creating custom rules.
 
@@ -223,7 +213,9 @@ cityshield/
 │   ├── simulators/       # Traffic, IoT, network simulators
 │   ├── detection_engine/ # Threat detection service
 │   ├── response_manager/ # Automated response service
-│   └── scenario_runner/  # Scenario orchestration service
+│   ├── scenario_runner/  # Scenario orchestration service
+│   ├── attacker/         # Kali-based attack container (nmap, netcat, etc.)
+│   └── range_logger/     # tcpdump-based cyber range packet capture
 ├── infrastructure/       # Infrastructure configuration
 │   ├── filebeat/         # Filebeat log shipping config
 │   ├── dashboards/       # OpenSearch Dashboards exports
@@ -240,14 +232,22 @@ cityshield/
 
 ## 3D Smart City Visualization
 
-The Overview dashboard features an interactive 3D city where each building represents a smart city component. Buildings are grouped into four zones (Traffic, IoT, Network, Security) separated by roads.
+The Overview dashboard features an interactive 3D city where each building represents a smart city asset. Buildings are grouped into six zones:
 
-- **Building height** reflects event count (log scale)
+| Zone | Color | Assets |
+|---|---|---|
+| Traffic Management | Red | Traffic controllers, cameras, signals |
+| IoT Sensors | Green | Environmental, water, air quality sensors |
+| Network Infrastructure | Blue | Firewalls, switches, DNS, VPN |
+| Security Operations | Purple | SIEM, EDR, scanners, auth servers |
+| Industrial Systems | Orange | SCADA, PLCs, turbines, grid controllers |
+| **Cyber Range** | **Cyan** | **Metasploitable training target** |
+
+- **Building height** reflects risk score (derived from alert count)
 - **Building color** reflects status: green (ok), amber (warning), red+glow (critical), gray (offline)
-- **Interactions**: Orbit/pan/zoom camera, hover for tooltips, click for detail panel
-- **Data source**: `GET /api/overview/city-components` (mock or live OpenSearch aggregation)
-
-Set `USE_MOCK_CITY_COMPONENTS=true` in `.env` for deterministic demo data.
+- **Attack visualization**: Red pulse on targeted building, real-time stage progress bar
+- **Interactions**: Orbit/pan/zoom camera, hover for tooltips, click for asset inspector panel
+- **Data source**: Live WebSocket stream from `city-assets` index (2s refresh) + REST fallback
 
 See [docs/smart-city-3d.md](docs/smart-city-3d.md) for full technical details.
 
@@ -366,6 +366,57 @@ print(get_password_hash('NewPassword123'))
 "
 
 # Update in OpenSearch users index manually
+```
+
+## Cyber Range
+
+The Cyber Range provides an isolated attack/defense lab within CityShield. It uses the `tleemcjr/metasploitable2` image (community mirror — the original `vulnerables/metasploitable2` is no longer available on Docker Hub).
+
+### Components
+
+| Container | Image | Network | Role |
+|---|---|---|---|
+| `metasploitable` | `tleemcjr/metasploitable2` | `cyber_range_net` (internal) | Vulnerable target |
+| `attacker` | Custom Kali (nmap, netcat, curl, etc.) | `cyber_range_net` | Attack tools |
+| `range_logger` | Python + tcpdump | Both networks | Packet capture → JSON → Filebeat |
+
+### How to Use
+
+**From the UI:**
+1. Log in at http://localhost:3000
+2. Navigate to **Scenarios** → select **Cyber Range: Port Scan** → **Run Scenario**
+3. The 3D city map shows the Metasploitable building in the Cyber Range zone (cyan) with real-time stage progress
+4. View alerts and logs as the detection engine picks up events
+
+**From the terminal (manual attack):**
+```bash
+docker exec -it attacker bash
+
+# Inside the attacker container:
+ping metasploitable
+nmap -sV metasploitable
+nc metasploitable 80
+```
+
+**View cyber range logs in OpenSearch Dashboards:**
+```
+http://localhost:5601 → Discover → filter: zone:"cyber-range"
+```
+
+### Pipeline
+
+```
+attacker ──nmap/ping──▶ metasploitable
+    │                         │
+    └──── cyber_range_net ────┘
+              │
+         range_logger (tcpdump)
+              │
+         /data/logs/cyber_range.log
+              │
+         Filebeat → OpenSearch logs-*
+              │
+         detection_engine → alerts
 ```
 
 ## Security Considerations

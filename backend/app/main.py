@@ -61,6 +61,52 @@ def create_default_admin():
         logger.error(f"Error creating default admin user: {e}")
 
 
+def _seed_cyber_range_asset(retries: int = 5, delay: float = 3.0):
+    """Ensure the Metasploitable training asset exists in city-assets.
+
+    Retries on connection failure so a slow OpenSearch start doesn't silently skip seeding.
+    """
+    import time
+
+    doc_id = "cyber-range-metasploitable"
+    asset = {
+        "asset_id": doc_id,
+        "name": "Metasploitable (Training)",
+        "asset_type": "training_target",
+        "asset_class": "network_service",
+        "criticality": "low",
+        "location": {
+            "zone": "cyber-range",
+            "subnet": "172.20.0.0/16",
+            "building": "Cyber Range Lab",
+        },
+        "network": {
+            "ip_address": "172.20.0.2",
+            "mac_address": "02:42:ac:14:00:02",
+            "hostname": "metasploitable",
+        },
+        "tags": ["training", "vulnerable-by-design", "cyber-range"],
+        "is_training_asset": True,
+        "@timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+    for attempt in range(1, retries + 1):
+        try:
+            existing = opensearch_client.get_document("city-assets", doc_id)
+            if existing:
+                logger.info("Cyber range asset already exists")
+                return
+            opensearch_client.index_document("city-assets", asset, doc_id=doc_id)
+            logger.info(f"Seeded cyber range asset: {doc_id}")
+            return
+        except Exception as e:
+            logger.warning(f"Cyber range seed attempt {attempt}/{retries} failed: {e}")
+            if attempt < retries:
+                time.sleep(delay)
+
+    logger.error("Failed to seed cyber range asset after all retries")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
@@ -70,6 +116,12 @@ async def lifespan(app: FastAPI):
 
     # Create default admin user
     create_default_admin()
+
+    # Seed cyber range asset into city-assets (idempotent)
+    try:
+        _seed_cyber_range_asset()
+    except Exception as e:
+        logger.debug(f"Cyber range asset seeding skipped: {e}")
 
     # Initialize OpenSearch Dashboards (non-blocking)
     try:

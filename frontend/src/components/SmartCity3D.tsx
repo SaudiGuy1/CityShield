@@ -39,6 +39,7 @@ const ZONE_CENTERS: Record<string, [number, number]> = {
   'zone-c': [-8, 8],
   'zone-d': [8, 8],
   'zone-e': [0, 0],
+  'cyber-range': [20, 0],
 }
 
 const COMPONENT_TO_ZONE: Record<string, string> = {
@@ -50,6 +51,7 @@ const COMPONENT_TO_ZONE: Record<string, string> = {
   network_emulator: 'zone-c',
   security: 'zone-d',
   industrial_systems: 'zone-e',
+  cyber_range: 'cyber-range',
 }
 
 const ZONE_LABELS: Record<string, string> = {
@@ -58,6 +60,7 @@ const ZONE_LABELS: Record<string, string> = {
   'zone-c': 'Network Infrastructure',
   'zone-d': 'Security Operations',
   'zone-e': 'Industrial Systems',
+  'cyber-range': 'Cyber Range',
 }
 
 interface AttackPhase {
@@ -218,28 +221,7 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
     }
   }, [activeAttack])
 
-  // Attack progress timer
-  useEffect(() => {
-    if (!activeAttack) return
-
-    const startTime = new Date(activeAttack.startedAt).getTime()
-    const duration = activeAttack.durationSeconds * 1000
-
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      setAttackProgress(progress)
-
-      if (progress >= 1) {
-        setAttackComplete(true)
-        clearInterval(interval)
-      }
-    }, 100)
-
-    return () => clearInterval(interval)
-  }, [activeAttack])
-
-  // Poll stages endpoint during active attack
+  // Poll stages endpoint during active attack — progress is derived from real stage data
   useEffect(() => {
     if (!activeAttack) return
 
@@ -256,8 +238,17 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
           if (data.target_component_id) {
             setAttackedBuildingId(data.target_component_id)
           }
-          // Check if run is completed from server
+
+          // Derive progress from actual stage completion
+          const stages = data.stages || []
+          const total = stages.length || 1
+          const done = stages.filter(s => s.status === 'success' || s.status === 'failed').length
+          const runningBonus = stages.some(s => s.status === 'running') ? 0.5 / total : 0
+          setAttackProgress(Math.min((done / total) + runningBonus, 0.99))
+
+          // Only mark complete when the server says so
           if (data.status === 'completed' || data.status === 'failed') {
+            setAttackProgress(1)
             setAttackComplete(true)
           }
         }
@@ -430,7 +421,7 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
                   {activeAttack.attackPattern}
                 </span>
                 <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)' }}>
-                  {attackComplete ? 'Done' : `${Math.max(0, Math.round(activeAttack.durationSeconds * (1 - attackProgress)))}s left`}
+                  {attackComplete ? 'Done' : `Stage ${Math.min(Math.floor(attackProgress * (stageData?.stages?.length || 4)) + 1, stageData?.stages?.length || 4)} of ${stageData?.stages?.length || 4}`}
                 </span>
               </div>
             </div>
@@ -586,6 +577,7 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
             { label: 'Network', color: CATEGORY_COLORS.network, zone: 'zone-c' },
             { label: 'Security', color: CATEGORY_COLORS.security, zone: 'zone-d' },
             { label: 'Industrial', color: CATEGORY_COLORS.industrial, zone: 'zone-e' },
+            { label: 'Cyber Range', color: CATEGORY_COLORS.training, zone: 'cyber-range' },
           ].map(({ label, color, zone }) => {
             const count = assets.filter((c: CityAsset) => c.zone === zone).length
             const isUnderAttack = attackZone === zone && !attackComplete
