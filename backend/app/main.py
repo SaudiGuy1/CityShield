@@ -71,10 +71,13 @@ def _seed_cyber_range_asset(retries: int = 5, delay: float = 3.0):
     doc_id = "cyber-range-metasploitable"
     asset = {
         "asset_id": doc_id,
-        "name": "Metasploitable (Training)",
+        "name": "Metasploitable (Training Target)",
         "asset_type": "training_target",
         "asset_class": "network_service",
         "criticality": "low",
+        "status": "active",
+        "device_type": "virtual",
+        "lifecycle_state": "operational",
         "location": {
             "zone": "cyber-range",
             "subnet": "172.20.0.0/16",
@@ -83,10 +86,8 @@ def _seed_cyber_range_asset(retries: int = 5, delay: float = 3.0):
         "network": {
             "ip_address": "172.20.0.2",
             "mac_address": "02:42:ac:14:00:02",
-            "hostname": "metasploitable",
         },
         "tags": ["training", "vulnerable-by-design", "cyber-range"],
-        "is_training_asset": True,
         "@timestamp": datetime.utcnow().isoformat() + "Z",
     }
 

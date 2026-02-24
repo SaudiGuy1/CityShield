@@ -6,6 +6,7 @@ interface LabStatus {
   container_id: string | null
   name: string
   provisioned: boolean
+  targets?: { metasploitable?: boolean }
 }
 
 export default function ResearchLab() {
@@ -99,6 +100,11 @@ export default function ResearchLab() {
           {isRunning && connected && (
             <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
               Terminal Connected
+            </span>
+          )}
+          {isRunning && labStatus?.targets?.metasploitable && (
+            <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
+              Metasploitable Reachable
             </span>
           )}
         </div>

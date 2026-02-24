@@ -78,8 +78,8 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 ### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/yourusername/cityshield.git
-cd cityshield
+git clone https://github.com/SamiAhmedQMUL/CityShield.git
+cd CityShield
 
 # Run bootstrap script
 ./scripts/bootstrap.sh
@@ -215,7 +215,8 @@ cityshield/
 │   ├── response_manager/ # Automated response service
 │   ├── scenario_runner/  # Scenario orchestration service
 │   ├── attacker/         # Kali-based attack container (nmap, netcat, etc.)
-│   └── range_logger/     # tcpdump-based cyber range packet capture
+│   ├── range_logger/     # tcpdump-based cyber range packet capture
+│   └── researcher-lab/   # Per-user Ubuntu lab container (provisioned via UI)
 ├── infrastructure/       # Infrastructure configuration
 │   ├── filebeat/         # Filebeat log shipping config
 │   ├── dashboards/       # OpenSearch Dashboards exports
@@ -272,6 +273,8 @@ See [docs/smart-city-3d.md](docs/smart-city-3d.md) for full technical details.
 - [Scenarios](docs/scenarios.md) - Scenario definitions and creation guide
 - [API Documentation](docs/api.md) - REST API endpoints reference
 - [Dashboards](docs/dashboards.md) - Dashboard configuration and usage
+- [Attack Execution](docs/attack-execution.md) - Real attack execution engine guide
+- [OpenSearch Integration](docs/opensearch-integration.md) - OpenSearch Dashboards deep-dive investigation
 
 ## Development
 
@@ -419,6 +422,32 @@ attacker ──nmap/ping──▶ metasploitable
          detection_engine → alerts
 ```
 
+## Research Lab → Metasploitable
+
+The **Research Lab** (Scenarios → Research Lab tab) is the in-app attacker terminal.
+It provisions a per-user Ubuntu container with security tools, connected to both
+`cityshield_network` and the isolated `cyber_range_net` so it can reach Metasploitable directly.
+
+**Rebuild the lab image** (after changing the Dockerfile or welcome banner):
+
+```bash
+docker compose build researcher-lab-image
+```
+
+**Re-provision** so the new image takes effect:
+
+1. In the UI → Scenarios → Research Lab → **Remove** the existing lab
+2. Click **Provision Lab** — the new container gets the updated banner and network connections
+
+**Verify everything works:**
+
+```bash
+./scripts/verify_research_lab_tools_and_targets.sh
+```
+
+The script builds the image, checks all 10 required tools are installed, confirms the
+welcome banner mentions Metasploitable, and tests DNS + ping + nmap connectivity.
+
 ## Security Considerations
 
 - **Change Default Credentials**: Update all default passwords in `.env`
@@ -456,7 +485,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 For issues, questions, or contributions:
-- GitHub Issues: https://github.com/yourusername/cityshield/issues
+- GitHub Issues: https://github.com/SamiAhmedQMUL/CityShield/issues
 - Documentation: [docs/](docs/)
 
 ---

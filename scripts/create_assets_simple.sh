@@ -105,6 +105,8 @@ curl -s -X POST 'http://localhost:9200/_bulk' \
 {"asset_id":"grid-substation-01","asset_type":"grid_controller","asset_class":"industrial_control","name":"Grid Substation Controller","criticality":"critical","location":{"zone":"zone-e","subnet":"10.20.12.0/24"},"network":{"ip_address":"10.20.12.40"},"tags":["production","critical-path","grid","industrial"],"@timestamp":"2026-02-10T12:00:00Z"}
 {"index":{"_index":"city-assets","_id":"city-rail-system-01"}}
 {"asset_id":"city-rail-system-01","asset_type":"rail_controller","asset_class":"industrial_control","name":"City Rail System Controller","criticality":"critical","location":{"zone":"zone-e","subnet":"10.20.12.0/24"},"network":{"ip_address":"10.20.12.50"},"tags":["production","critical-path","rail","industrial"],"@timestamp":"2026-02-10T12:00:00Z"}
+{"index":{"_index":"city-assets","_id":"cyber-range-metasploitable"}}
+{"asset_id":"cyber-range-metasploitable","asset_type":"training_target","asset_class":"network_service","name":"Metasploitable (Training Target)","criticality":"low","status":"active","device_type":"virtual","lifecycle_state":"operational","location":{"zone":"cyber-range","subnet":"172.20.0.0/16","building":"Cyber Range Lab"},"network":{"ip_address":"172.20.0.2","mac_address":"02:42:ac:14:00:02"},"tags":["training","vulnerable-by-design","cyber-range"],"@timestamp":"2026-02-10T12:00:00Z"}
 BULKDATA
 
 echo "✓ Assets loaded"

@@ -3,6 +3,8 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
     nmap \
     hydra \
     nikto \
@@ -27,23 +29,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create researcher user
 RUN useradd -m -u 1000 -s /bin/bash researcher
 
-# Welcome message
-RUN echo '\n\
-echo ""\n\
-echo "=== CityShield Research Lab ==="\n\
-echo ""\n\
-echo "You are connected to the CityShield network."\n\
-echo "Available targets:"\n\
-echo "  opensearch        :9200  - Data store"\n\
-echo "  cityshield_backend:8000  - Backend API"\n\
-echo "  traffic_sim       :8001  - Traffic simulator"\n\
-echo "  iot_sim           :8002  - IoT simulator"\n\
-echo "  network_emulator  :8003  - Network emulator"\n\
-echo ""\n\
-echo "Installed tools: nmap, hydra, nikto, netcat, tcpdump, curl, wget, python3"\n\
-echo ""\n' >> /home/researcher/.bashrc
+# Welcome banner — lives OUTSIDE /home/researcher/ so it is never
+# shadowed by the Docker volume mount on /home/researcher.
+COPY welcome.sh /usr/local/bin/welcome.sh
+RUN chmod 644 /usr/local/bin/welcome.sh
+
+# Source the banner from /etc/bash.bashrc (system-wide, outside volume).
+RUN echo '[ -f /usr/local/bin/welcome.sh ] && source /usr/local/bin/welcome.sh' >> /etc/bash.bashrc
+
+# Entrypoint strips stale welcome lines from the volume-mounted .bashrc
+# on every container start, so old banners never persist.
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 USER researcher
 WORKDIR /home/researcher
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["sleep", "infinity"]
