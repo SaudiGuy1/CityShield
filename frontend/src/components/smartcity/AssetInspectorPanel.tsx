@@ -5,6 +5,9 @@ import { formatDateTimeWithSeconds, formatTimeWithSeconds } from '../../utils/da
 interface AssetInspectorPanelProps {
   asset: CityAsset
   onClose: () => void
+  isAdmin?: boolean
+  onTogglePower?: (assetId: string, action: string) => void
+  togglingPower?: boolean
 }
 
 interface Alert {
@@ -22,10 +25,21 @@ interface Event {
   severity?: string
 }
 
-export default function AssetInspectorPanel({ asset, onClose }: AssetInspectorPanelProps) {
+export default function AssetInspectorPanel({ asset, onClose, isAdmin, onTogglePower, togglingPower }: AssetInspectorPanelProps) {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Optimistic toggle state: tracks the user's click immediately,
+  // then reconciles when the asset prop updates from WebSocket.
+  const [powerOverride, setPowerOverride] = useState<boolean | null>(null)
+
+  // When the asset status changes (from WebSocket), clear the override
+  useEffect(() => {
+    setPowerOverride(null)
+  }, [asset.status])
+
+  const isDeviceOn = powerOverride !== null ? powerOverride : asset.status !== 'offline'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -184,6 +198,29 @@ export default function AssetInspectorPanel({ asset, onClose }: AssetInspectorPa
         <button onClick={handleDrillDown} style={primaryButtonStyle}>
           🔍 Drill-Down to OpenSearch
         </button>
+        {isAdmin && onTogglePower && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem', background: 'rgba(51, 65, 85, 0.5)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '0.5rem' }}>
+            <span style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>Device Power</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.7rem', color: isDeviceOn ? '#10b981' : '#94a3b8' }}>
+                {isDeviceOn ? 'Active' : 'Inactive'}
+              </span>
+              <label className={`toggle-switch${togglingPower ? ' disabled' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={isDeviceOn}
+                  onChange={() => {
+                    const assetId = asset.asset_id || asset.id || ''
+                    const action = isDeviceOn ? 'disable' : 'enable'
+                    setPowerOverride(!isDeviceOn)
+                    onTogglePower(assetId, action)
+                  }}
+                />
+                <span className="toggle-track" />
+              </label>
+            </div>
+          </div>
+        )}
         <button style={secondaryButtonStyle} disabled>
           🔒 Isolate
         </button>

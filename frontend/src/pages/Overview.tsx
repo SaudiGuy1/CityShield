@@ -158,7 +158,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
       {/* 3D City Visualization */}
       <div className="chart-container">
         <h3>Smart City Components</h3>
-        <SmartCity3D activeAttack={activeAttack} onAttackEnd={onAttackEnd} />
+        <SmartCity3D activeAttack={activeAttack} onAttackEnd={onAttackEnd} isAdmin={user?.role === 'Administrator'} />
       </div>
 
       {/* Charts Row */}

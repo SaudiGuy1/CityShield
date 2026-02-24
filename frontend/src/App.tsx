@@ -52,7 +52,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/alerts" element={<ProtectedRoute isAuth={isAuthenticated}><Alerts /></ProtectedRoute>} />
-        <Route path="/devices" element={<ProtectedRoute isAuth={isAuthenticated}><DeviceManagement /></ProtectedRoute>} />
+        <Route path="/devices" element={<ProtectedRoute isAuth={isAuthenticated}><DeviceManagement user={user} /></ProtectedRoute>} />
         <Route path="/scenarios" element={
           <ProtectedRoute isAuth={isAuthenticated}>
             <ScenarioBuilder onAttackLaunched={setActiveAttack} />

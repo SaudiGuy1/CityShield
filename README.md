@@ -14,6 +14,7 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 - **Interactive 3D City Visualization**: Real-time 3D smart city powered by Three.js / React Three Fiber with 6 zones (Traffic, IoT, Network, Security, Industrial, Cyber Range), orbit controls, hover/click interactions, and live data-driven building states
 - **Attack Scenario Engine**: 11 built-in scenarios with real-time stage progression, 4-stage execution per scenario, and live progress tracking in the UI
 - **Interactive Web UI**: React-based dashboard for monitoring, alert investigation, and scenario management
+- **Device Power Control**: Administrators can toggle devices on/off from the Device Management page or the 3D Asset Inspector, with real-time visual feedback in the 3D city
 - **Role-Based Access Control**: Administrator, Analyst, and Researcher roles with appropriate permissions
 - **Evaluation Metrics**: MTTD, MTTR, detection accuracy, false positive rate, and resource utilization tracking
 
@@ -165,7 +166,7 @@ Wait for all services to become healthy (2-3 minutes). Core services:
 
 | Role | Permissions |
 |------|-------------|
-| **Administrator** | Manage users, system configuration, view all resources |
+| **Administrator** | Manage users, system configuration, toggle device power on/off, view all resources |
 | **Analyst** | View alerts and logs, investigate incidents, update alert status |
 | **Researcher** | Create scenarios, manage rules, run simulations, export datasets |
 
@@ -252,6 +253,33 @@ The Overview dashboard features an interactive 3D city where each building repre
 
 See [docs/smart-city-3d.md](docs/smart-city-3d.md) for full technical details.
 
+## Device Management
+
+The platform includes 25 smart city assets across 6 zones, each with detection rules, network metadata, and real-time status monitoring. All assets are stored in the `city-assets` OpenSearch index.
+
+### Device Power Control (Admin Only)
+
+Administrators can toggle devices on/off from two locations:
+
+1. **Device Management page** (`/devices`) — toggle switch in the Actions column of each device row, and in the detail panel under Admin Actions
+2. **3D Asset Inspector** — click any building in the 3D city, then use the "Device Power" toggle in the SOC Actions section
+
+When a device is toggled off:
+- Its status changes from `active` to `inactive` in OpenSearch
+- The 3D building turns **gray** (offline) within ~2 seconds via WebSocket
+- The toggle provides optimistic feedback (flips immediately, reconciles on next data push)
+
+### Asset Data
+
+Each asset includes: `status`, `device_type`, `lifecycle_state`, `criticality`, `detection_rules`, network info, and zone placement. To reload or reset asset data:
+
+```bash
+./scripts/create_assets_simple.sh
+docker compose restart backend
+```
+
+See [docs/device-inventory.md](docs/device-inventory.md) for the complete 25-asset inventory with schema reference.
+
 ### Additional Frontend Dependencies
 
 | Package | Version | Purpose |
@@ -274,6 +302,7 @@ See [docs/smart-city-3d.md](docs/smart-city-3d.md) for full technical details.
 - [API Documentation](docs/api.md) - REST API endpoints reference
 - [Dashboards](docs/dashboards.md) - Dashboard configuration and usage
 - [Attack Execution](docs/attack-execution.md) - Real attack execution engine guide
+- [Device Inventory](docs/device-inventory.md) - Complete 25-asset inventory with schema and detection rules
 - [OpenSearch Integration](docs/opensearch-integration.md) - OpenSearch Dashboards deep-dive investigation
 
 ## Development

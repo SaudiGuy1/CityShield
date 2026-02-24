@@ -169,9 +169,15 @@ async def fetch_asset_telemetry():
             asset = hit["_source"]
             asset_id = asset.get("asset_id")
 
-            # Determine status based on alert count and criticality
+            # Determine visual status: asset-level status takes priority,
+            # then alert count, then criticality fallback.
             alerts_count = alert_counts.get(asset_id, 0)
-            if alerts_count > 5:
+            asset_status = asset.get("status", "active")
+            if asset_status in ("inactive", "decommissioned"):
+                status = "offline"
+            elif asset_status == "maintenance":
+                status = "warning"
+            elif alerts_count > 5:
                 status = "critical"
             elif alerts_count > 0:
                 status = "warning"

@@ -73,7 +73,9 @@ export function useAssetStream(): UseAssetStreamReturn {
                   eventsCount: asset.metrics?.events_1h ?? 0,
                   alertsCount: asset.metrics?.alerts_open ?? 0,
                   lastUpdated: asset.metrics?.last_seen ?? new Date().toISOString(),
-                  status: mapStatusFromState(asset.state?.status) ?? 'ok',
+                  status: asset.state?.status
+                    ? mapStatusFromState(asset.state.status)
+                    : (asset.status || 'ok'),
                 }))
                 setAssets(normalizedAssets)
                 console.log(`[AssetStream] Updated ${normalizedAssets.length} assets`)

@@ -5,7 +5,11 @@ import DeviceStatusBadge from '../components/DeviceStatusBadge'
 import RiskScoreBar from '../components/RiskScoreBar'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
 
-export default function DeviceManagement() {
+interface DeviceManagementProps {
+  user?: any
+}
+
+export default function DeviceManagement({ user }: DeviceManagementProps) {
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDevice, setSelectedDevice] = useState<DeviceDetail | null>(null)
@@ -18,17 +22,9 @@ export default function DeviceManagement() {
     search: '',
     has_alerts: ''
   })
-  const [user, setUser] = useState<any>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-
-  useEffect(() => {
-    // Get current user from localStorage
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      setUser(JSON.parse(userStr))
-    }
-  }, [])
 
   useEffect(() => {
     fetchDevices()
@@ -91,6 +87,8 @@ export default function DeviceManagement() {
   }
 
   const performDeviceAction = async (assetId: string, action: string) => {
+    if (togglingId) return
+    setTogglingId(assetId)
     const token = localStorage.getItem('token')
     try {
       const res = await fetch(`/api/devices/${assetId}/action`, {
@@ -109,6 +107,8 @@ export default function DeviceManagement() {
       }
     } catch (err) {
       console.error('Failed to perform device action:', err)
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -339,25 +339,14 @@ export default function DeviceManagement() {
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                       {isAdmin && (
-                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                          {device.status === 'active' ? (
-                            <button
-                              className="btn btn-sm btn-warning"
-                              onClick={() => performDeviceAction(device.asset_id, 'disable')}
-                              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
-                            >
-                              Disable
-                            </button>
-                          ) : (
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => performDeviceAction(device.asset_id, 'enable')}
-                              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
-                            >
-                              Enable
-                            </button>
-                          )}
-                        </div>
+                        <label className={`toggle-switch${togglingId === device.asset_id ? ' disabled' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={device.status === 'active'}
+                            onChange={() => performDeviceAction(device.asset_id, device.status === 'active' ? 'disable' : 'enable')}
+                          />
+                          <span className="toggle-track" />
+                        </label>
                       )}
                     </td>
                   </tr>
@@ -598,31 +587,23 @@ export default function DeviceManagement() {
                   {isAdmin && (
                     <div className="card">
                       <h3 style={{ marginBottom: '0.75rem' }}>Admin Actions</h3>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {selectedDevice.status === 'active' ? (
-                          <button
-                            className="btn btn-warning"
-                            onClick={() => {
-                              performDeviceAction(selectedDevice.asset_id, 'disable')
-                            }}
-                          >
-                            Disable Device
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-success"
-                            onClick={() => {
-                              performDeviceAction(selectedDevice.asset_id, 'enable')
-                            }}
-                          >
-                            Enable Device
-                          </button>
-                        )}
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <label className={`toggle-switch${togglingId === selectedDevice.asset_id ? ' disabled' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={selectedDevice.status === 'active'}
+                              onChange={() => performDeviceAction(selectedDevice.asset_id, selectedDevice.status === 'active' ? 'disable' : 'enable')}
+                            />
+                            <span className="toggle-track" />
+                          </label>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            Device Power
+                          </span>
+                        </div>
                         <button
-                          className="btn btn-secondary"
-                          onClick={() => {
-                            performDeviceAction(selectedDevice.asset_id, 'restart')
-                          }}
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => performDeviceAction(selectedDevice.asset_id, 'restart')}
                         >
                           Restart Device
                         </button>

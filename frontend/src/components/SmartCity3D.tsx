@@ -170,9 +170,10 @@ interface StageResponse {
 interface SmartCity3DProps {
   activeAttack?: ActiveAttack | null
   onAttackEnd?: () => void
+  isAdmin?: boolean
 }
 
-export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DProps) {
+export default function SmartCity3D({ activeAttack, onAttackEnd, isAdmin }: SmartCity3DProps) {
   const { assets, attackPaths, connected: _connected, error } = useAssetStream()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredComponent, setHoveredComponent] = useState<CityAsset | null>(null)
@@ -188,6 +189,25 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
   // Stage polling state
   const [stageData, setStageData] = useState<StageResponse | null>(null)
   const [attackedBuildingId, setAttackedBuildingId] = useState<string | null>(null)
+
+  // Toggle device power from the 3D inspector
+  const [togglingPower, setTogglingPower] = useState(false)
+  const handleTogglePower = useCallback(async (assetId: string, action: string) => {
+    if (togglingPower) return
+    setTogglingPower(true)
+    const token = localStorage.getItem('token')
+    try {
+      await fetch(`/api/devices/${assetId}/action`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      })
+    } catch (err) {
+      console.error('Failed to toggle device power:', err)
+    } finally {
+      setTogglingPower(false)
+    }
+  }, [togglingPower])
 
   // Animate details panel on selection change
   useEffect(() => {
@@ -668,6 +688,9 @@ export default function SmartCity3D({ activeAttack, onAttackEnd }: SmartCity3DPr
           <AssetInspectorPanel
             asset={selectedComponent}
             onClose={() => setSelectedId(null)}
+            isAdmin={isAdmin}
+            onTogglePower={handleTogglePower}
+            togglingPower={togglingPower}
           />
         )}
       </div>
