@@ -109,7 +109,7 @@ export default function ResearcherTerminal({ token, onConnectionChange }: Resear
       wsRef.current = null
       fitAddonRef.current = null
     }
-  }, [token])
+  }, [token, onConnectionChange])
 
   return (
     <div

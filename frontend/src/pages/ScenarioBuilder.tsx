@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import anime from 'animejs'
 import type { ActiveAttack } from '../App'
@@ -18,8 +18,8 @@ interface DeviceTarget {
 }
 
 export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderProps) {
-  const [scenarios, setScenarios] = useState<any[]>([])
-  const [runs, setRuns] = useState<any[]>([])
+  const [scenarios, setScenarios] = useState<{ scenario_id: string; name?: string; description?: string; attack_pattern?: string; target_component?: string; components?: string[]; duration_seconds?: number }[]>([])
+  const [runs, setRuns] = useState<{ run_id: string; scenario_id: string; status: string; started_at?: string; scenario_name?: string; target_device_id?: string; results?: Record<string, unknown> }[]>([])
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState<{ [key: string]: boolean }>({})
   const [targetModal, setTargetModal] = useState<{ scenarioId: string; targetComponent: string } | null>(null)
@@ -28,16 +28,16 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
   const [activeTab, setActiveTab] = useState<'scenarios' | 'lab'>('scenarios')
   const navigate = useNavigate()
 
+  const fetchData = useCallback(async () => {
+    await Promise.all([fetchScenarios(), fetchRuns()])
+    setLoading(false)
+  }, [])
+
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, 5000)
     return () => clearInterval(interval)
-  }, [])
-
-  const fetchData = async () => {
-    await Promise.all([fetchScenarios(), fetchRuns()])
-    setLoading(false)
-  }
+  }, [fetchData])
 
   const fetchScenarios = async () => {
     try {
@@ -108,7 +108,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
 
     try {
       const token = localStorage.getItem('token')
-      const body: any = { scenario_id: scenarioId }
+      const body: Record<string, string> = { scenario_id: scenarioId }
       if (targetDeviceId) body.target_device_id = targetDeviceId
 
       const res = await fetch('/api/scenarios/runs', {
@@ -325,7 +325,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                   <div style={{ flex: 1 }}>
                     <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.5rem' }}>{getAttackIcon(scenario.attack_pattern)}</span>
+                      <span style={{ fontSize: '1.5rem' }}>{getAttackIcon(scenario.attack_pattern || '')}</span>
                       {scenario.name}
                     </h4>
                     <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: '0.75rem' }}>
@@ -393,7 +393,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                       <td>
                         {scenario ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>{getAttackIcon(scenario.attack_pattern)}</span>
+                            <span>{getAttackIcon(scenario.attack_pattern || '')}</span>
                             <span>{scenario.name}</span>
                           </div>
                         ) : (
@@ -409,7 +409,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                         <code style={{ fontSize: '0.8rem' }}>{run.target_device_id || '-'}</code>
                       </td>
                       <td style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-                        {formatDateTimeWithSeconds(run.started_at)}
+                        {formatDateTimeWithSeconds(run.started_at || '')}
                       </td>
                       <td>
                         {scenario ? `${scenario.duration_seconds}s` : '-'}

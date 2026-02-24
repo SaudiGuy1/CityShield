@@ -9,7 +9,14 @@ interface CityData {
   network: number
 }
 
-function Building({ position, height, color, active }: any) {
+interface BuildingProps {
+  position: [number, number, number]
+  height: number
+  color: string
+  active: boolean
+}
+
+function Building({ position, height, color, active }: BuildingProps) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const [hovered, setHovered] = useState(false)
 

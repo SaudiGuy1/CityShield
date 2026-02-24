@@ -174,7 +174,7 @@ interface SmartCity3DProps {
 }
 
 export default function SmartCity3D({ activeAttack, onAttackEnd, isAdmin }: SmartCity3DProps) {
-  const { assets, attackPaths, connected: _connected, error } = useAssetStream()
+  const { assets, attackPaths, error } = useAssetStream()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredComponent, setHoveredComponent] = useState<CityAsset | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -308,7 +308,7 @@ export default function SmartCity3D({ activeAttack, onAttackEnd, isAdmin }: Smar
   const handleHover = useCallback((comp: CityAsset | null, event?: ThreeEvent<PointerEvent>) => {
     setHoveredComponent(comp)
     if (event && comp) {
-      const nativeEvent = event.nativeEvent || (event as any)
+      const nativeEvent = event.nativeEvent || (event as unknown as PointerEvent)
       if (nativeEvent && typeof nativeEvent.clientX === 'number') {
         setTooltipPos({ x: nativeEvent.clientX, y: nativeEvent.clientY })
       }

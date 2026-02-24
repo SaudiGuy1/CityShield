@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Device, DeviceDetail } from '../types/assets'
 import DeviceStatusBadge from '../components/DeviceStatusBadge'
@@ -6,7 +6,7 @@ import RiskScoreBar from '../components/RiskScoreBar'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
 
 interface DeviceManagementProps {
-  user?: any
+  user?: { username?: string; role?: string } | null
 }
 
 export default function DeviceManagement({ user }: DeviceManagementProps) {
@@ -26,24 +26,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  useEffect(() => {
-    fetchDevices()
-    const interval = setInterval(fetchDevices, 5000)
-    return () => clearInterval(interval)
-  }, [filters])
-
-  useEffect(() => {
-    // If navigated with ?device=xxx, select that device
-    const deviceParam = searchParams.get('device')
-    if (deviceParam && devices.length > 0) {
-      const device = devices.find(d => d.asset_id === deviceParam)
-      if (device) {
-        fetchDeviceDetail(deviceParam)
-      }
-    }
-  }, [searchParams, devices])
-
-  const fetchDevices = async () => {
+  const fetchDevices = useCallback(async () => {
     const token = localStorage.getItem('token')
     const params = new URLSearchParams()
 
@@ -67,7 +50,24 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
+
+  useEffect(() => {
+    fetchDevices()
+    const interval = setInterval(fetchDevices, 5000)
+    return () => clearInterval(interval)
+  }, [fetchDevices])
+
+  useEffect(() => {
+    // If navigated with ?device=xxx, select that device
+    const deviceParam = searchParams.get('device')
+    if (deviceParam && devices.length > 0) {
+      const device = devices.find(d => d.asset_id === deviceParam)
+      if (device) {
+        fetchDeviceDetail(deviceParam)
+      }
+    }
+  }, [searchParams, devices])
 
   const fetchDeviceDetail = async (assetId: string) => {
     setDetailLoading(true)

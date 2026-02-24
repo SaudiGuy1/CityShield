@@ -8,8 +8,8 @@ observe what gets detected vs what bypasses defenses.
 import asyncio
 import logging
 import random
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from datetime import datetime
+from typing import Dict, Any, List
 from ..db.opensearch_client import opensearch_client
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ class BruteForceAttack(AttackTechnique):
 
         for i in range(attempts):
             username = random.choice(usernames)
-            password = random.choice(passwords)
+            random.choice(passwords)  # Simulate password selection (not logged for security)
 
             # Simulate authentication attempt - most fail, maybe one succeeds
             is_success = i == attempts - 5 and self.config.get('allow_success', False)
@@ -127,7 +127,6 @@ class PortScanAttack(AttackTechnique):
 
     async def execute(self) -> Dict[str, Any]:
         """Perform network port scan."""
-        target_subnet = self.config.get('target_subnet', '10.0.1.0/24')
         scan_type = self.config.get('scan_type', 'syn')  # syn, connect, udp
         ports_to_scan = self.config.get('ports', [22, 80, 443, 1883, 502, 8080])
         target_hosts = self.config.get('target_hosts', 10)

@@ -80,7 +80,7 @@ async def _get_device_metrics(asset_id: str) -> DeviceMetrics:
     }
     try:
         events_24h = opensearch_client.count("logs-*", events_24h_query)
-    except:
+    except Exception:
         events_24h = 0
 
     # Count events in last 7 days
@@ -102,7 +102,7 @@ async def _get_device_metrics(asset_id: str) -> DeviceMetrics:
     }
     try:
         events_7d = opensearch_client.count("logs-*", events_7d_query)
-    except:
+    except Exception:
         events_7d = 0
 
     # Count alerts in last 24 hours (check both actor_id and asset_id)
@@ -124,7 +124,7 @@ async def _get_device_metrics(asset_id: str) -> DeviceMetrics:
     }
     try:
         alerts_24h = opensearch_client.count("alerts", alerts_24h_query)
-    except:
+    except Exception:
         alerts_24h = 0
 
     # Count alerts in last 7 days
@@ -146,7 +146,7 @@ async def _get_device_metrics(asset_id: str) -> DeviceMetrics:
     }
     try:
         alerts_7d = opensearch_client.count("alerts", alerts_7d_query)
-    except:
+    except Exception:
         alerts_7d = 0
 
     return DeviceMetrics(
@@ -247,7 +247,7 @@ async def _calculate_realtime_metrics(doc: dict) -> dict:
     }
     try:
         events_1h = opensearch_client.count("logs-*", events_1h_query)
-    except:
+    except Exception:
         events_1h = 0
 
     # Count open alerts (check both actor_id and asset_id)
@@ -269,7 +269,7 @@ async def _calculate_realtime_metrics(doc: dict) -> dict:
     }
     try:
         alerts_open = opensearch_client.count("alerts", alerts_query)
-    except:
+    except Exception:
         alerts_open = 0
 
     # Calculate risk score (simple heuristic)

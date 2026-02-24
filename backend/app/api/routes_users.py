@@ -2,8 +2,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime
-from ..models.user import User, UserCreate, UserUpdate, UserInDB
-from ..core.rbac import require_admin, Role, VALID_ROLES
+from ..models.user import User, UserCreate, UserUpdate
+from ..core.rbac import require_admin, VALID_ROLES
 from ..core.security import get_password_hash
 from ..db.opensearch_client import opensearch_client
 

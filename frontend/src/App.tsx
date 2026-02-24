@@ -24,7 +24,7 @@ export interface ActiveAttack {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ username?: string; role?: string } | null>(null)
   const [activeAttack, setActiveAttack] = useState<ActiveAttack | null>(null)
 
   useEffect(() => {

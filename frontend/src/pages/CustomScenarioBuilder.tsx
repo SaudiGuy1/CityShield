@@ -2,17 +2,26 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AttackEffectivenessAnalyzer from '../components/AttackEffectivenessAnalyzer'
 
+interface ParameterConfig {
+  type: string
+  description: string
+  default: string | number | boolean
+  options?: string[]
+  min?: number
+  max?: number
+}
+
 interface AttackTechnique {
   technique: string
   name: string
   description: string
   mitre_technique: string
-  parameters: Record<string, any>
+  parameters: Record<string, ParameterConfig>
 }
 
 interface AttackConfig {
   technique: string
-  parameters: Record<string, any>
+  parameters: Record<string, string | number | boolean>
 }
 
 export default function CustomScenarioBuilder() {
@@ -23,7 +32,7 @@ export default function CustomScenarioBuilder() {
   const [targetDevice, setTargetDevice] = useState('')
   const [attackChain, setAttackChain] = useState<AttackConfig[]>([])
   const [selectedTechnique, setSelectedTechnique] = useState<AttackTechnique | null>(null)
-  const [currentParams, setCurrentParams] = useState<Record<string, any>>({})
+  const [currentParams, setCurrentParams] = useState<Record<string, string | number | boolean>>({})
   const [loading, setLoading] = useState(true)
   const [executing, setExecuting] = useState(false)
   const [completedRunId, setCompletedRunId] = useState<string | null>(null)
@@ -140,7 +149,7 @@ export default function CustomScenarioBuilder() {
     }
   }
 
-  const renderParameterInput = (paramName: string, paramConfig: any) => {
+  const renderParameterInput = (paramName: string, paramConfig: ParameterConfig) => {
     const value = currentParams[paramName] ?? paramConfig.default
 
     if (paramConfig.type === 'boolean') {
@@ -148,7 +157,7 @@ export default function CustomScenarioBuilder() {
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <input
             type="checkbox"
-            checked={value}
+            checked={value as boolean}
             onChange={e => setCurrentParams({ ...currentParams, [paramName]: e.target.checked })}
           />
           <span>{paramConfig.description}</span>
@@ -163,11 +172,11 @@ export default function CustomScenarioBuilder() {
             {paramConfig.description}
           </label>
           <select
-            value={value}
+            value={value as string}
             onChange={e => setCurrentParams({ ...currentParams, [paramName]: e.target.value })}
             style={{ width: '100%' }}
           >
-            {paramConfig.options.map((opt: string) => (
+            {paramConfig.options?.map((opt: string) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
           </select>
@@ -183,7 +192,7 @@ export default function CustomScenarioBuilder() {
           </label>
           <input
             type="number"
-            value={value}
+            value={value as number}
             min={paramConfig.min}
             max={paramConfig.max}
             onChange={e => setCurrentParams({ ...currentParams, [paramName]: parseInt(e.target.value) })}
@@ -323,8 +332,8 @@ export default function CustomScenarioBuilder() {
                     onClick={() => {
                       setSelectedTechnique(tech)
                       // Initialize with default values
-                      const defaults: Record<string, any> = {}
-                      Object.entries(tech.parameters).forEach(([name, config]: [string, any]) => {
+                      const defaults: Record<string, string | number | boolean> = {}
+                      Object.entries(tech.parameters).forEach(([name, config]) => {
                         defaults[name] = config.default
                       })
                       setCurrentParams(defaults)
@@ -358,7 +367,7 @@ export default function CustomScenarioBuilder() {
               <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
                 <h4>Configure Parameters</h4>
                 <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
-                  {Object.entries(selectedTechnique.parameters).map(([paramName, paramConfig]: [string, any]) => (
+                  {Object.entries(selectedTechnique.parameters).map(([paramName, paramConfig]) => (
                     <div key={paramName}>
                       {renderParameterInput(paramName, paramConfig)}
                     </div>

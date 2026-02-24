@@ -1,6 +1,5 @@
 """Alert management routes."""
 import os
-import uuid
 import logging
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional

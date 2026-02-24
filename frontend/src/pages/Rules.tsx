@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react'
 
+interface Rule {
+  rule_id: string
+  name: string
+  description?: string
+  severity: string
+  technique_id: string
+  component?: string
+  enabled: boolean
+  conditions?: Record<string, unknown>
+}
+
 export default function Rules() {
-  const [rules, setRules] = useState<any[]>([])
+  const [rules, setRules] = useState<Rule[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState({ severity: '', enabled: '' })
-  const [selectedRule, setSelectedRule] = useState<any>(null)
+  const [selectedRule, setSelectedRule] = useState<Rule | null>(null)
 
   useEffect(() => {
     fetchRules()

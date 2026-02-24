@@ -1,8 +1,7 @@
 """Scenario management routes."""
-import asyncio
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from typing import List, Optional, Dict, Any
-from ..models.scenario import Scenario, ScenarioCreate, ScenarioUpdate, ScenarioRun, ScenarioRunCreate, CustomScenarioCreate, AttackConfiguration
+from ..models.scenario import Scenario, ScenarioCreate, ScenarioUpdate, ScenarioRun, ScenarioRunCreate, CustomScenarioCreate
 from ..core.rbac import require_researcher_or_admin
 from ..core.security import get_current_user
 from ..services.scenario_service import ScenarioService, simulate_scenario_execution

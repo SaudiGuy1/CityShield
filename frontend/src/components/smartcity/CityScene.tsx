@@ -19,6 +19,7 @@ import { Canvas, ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Stars, Environment } from '@react-three/drei'
 import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import Zones from './Zones'
 import Roads from './Roads'
 import AttackPathVisualizer from './AttackPathVisualizer'
@@ -45,7 +46,7 @@ function SceneContent({
   onHover,
   focusPosition,
 }: CitySceneProps) {
-  const controlsRef = useRef<any>(null)
+  const controlsRef = useRef<OrbitControlsImpl>(null)
 
   // Support both 'components' and 'assets' props for backward compatibility
   const components = componentsFromProps || assetsFromProps || []

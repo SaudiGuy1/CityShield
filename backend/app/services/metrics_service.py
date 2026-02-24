@@ -156,7 +156,6 @@ class MetricsService:
         """
         try:
             cluster_stats = opensearch_client.client.cluster.stats()
-            indices_stats = opensearch_client.client.indices.stats(index="_all")
 
             return {
                 "cluster_name": cluster_stats.get("cluster_name"),

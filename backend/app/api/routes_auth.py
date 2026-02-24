@@ -1,9 +1,7 @@
 """Authentication routes."""
 from fastapi import APIRouter, HTTPException, status, Depends
-from datetime import datetime
 from ..models.user import LoginRequest, Token, User, UserInDB
 from ..core.security import verify_password, create_access_token, get_current_user
-from ..core.config import settings
 from ..db.opensearch_client import opensearch_client
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])

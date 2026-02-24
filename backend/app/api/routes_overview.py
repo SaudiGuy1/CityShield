@@ -218,7 +218,7 @@ async def get_overview_stats(current_user: dict = Depends(get_current_user)):
         try:
             alerts_result = client.count(index="alerts", body=alerts_query)
             open_alerts = alerts_result.get("count", 0)
-        except:
+        except Exception:
             open_alerts = 0
 
         # Critical alerts
@@ -235,7 +235,7 @@ async def get_overview_stats(current_user: dict = Depends(get_current_user)):
         try:
             critical_alerts_result = client.count(index="alerts", body=critical_alerts_query)
             critical_alerts = critical_alerts_result.get("count", 0)
-        except:
+        except Exception:
             critical_alerts = 0
 
         return {

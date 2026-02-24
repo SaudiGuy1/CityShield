@@ -1,10 +1,9 @@
 """WebSocket routes for real-time telemetry streaming."""
 import logging
 import asyncio
-import json
 from typing import Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException, status
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
 from ..db.opensearch_client import opensearch_client
 from ..core.security import decode_token
 
@@ -299,7 +298,7 @@ async def websocket_city_telemetry(websocket: WebSocket, token: Optional[str] = 
         while True:
             try:
                 # Wait for client ping/pong or commands
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 # Echo back to keep connection alive
                 await websocket.send_json({"type": "pong", "timestamp": datetime.utcnow().isoformat() + "Z"})
             except asyncio.TimeoutError:

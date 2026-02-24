@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import anime from 'animejs'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
 
@@ -11,7 +11,7 @@ interface Event {
   dst_ip?: string
   component?: string
   asset_id?: string
-  [key: string]: any
+  [key: string]: string | number | boolean | undefined
 }
 
 interface EventDrillDownProps {
@@ -25,7 +25,11 @@ export default function EventDrillDown({ alertId, alertTriggerTime, onClose }: E
   const [loading, setLoading] = useState(true)
   const [expandedEventIdx, setExpandedEventIdx] = useState<number | null>(null)
   const [filters, setFilters] = useState({ eventType: '', severity: '' })
-  const [metadata, setMetadata] = useState<any>(null)
+  const [metadata, setMetadata] = useState<{
+    event_types?: Record<string, number>
+    unique_sources?: string[]
+    unique_assets?: string[]
+  } | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,11 +44,7 @@ export default function EventDrillDown({ alertId, alertTriggerTime, onClose }: E
     }
   }, [])
 
-  useEffect(() => {
-    fetchReplayEvents()
-  }, [alertId])
-
-  const fetchReplayEvents = async () => {
+  const fetchReplayEvents = useCallback(async () => {
     setLoading(true)
     const token = localStorage.getItem('token')
     try {
@@ -67,7 +67,11 @@ export default function EventDrillDown({ alertId, alertTriggerTime, onClose }: E
     } finally {
       setLoading(false)
     }
-  }
+  }, [alertId])
+
+  useEffect(() => {
+    fetchReplayEvents()
+  }, [fetchReplayEvents])
 
   const handleClose = () => {
     // Slide-out animation

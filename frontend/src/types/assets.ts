@@ -53,7 +53,7 @@ export interface CityAsset {
 
   // Backward compatibility (from logs)
   component?: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 export interface AttackPath {
@@ -152,5 +152,5 @@ export interface DeviceDetail extends Device {
   metrics?: DeviceMetrics
   recent_events: RecentEvent[]
   recent_alerts: RecentAlert[]
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }

@@ -114,7 +114,7 @@ export default function Trees() {
     trunkRef.current.instanceMatrix.needsUpdate = true
     canopy1Ref.current.instanceMatrix.needsUpdate = true
     canopy2Ref.current.instanceMatrix.needsUpdate = true
-  }, [trunkRef.current, canopy1Ref.current, canopy2Ref.current])
+  }, [])
 
   return (
     <group>

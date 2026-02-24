@@ -1,8 +1,22 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import anime from 'animejs'
 import EventDrillDown from '../components/EventDrillDown'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
+
+interface AlertItem {
+  alert_id: string
+  rule_name: string
+  severity: string
+  status: string
+  component?: string
+  city_zone?: string
+  asset_id?: string
+  triggered_at?: string
+  timestamp?: string
+  evidence?: Record<string, unknown>
+  related_query?: string
+}
 
 interface AlertAnalysis {
   alert_id: string
@@ -20,18 +34,18 @@ interface AlertAnalysis {
   component: string
   city_zone: string
   status: string
-  enrichment: Record<string, any>
+  enrichment: Record<string, unknown>
 }
 
 export default function Alerts() {
-  const [alerts, setAlerts] = useState<any[]>([])
+  const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ severity: '', status: '' })
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<AlertAnalysis | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [showEventDrillDown, setShowEventDrillDown] = useState(false)
-  const [selectedAlertForEvents, setSelectedAlertForEvents] = useState<any>(null)
+  const [selectedAlertForEvents, setSelectedAlertForEvents] = useState<AlertItem | null>(null)
   const detailRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -44,11 +58,32 @@ export default function Alerts() {
     }
   }, [searchParams])
 
+  const fetchAlerts = useCallback(async () => {
+    const token = localStorage.getItem('token')
+    const params = new URLSearchParams()
+    if (filters.severity) params.append('severity', filters.severity)
+    if (filters.status) params.append('status', filters.status)
+
+    try {
+      const res = await fetch(`/api/alerts?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAlerts(data)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [filters])
+
   useEffect(() => {
     fetchAlerts()
     const interval = setInterval(fetchAlerts, 5000)
     return () => clearInterval(interval)
-  }, [filters])
+  }, [fetchAlerts])
 
   useEffect(() => {
     if (expandedId) {
@@ -69,27 +104,6 @@ export default function Alerts() {
       })
     }
   }, [analysis])
-
-  const fetchAlerts = async () => {
-    const token = localStorage.getItem('token')
-    const params = new URLSearchParams()
-    if (filters.severity) params.append('severity', filters.severity)
-    if (filters.status) params.append('status', filters.status)
-
-    try {
-      const res = await fetch(`/api/alerts?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setAlerts(data)
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const fetchAnalysis = async (alertId: string) => {
     setAnalysisLoading(true)
@@ -124,11 +138,11 @@ export default function Alerts() {
     }
   }
 
-  const viewOnMap = (alert: any) => {
+  const viewOnMap = (alert: AlertItem) => {
     navigate(`/?highlight=${alert.city_zone}&alert=${alert.alert_id}`)
   }
 
-  const viewRelatedEvents = (alert: any) => {
+  const viewRelatedEvents = (alert: AlertItem) => {
     setSelectedAlertForEvents(alert)
     setShowEventDrillDown(true)
   }
@@ -137,9 +151,9 @@ export default function Alerts() {
     navigate(`/devices?device=${assetId}`)
   }
 
-  const viewInOpenSearch = (alert: any) => {
+  const viewInOpenSearch = (alert: AlertItem) => {
     // Build OpenSearch Dashboards URL with pre-filled query
-    const triggeredAt = new Date(alert.triggered_at || alert.timestamp)
+    const triggeredAt = new Date(alert.triggered_at || alert.timestamp || '')
     const now = new Date()
 
     // Smart time range: use last 30 minutes if alert is old, otherwise use ±15 min around alert
@@ -323,7 +337,7 @@ export default function Alerts() {
                         <span>ID: {alert.alert_id.substring(0, 12)}</span>
                         <span>{alert.component?.replace('_', ' ')}</span>
                         <span>{alert.city_zone}</span>
-                        <span>{formatDateTimeWithSeconds(alert.triggered_at || alert.timestamp)}</span>
+                        <span>{formatDateTimeWithSeconds(alert.triggered_at || alert.timestamp || '')}</span>
                       </div>
                     </div>
 
@@ -375,7 +389,7 @@ export default function Alerts() {
                           <InfoChip label="Component" value={analysis.component.replace('_', ' ')} color="var(--accent-primary)" />
                           {alert.asset_id && (
                             <div
-                              onClick={() => viewDevice(alert.asset_id)}
+                              onClick={() => viewDevice(alert.asset_id!)}
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -574,7 +588,7 @@ export default function Alerts() {
                             View in OpenSearch
                           </button>
                           {alert.asset_id && (
-                            <button className="btn btn-sm" style={{ background: 'var(--accent-secondary)', color: 'white' }} onClick={() => viewDevice(alert.asset_id)}>
+                            <button className="btn btn-sm" style={{ background: 'var(--accent-secondary)', color: 'white' }} onClick={() => viewDevice(alert.asset_id!)}>
                               View Device
                             </button>
                           )}
@@ -605,7 +619,7 @@ export default function Alerts() {
       {showEventDrillDown && selectedAlertForEvents && (
         <EventDrillDown
           alertId={selectedAlertForEvents.alert_id}
-          alertTriggerTime={selectedAlertForEvents.triggered_at || selectedAlertForEvents.timestamp}
+          alertTriggerTime={selectedAlertForEvents.triggered_at || selectedAlertForEvents.timestamp || ''}
           onClose={() => {
             setShowEventDrillDown(false)
             setSelectedAlertForEvents(null)

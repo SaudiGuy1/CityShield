@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { ActiveAttack } from '../App'
 
-export default function Nav({ user, activeAttack, onLogout }: { user: any; activeAttack: ActiveAttack | null; onLogout: () => void }) {
+export default function Nav({ user, activeAttack, onLogout }: { user: { username?: string; role?: string } | null; activeAttack: ActiveAttack | null; onLogout: () => void }) {
   return (
     <nav>
       <div className="nav-container">

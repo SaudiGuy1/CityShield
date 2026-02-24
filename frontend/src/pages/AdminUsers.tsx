@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react'
 import { formatDateOnly } from '../utils/datetime'
 
-export default function AdminUsers({ user }: { user: any }) {
-  const [users, setUsers] = useState<any[]>([])
+interface AppUser {
+  username: string
+  email: string
+  role: string
+  is_active: boolean
+  created_at?: string
+}
+
+export default function AdminUsers({ user }: { user: { username?: string; role?: string } | null }) {
+  const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [formData, setFormData] = useState({

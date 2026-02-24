@@ -1,7 +1,7 @@
 """Researcher lab container lifecycle management."""
 import logging
 import docker
-from docker.errors import NotFound, APIError
+from docker.errors import NotFound
 
 logger = logging.getLogger(__name__)
 

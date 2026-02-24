@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface AttackEffectivenessProps {
   runId: string
@@ -11,7 +11,7 @@ interface TechniqueResult {
   events_generated: number
   detection_expected: boolean
   mitre_technique: string
-  [key: string]: any
+  [key: string]: string | number | boolean | undefined
 }
 
 interface DetectionGap {
@@ -39,11 +39,7 @@ export default function AttackEffectivenessAnalyzer({ runId, onClose }: AttackEf
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchResults()
-  }, [runId])
-
-  const fetchResults = async () => {
+  const fetchResults = useCallback(async () => {
     const token = localStorage.getItem('token')
     try {
       const res = await fetch(`/api/scenarios/runs/${runId}`, {
@@ -60,7 +56,11 @@ export default function AttackEffectivenessAnalyzer({ runId, onClose }: AttackEf
     } finally {
       setLoading(false)
     }
-  }
+  }, [runId])
+
+  useEffect(() => {
+    fetchResults()
+  }, [fetchResults])
 
   const getDetectionRate = () => {
     if (!results) return 0

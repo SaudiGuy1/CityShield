@@ -1,6 +1,6 @@
 """Log query routes."""
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import List, Optional
+from fastapi import APIRouter, Depends, Query
+from typing import Optional
 from datetime import datetime, timedelta
 from ..core.security import get_current_user
 from ..db.opensearch_client import opensearch_client
@@ -26,7 +26,7 @@ async def get_log_count(
             count = opensearch_client.client.count(index="logs-*")["count"]
 
         return {"count": count}
-    except Exception as e:
+    except Exception:
         # If no logs exist yet, return 0
         return {"count": 0}
 
@@ -67,7 +67,7 @@ async def get_recent_logs(
             logs.append(log)
 
         return logs
-    except Exception as e:
+    except Exception:
         # If no logs exist yet, return empty array
         return []
 

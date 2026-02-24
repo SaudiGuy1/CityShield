@@ -30,9 +30,9 @@ export function useCityData(pollInterval = 5000) {
         setError(null)
         setLoading(false)
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (mountedRef.current) {
-        setError(e.message || 'Failed to fetch city data')
+        setError(e instanceof Error ? e.message : 'Failed to fetch city data')
         setLoading(false)
       }
     }

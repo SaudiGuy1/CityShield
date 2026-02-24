@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from ..models.rule import Rule, RuleCreate, RuleUpdate
-from ..core.rbac import require_researcher_or_admin, require_analyst_or_admin
+from ..core.rbac import require_researcher_or_admin
 from ..core.security import get_current_user
 from ..services.rule_service import RuleService
 

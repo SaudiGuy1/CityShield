@@ -2,7 +2,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
-import asyncio
 import logging
 from ..db.opensearch_client import opensearch_client
 from ..models.scenario import Scenario, ScenarioCreate, ScenarioUpdate, ScenarioRun, ScenarioRunCreate

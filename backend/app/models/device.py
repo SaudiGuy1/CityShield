@@ -1,7 +1,6 @@
 """Device models for asset management."""
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
-from datetime import datetime
 
 
 class DeviceLocation(BaseModel):

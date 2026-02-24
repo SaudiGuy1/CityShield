@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import anime from 'animejs'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import SmartCity3D from '../components/SmartCity3D'
 import type { ActiveAttack } from '../App'
 
 interface OverviewProps {
-  user: any
+  user: { username?: string; role?: string } | null
   activeAttack: ActiveAttack | null
   onAttackEnd: () => void
 }
@@ -17,33 +17,12 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
     activeRules: 0,
     detectionRate: 0
   })
-  const [eventData, setEventData] = useState<any[]>([])
-  const [pieData, setPieData] = useState<any[]>([])
+  const [eventData, setEventData] = useState<{ time: number; events: number; severity: number }[]>([])
+  const [pieData, setPieData] = useState<{ name: string; value: number; color: string }[]>([])
 
   const statsRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    // Animate stats cards on mount
-    if (statsRef.current) {
-      anime({
-        targets: statsRef.current.children,
-        translateY: [-50, 0],
-        opacity: [0, 1],
-        delay: anime.stagger(100),
-        duration: 800,
-        easing: 'easeOutExpo'
-      })
-    }
-
-    // Fetch initial data
-    fetchData()
-
-    // Poll for updates every 5 seconds
-    const interval = setInterval(fetchData, 5000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem('token')
 
@@ -74,14 +53,14 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
       // Update stats with animation
       const newStats = {
         totalLogs: logsData.count || 0,
-        activeAlerts: alerts.filter((a: any) => a.status === 'open').length,
-        activeRules: rules.filter((r: any) => r.enabled).length,
+        activeAlerts: alerts.filter((a: { status: string }) => a.status === 'open').length,
+        activeRules: rules.filter((r: { enabled: boolean }) => r.enabled).length,
         detectionRate: alerts.length > 0 ? Math.round((alerts.length / (logsData.count || 1)) * 100) : 0
       }
 
       // Animate stat values
       Object.keys(newStats).forEach((key) => {
-        const target = { value: stats[key as keyof typeof stats] }
+        const target = { value: 0 }
         anime({
           targets: target,
           value: newStats[key as keyof typeof newStats],
@@ -95,7 +74,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
       })
 
       // Process event data for charts
-      const chartData = events.slice(0, 10).reverse().map((event: any, i: number) => ({
+      const chartData = events.slice(0, 10).reverse().map((event: { severity: string }, i: number) => ({
         time: i,
         events: i + 1,
         severity: event.severity === 'high' ? 3 : event.severity === 'warning' ? 2 : 1
@@ -103,9 +82,9 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
       setEventData(chartData)
 
       // Component activity
-      const trafficCount = events.filter((e: any) => e.component === 'traffic_management').length
-      const iotCount = events.filter((e: any) => e.component === 'iot_sensors').length
-      const networkCount = events.filter((e: any) => e.component === 'network_infrastructure').length
+      const trafficCount = events.filter((e: { component: string }) => e.component === 'traffic_management').length
+      const iotCount = events.filter((e: { component: string }) => e.component === 'iot_sensors').length
+      const networkCount = events.filter((e: { component: string }) => e.component === 'network_infrastructure').length
 
       // Pie chart data
       setPieData([
@@ -117,7 +96,28 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
     } catch (error) {
       console.error('Failed to fetch data:', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    // Animate stats cards on mount
+    if (statsRef.current) {
+      anime({
+        targets: statsRef.current.children,
+        translateY: [-50, 0],
+        opacity: [0, 1],
+        delay: anime.stagger(100),
+        duration: 800,
+        easing: 'easeOutExpo'
+      })
+    }
+
+    // Fetch initial data
+    fetchData()
+
+    // Poll for updates every 5 seconds
+    const interval = setInterval(fetchData, 5000)
+    return () => clearInterval(interval)
+  }, [fetchData])
 
   return (
     <div className="container">
