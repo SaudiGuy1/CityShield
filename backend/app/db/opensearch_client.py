@@ -173,6 +173,26 @@ class OpenSearchClient:
                         "reason": {"type": "text"}
                     }
                 }
+            },
+            "action-audit-log": {
+                "mappings": {
+                    "properties": {
+                        "audit_id": {"type": "keyword"},
+                        "alert_id": {"type": "keyword"},
+                        "rule_id": {"type": "keyword"},
+                        "action_name": {"type": "keyword"},
+                        "execution_type": {"type": "keyword"},
+                        "triggered_by": {"type": "keyword"},
+                        "status": {"type": "keyword"},
+                        "parameters": {"type": "object"},
+                        "playbook_path": {"type": "keyword"},
+                        "stdout": {"type": "text"},
+                        "stderr": {"type": "text"},
+                        "started_at": {"type": "date"},
+                        "completed_at": {"type": "date"},
+                        "error": {"type": "text"}
+                    }
+                }
             }
         }
 

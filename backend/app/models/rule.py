@@ -2,6 +2,7 @@
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from pydantic import BaseModel
+from app.models.action import AutoResponseConfig
 
 
 class RuleMatchLogic(BaseModel):
@@ -21,6 +22,9 @@ class RuleBase(BaseModel):
     technique_id: str  # MITRE ATT&CK technique ID
     technique_name: str
     response_actions: List[str] = []
+    auto_response_config: Optional[AutoResponseConfig] = None
+    log_sources: Optional[List[str]] = None
+    false_positive_notes: Optional[str] = None
 
 
 class RuleCreate(RuleBase):
@@ -38,6 +42,9 @@ class RuleUpdate(BaseModel):
     technique_id: Optional[str] = None
     technique_name: Optional[str] = None
     response_actions: Optional[List[str]] = None
+    auto_response_config: Optional[AutoResponseConfig] = None
+    log_sources: Optional[List[str]] = None
+    false_positive_notes: Optional[str] = None
 
 
 class Rule(RuleBase):

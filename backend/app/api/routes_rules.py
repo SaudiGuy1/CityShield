@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from ..models.rule import Rule, RuleCreate, RuleUpdate
+from ..models.action import AutoResponseConfig
 from ..core.rbac import require_researcher_or_admin
 from ..core.security import get_current_user
 from ..services.rule_service import RuleService
@@ -67,3 +68,42 @@ async def delete_rule(
     if not success:
         raise HTTPException(status_code=404, detail="Rule not found")
     return {"message": "Rule deleted successfully"}
+
+
+@router.put("/{rule_id}/auto-response", response_model=Rule)
+async def update_auto_response_config(
+    rule_id: str,
+    config: AutoResponseConfig,
+    current_user: dict = Depends(require_researcher_or_admin)
+):
+    """
+    Update auto-response configuration for a detection rule.
+
+    Requires Researcher or Admin role.
+
+    Args:
+        rule_id: Rule ID to update
+        config: Auto-response configuration with enabled status and conditions
+        current_user: Current authenticated user
+
+    Returns:
+        Updated rule object
+
+    Example:
+        {
+          "enabled": true,
+          "conditions": {
+            "min_severity": "high",
+            "require_enrichment": false,
+            "max_executions_per_hour": 10
+          }
+        }
+    """
+    # Update rule with new auto_response_config
+    updates = RuleUpdate(auto_response_config=config)
+    rule = RuleService.update_rule(rule_id, updates)
+
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+    return rule

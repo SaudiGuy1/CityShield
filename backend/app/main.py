@@ -17,6 +17,7 @@ from .api import (
     routes_rules,
     routes_scenarios,
     routes_alerts,
+    routes_actions,
     routes_metrics,
     routes_logs,
     routes_overview,
@@ -164,6 +165,7 @@ app.include_router(routes_users.router)
 app.include_router(routes_rules.router)
 app.include_router(routes_scenarios.router)
 app.include_router(routes_alerts.router)
+app.include_router(routes_actions.router)
 app.include_router(routes_devices.router)
 app.include_router(routes_metrics.router)
 app.include_router(routes_logs.router)

@@ -1,0 +1,30 @@
+rule_id: lateral_movement_001
+name: Lateral Movement Detection
+description: Detects lateral movement attempts by identifying unusual service-to-service communication, lateral tool transfers, and unauthorized network traversal
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: lateral_movement
+  parameters:
+    threshold: 3  # Multiple lateral movement events
+    group_by: src_ip
+    event_types:
+      - lateral_tool_transfer
+      - service_propagation
+      - unauthorized_access
+      - smb_transfer
+      - remote_execution
+technique_id: T1570
+technique_name: "Lateral Tool Transfer"
+response_actions:
+  - block_ip
+  - isolate_service
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate system administration activities (software deployment, patch management,
+  configuration updates) may trigger this rule. Establish baselines for normal
+  administrative traffic patterns and whitelist known management systems.

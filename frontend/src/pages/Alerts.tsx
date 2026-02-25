@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import anime from 'animejs'
 import EventDrillDown from '../components/EventDrillDown'
+import ActionConfirmDialog from '../components/ActionConfirmDialog'
+import ActionHistoryTable from '../components/ActionHistoryTable'
+import ExecutionDetailsModal from '../components/ExecutionDetailsModal'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
 
 interface AlertItem {
@@ -37,15 +40,52 @@ interface AlertAnalysis {
   enrichment: Record<string, unknown>
 }
 
+interface ActionMetadata {
+  action_name: string
+  description: string
+  parameters: string[]
+  playbook: string
+  requires_target: boolean
+}
+
+interface ActionAuditEntry {
+  audit_id: string
+  alert_id: string
+  rule_id: string
+  action_name: string
+  execution_type: string
+  triggered_by: string
+  status: string
+  parameters?: Record<string, unknown>
+  playbook_path?: string
+  stdout?: string
+  stderr?: string
+  started_at: string
+  completed_at?: string
+  error?: string
+}
+
 export default function Alerts() {
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ severity: '', status: '' })
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'analysis' | 'actions' | 'events'>('analysis')
   const [analysis, setAnalysis] = useState<AlertAnalysis | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [showEventDrillDown, setShowEventDrillDown] = useState(false)
   const [selectedAlertForEvents, setSelectedAlertForEvents] = useState<AlertItem | null>(null)
+
+  // Actions tab state
+  const [availableActions, setAvailableActions] = useState<ActionMetadata[]>([])
+  const [actionHistory, setActionHistory] = useState<ActionAuditEntry[]>([])
+  const [actionsLoading, setActionsLoading] = useState(false)
+  const [showActionConfirm, setShowActionConfirm] = useState(false)
+  const [selectedAction, setSelectedAction] = useState<ActionMetadata | null>(null)
+  const [executingAction, setExecutingAction] = useState<string | null>(null)
+  const [showExecutionDetails, setShowExecutionDetails] = useState(false)
+  const [selectedAuditEntry, setSelectedAuditEntry] = useState<ActionAuditEntry | null>(null)
+
   const detailRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -88,10 +128,21 @@ export default function Alerts() {
   useEffect(() => {
     if (expandedId) {
       fetchAnalysis(expandedId)
+      // Reset to analysis tab when expanding a different alert
+      setActiveTab('analysis')
     } else {
       setAnalysis(null)
+      setActionHistory([])
     }
   }, [expandedId])
+
+  // Fetch action data when Actions tab is activated
+  useEffect(() => {
+    if (expandedId && activeTab === 'actions') {
+      fetchAvailableActions()
+      fetchActionHistory(expandedId)
+    }
+  }, [expandedId, activeTab])
 
   useEffect(() => {
     if (detailRef.current && analysis) {
@@ -119,6 +170,96 @@ export default function Alerts() {
       console.error(err)
     } finally {
       setAnalysisLoading(false)
+    }
+  }
+
+  const fetchAvailableActions = async () => {
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch('/api/actions', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setAvailableActions(await res.json())
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const fetchActionHistory = async (alertId: string) => {
+    setActionsLoading(true)
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch(`/api/actions/alert/${alertId}/history`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setActionHistory(await res.json())
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setActionsLoading(false)
+    }
+  }
+
+  const executeAction = async () => {
+    if (!selectedAction || !expandedId) return
+
+    setExecutingAction(selectedAction.action_name)
+    setShowActionConfirm(false)
+
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch(`/api/actions/execute/${expandedId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action_name: selectedAction.action_name,
+          parameters: null
+        })
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        console.log('Action executed:', result)
+        // Refresh action history
+        setTimeout(() => {
+          fetchActionHistory(expandedId)
+        }, 1000)
+      } else {
+        console.error('Action execution failed')
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setExecutingAction(null)
+      setSelectedAction(null)
+    }
+  }
+
+  const handleExecuteAction = (action: ActionMetadata) => {
+    setSelectedAction(action)
+    setShowActionConfirm(true)
+  }
+
+  const handleViewAuditDetails = async (auditId: string) => {
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch(`/api/actions/audit/${auditId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const entry = await res.json()
+        setSelectedAuditEntry(entry)
+        setShowExecutionDetails(true)
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -361,7 +502,7 @@ export default function Alerts() {
                   </div>
                 </div>
 
-                {/* Expanded Analysis Panel */}
+                {/* Expanded Panel with Tabs */}
                 {isExpanded && (
                   <div
                     ref={isExpanded ? detailRef : null}
@@ -371,10 +512,39 @@ export default function Alerts() {
                       borderTop: 'none',
                       borderBottomLeftRadius: '1rem',
                       borderBottomRightRadius: '1rem',
-                      padding: '1.5rem',
                     }}
                   >
-                    {analysisLoading ? (
+                    {/* Tab Navigation */}
+                    <div style={{
+                      display: 'flex',
+                      borderBottom: '1px solid var(--border-color)',
+                      padding: '0 1.5rem',
+                    }}>
+                      <TabButton
+                        active={activeTab === 'analysis'}
+                        onClick={() => setActiveTab('analysis')}
+                      >
+                        Analysis
+                      </TabButton>
+                      <TabButton
+                        active={activeTab === 'actions'}
+                        onClick={() => setActiveTab('actions')}
+                      >
+                        Actions
+                      </TabButton>
+                      <TabButton
+                        active={activeTab === 'events'}
+                        onClick={() => setActiveTab('events')}
+                      >
+                        Related Events
+                      </TabButton>
+                    </div>
+
+                    {/* Tab Content */}
+                    <div style={{ padding: '1.5rem' }}>
+                      {/* Analysis Tab */}
+                      {activeTab === 'analysis' && (
+                        analysisLoading ? (
                       <div style={{ textAlign: 'center', padding: '2rem' }}>
                         <div className="spinner" style={{ margin: '0 auto 1rem' }} />
                         <p style={{ color: 'var(--text-secondary)' }}>Analyzing threat...</p>
@@ -604,9 +774,105 @@ export default function Alerts() {
                           )}
                         </div>
                       </div>
-                    ) : (
-                      <p style={{ color: 'var(--text-secondary)' }}>Unable to load analysis</p>
-                    )}
+                        ) : (
+                          <p style={{ color: 'var(--text-secondary)' }}>Unable to load analysis</p>
+                        )
+                      )}
+
+                      {/* Actions Tab */}
+                      {activeTab === 'actions' && (
+                        <div style={{ display: 'grid', gap: '1.5rem' }}>
+                          {/* Available Actions Section */}
+                          <div>
+                            <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
+                              Available Response Actions
+                            </h3>
+                            {availableActions.length === 0 ? (
+                              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                No response actions available
+                              </p>
+                            ) : (
+                              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                                {availableActions.map(action => (
+                                  <div
+                                    key={action.action_name}
+                                    style={{
+                                      background: 'var(--bg-card)',
+                                      border: '1px solid var(--border-color)',
+                                      borderRadius: '0.5rem',
+                                      padding: '1rem',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                    }}
+                                  >
+                                    <div>
+                                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                                        {action.action_name.replace(/_/g, ' ').toUpperCase()}
+                                      </div>
+                                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        {action.description}
+                                      </div>
+                                      <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
+                                        Playbook: <code style={{ fontSize: '0.7rem' }}>{action.playbook}</code>
+                                      </div>
+                                    </div>
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() => handleExecuteAction(action)}
+                                      disabled={executingAction === action.action_name}
+                                      style={{
+                                        minWidth: '100px',
+                                        opacity: executingAction === action.action_name ? 0.6 : 1,
+                                      }}
+                                    >
+                                      {executingAction === action.action_name ? 'Executing...' : 'Execute'}
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action History Section */}
+                          <div>
+                            <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
+                              Action Execution History
+                            </h3>
+                            {actionsLoading ? (
+                              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                <div className="spinner" style={{ margin: '0 auto 1rem' }} />
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Loading action history...</p>
+                              </div>
+                            ) : (
+                              <ActionHistoryTable
+                                entries={actionHistory}
+                                onViewDetails={handleViewAuditDetails}
+                                compact={false}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Events Tab */}
+                      {activeTab === 'events' && (
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>
+                          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                            View related events in a temporal timeline
+                          </p>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() => {
+                              viewRelatedEvents(alert)
+                              setActiveTab('analysis') // Switch back to analysis tab
+                            }}
+                          >
+                            Open Event Drill-Down
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -626,7 +892,63 @@ export default function Alerts() {
           }}
         />
       )}
+
+      {/* Action Confirm Dialog */}
+      {showActionConfirm && selectedAction && expandedId && (
+        <ActionConfirmDialog
+          actionName={selectedAction.action_name}
+          actionDescription={selectedAction.description}
+          alertId={expandedId}
+          onConfirm={executeAction}
+          onCancel={() => {
+            setShowActionConfirm(false)
+            setSelectedAction(null)
+          }}
+        />
+      )}
+
+      {/* Execution Details Modal */}
+      {showExecutionDetails && selectedAuditEntry && (
+        <ExecutionDetailsModal
+          entry={selectedAuditEntry}
+          onClose={() => {
+            setShowExecutionDetails(false)
+            setSelectedAuditEntry(null)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function TabButton({ active, onClick, children }: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: 'transparent',
+        border: 'none',
+        padding: '0.75rem 1.25rem',
+        fontSize: '0.85rem',
+        fontWeight: active ? 600 : 400,
+        color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+        borderBottom: active ? '2px solid var(--accent-primary)' : '2px solid transparent',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+      }}
+      onMouseEnter={e => {
+        if (!active) e.currentTarget.style.color = 'var(--text-primary)'
+      }}
+      onMouseLeave={e => {
+        if (!active) e.currentTarget.style.color = 'var(--text-secondary)'
+      }}
+    >
+      {children}
+    </button>
   )
 }
 

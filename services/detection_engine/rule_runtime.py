@@ -48,6 +48,18 @@ class RuleRuntime:
             return self._evaluate_c2_beacon(rule)
         elif logic_type == "data_exfiltration":
             return self._evaluate_data_exfiltration(rule)
+        elif logic_type == "ddos_attack":
+            return self._evaluate_ddos_attack(rule)
+        elif logic_type == "dos_endpoint":
+            return self._evaluate_dos_endpoint(rule)
+        elif logic_type == "ransomware":
+            return self._evaluate_ransomware(rule)
+        elif logic_type == "web_exploit":
+            return self._evaluate_web_exploit(rule)
+        elif logic_type == "lateral_movement":
+            return self._evaluate_lateral_movement(rule)
+        elif logic_type == "credential_dump":
+            return self._evaluate_credential_dump(rule)
         else:
             logger.warning(f"Unknown rule type: {logic_type}")
             return []
@@ -465,4 +477,483 @@ class RuleRuntime:
 
         except Exception as e:
             logger.error(f"Error evaluating data_exfiltration rule: {e}")
+            return []
+
+    def _evaluate_ddos_attack(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Evaluate DDoS attack detection rule."""
+        params = rule["match_logic"]["parameters"]
+        threshold = params.get("threshold", 100)
+        min_sources = params.get("min_sources", 5)
+        group_by = params.get("group_by", "dst_ip")
+        event_types = params.get("event_types", [])
+        window_seconds = rule.get("query_window_seconds", 300)
+
+        now = datetime.utcnow()
+        past = now - timedelta(seconds=window_seconds)
+
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": past.isoformat() + "Z",
+                                    "lte": now.isoformat() + "Z"
+                                }
+                            }
+                        },
+                        {
+                            "terms": {"event_type.keyword": event_types}
+                        }
+                    ]
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_target": {
+                    "terms": {
+                        "field": _agg_field(group_by),
+                        "size": 100
+                    },
+                    "aggs": {
+                        "distinct_sources": {
+                            "cardinality": {
+                                "field": _agg_field("src_ip")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        try:
+            result = self.client.search(index="logs-*", body=query)
+            alerts = []
+
+            for bucket in result["aggregations"]["by_target"]["buckets"]:
+                dst_ip = bucket["key"]
+                event_count = bucket["doc_count"]
+                source_count = int(bucket["distinct_sources"]["value"])
+
+                if event_count >= threshold and source_count >= min_sources:
+                    alert = {
+                        "rule_id": rule["rule_id"],
+                        "rule_name": rule["name"],
+                        "severity": rule["severity"],
+                        "component": "network",
+                        "city_zone": None,
+                        "technique_id": rule["technique_id"],
+                        "technique_name": rule["technique_name"],
+                        "evidence": {
+                            "dst_ip": dst_ip,
+                            "event_count": event_count,
+                            "distinct_source_count": source_count,
+                            "threshold": threshold,
+                            "min_sources": min_sources,
+                            "time_window_seconds": window_seconds,
+                            "query": str(query)
+                        },
+                        "related_query": f"dst_ip:{dst_ip} AND event_type:({' OR '.join(event_types)})"
+                    }
+                    alerts.append(alert)
+                    logger.info(f"Rule {rule['rule_id']} matched: {dst_ip} received {event_count} events from {source_count} sources")
+
+            return alerts
+
+        except Exception as e:
+            logger.error(f"Error evaluating ddos_attack rule: {e}")
+            return []
+
+    def _evaluate_dos_endpoint(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Evaluate endpoint DoS detection rule."""
+        params = rule["match_logic"]["parameters"]
+        threshold = params.get("threshold", 50)
+        group_by = params.get("group_by", "asset_id")
+        event_types = params.get("event_types", [])
+        window_seconds = rule.get("query_window_seconds", 300)
+
+        now = datetime.utcnow()
+        past = now - timedelta(seconds=window_seconds)
+
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": past.isoformat() + "Z",
+                                    "lte": now.isoformat() + "Z"
+                                }
+                            }
+                        },
+                        {
+                            "terms": {"event_type.keyword": event_types}
+                        }
+                    ]
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_asset": {
+                    "terms": {
+                        "field": _agg_field(group_by),
+                        "size": 100
+                    }
+                }
+            }
+        }
+
+        try:
+            result = self.client.search(index="logs-*", body=query)
+            alerts = []
+
+            for bucket in result["aggregations"]["by_asset"]["buckets"]:
+                asset_id = bucket["key"]
+                event_count = bucket["doc_count"]
+
+                if event_count >= threshold:
+                    alert = {
+                        "rule_id": rule["rule_id"],
+                        "rule_name": rule["name"],
+                        "severity": rule["severity"],
+                        "component": "network",
+                        "city_zone": None,
+                        "technique_id": rule["technique_id"],
+                        "technique_name": rule["technique_name"],
+                        "evidence": {
+                            "asset_id": asset_id,
+                            "dos_event_count": event_count,
+                            "threshold": threshold,
+                            "time_window_seconds": window_seconds,
+                            "query": str(query)
+                        },
+                        "related_query": f"asset_id:{asset_id} AND event_type:({' OR '.join(event_types)})",
+                        "asset_id": asset_id
+                    }
+                    alerts.append(alert)
+                    logger.info(f"Rule {rule['rule_id']} matched: {asset_id} had {event_count} DoS events")
+
+            return alerts
+
+        except Exception as e:
+            logger.error(f"Error evaluating dos_endpoint rule: {e}")
+            return []
+
+    def _evaluate_ransomware(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Evaluate ransomware detection rule."""
+        params = rule["match_logic"]["parameters"]
+        threshold = params.get("threshold", 1)
+        event_types = params.get("event_types", [])
+        window_seconds = rule.get("query_window_seconds", 300)
+
+        now = datetime.utcnow()
+        past = now - timedelta(seconds=window_seconds)
+
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": past.isoformat() + "Z",
+                                    "lte": now.isoformat() + "Z"
+                                }
+                            }
+                        },
+                        {
+                            "terms": {"event_type.keyword": event_types}
+                        }
+                    ]
+                }
+            },
+            "size": 10
+        }
+
+        try:
+            result = self.client.search(index="logs-*", body=query)
+            alerts = []
+
+            hits = result.get("hits", {}).get("hits", [])
+            if len(hits) >= threshold:
+                # Group by asset_id or src_ip
+                for hit in hits[:threshold]:  # Create one alert per distinct incident
+                    source = hit["_source"]
+                    asset_id = source.get("asset_id") or source.get("actor_id")
+                    src_ip = source.get("src_ip", "unknown")
+
+                    alert = {
+                        "rule_id": rule["rule_id"],
+                        "rule_name": rule["name"],
+                        "severity": rule["severity"],
+                        "component": source.get("component", "network"),
+                        "city_zone": source.get("city_zone"),
+                        "technique_id": rule["technique_id"],
+                        "technique_name": rule["technique_name"],
+                        "evidence": {
+                            "src_ip": src_ip,
+                            "asset_id": asset_id,
+                            "event_type": source.get("event_type"),
+                            "ransomware_indicators": len(hits),
+                            "threshold": threshold,
+                            "time_window_seconds": window_seconds,
+                            "query": str(query)
+                        },
+                        "related_query": f"event_type:({' OR '.join(event_types)})",
+                        "asset_id": asset_id
+                    }
+                    alerts.append(alert)
+                    logger.warning(f"Rule {rule['rule_id']} matched: Ransomware indicators detected on {asset_id or src_ip}")
+                    break  # Only create one alert for ransomware detection
+
+            return alerts
+
+        except Exception as e:
+            logger.error(f"Error evaluating ransomware rule: {e}")
+            return []
+
+    def _evaluate_web_exploit(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Evaluate web exploitation detection rule."""
+        params = rule["match_logic"]["parameters"]
+        threshold = params.get("threshold", 3)
+        group_by = params.get("group_by", "src_ip")
+        event_types = params.get("event_types", [])
+        window_seconds = rule.get("query_window_seconds", 300)
+
+        now = datetime.utcnow()
+        past = now - timedelta(seconds=window_seconds)
+
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": past.isoformat() + "Z",
+                                    "lte": now.isoformat() + "Z"
+                                }
+                            }
+                        },
+                        {
+                            "terms": {"event_type.keyword": event_types}
+                        }
+                    ]
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_source": {
+                    "terms": {
+                        "field": _agg_field(group_by),
+                        "size": 100
+                    },
+                    "aggs": {
+                        "attack_types": {
+                            "terms": {
+                                "field": "event_type.keyword",
+                                "size": 10
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        try:
+            result = self.client.search(index="logs-*", body=query)
+            alerts = []
+
+            for bucket in result["aggregations"]["by_source"]["buckets"]:
+                src_ip = bucket["key"]
+                exploit_count = bucket["doc_count"]
+                attack_types = [t["key"] for t in bucket["attack_types"]["buckets"]]
+
+                if exploit_count >= threshold:
+                    alert = {
+                        "rule_id": rule["rule_id"],
+                        "rule_name": rule["name"],
+                        "severity": rule["severity"],
+                        "component": "network",
+                        "city_zone": None,
+                        "technique_id": rule["technique_id"],
+                        "technique_name": rule["technique_name"],
+                        "evidence": {
+                            "src_ip": src_ip,
+                            "exploit_attempt_count": exploit_count,
+                            "attack_types": attack_types,
+                            "threshold": threshold,
+                            "time_window_seconds": window_seconds,
+                            "query": str(query)
+                        },
+                        "related_query": f"src_ip:{src_ip} AND event_type:({' OR '.join(event_types)})"
+                    }
+                    alerts.append(alert)
+                    logger.info(f"Rule {rule['rule_id']} matched: {src_ip} attempted {exploit_count} web exploits")
+
+            return alerts
+
+        except Exception as e:
+            logger.error(f"Error evaluating web_exploit rule: {e}")
+            return []
+
+    def _evaluate_lateral_movement(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Evaluate lateral movement detection rule."""
+        params = rule["match_logic"]["parameters"]
+        threshold = params.get("threshold", 3)
+        group_by = params.get("group_by", "src_ip")
+        event_types = params.get("event_types", [])
+        window_seconds = rule.get("query_window_seconds", 300)
+
+        now = datetime.utcnow()
+        past = now - timedelta(seconds=window_seconds)
+
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": past.isoformat() + "Z",
+                                    "lte": now.isoformat() + "Z"
+                                }
+                            }
+                        },
+                        {
+                            "terms": {"event_type.keyword": event_types}
+                        }
+                    ]
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_source": {
+                    "terms": {
+                        "field": _agg_field(group_by),
+                        "size": 100
+                    },
+                    "aggs": {
+                        "targets": {
+                            "cardinality": {
+                                "field": _agg_field("dst_ip")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        try:
+            result = self.client.search(index="logs-*", body=query)
+            alerts = []
+
+            for bucket in result["aggregations"]["by_source"]["buckets"]:
+                src_ip = bucket["key"]
+                movement_count = bucket["doc_count"]
+                target_count = int(bucket["targets"]["value"])
+
+                if movement_count >= threshold:
+                    alert = {
+                        "rule_id": rule["rule_id"],
+                        "rule_name": rule["name"],
+                        "severity": rule["severity"],
+                        "component": "network",
+                        "city_zone": None,
+                        "technique_id": rule["technique_id"],
+                        "technique_name": rule["technique_name"],
+                        "evidence": {
+                            "src_ip": src_ip,
+                            "lateral_movement_count": movement_count,
+                            "distinct_targets": target_count,
+                            "threshold": threshold,
+                            "time_window_seconds": window_seconds,
+                            "query": str(query)
+                        },
+                        "related_query": f"src_ip:{src_ip} AND event_type:({' OR '.join(event_types)})"
+                    }
+                    alerts.append(alert)
+                    logger.info(f"Rule {rule['rule_id']} matched: {src_ip} performed {movement_count} lateral movements to {target_count} targets")
+
+            return alerts
+
+        except Exception as e:
+            logger.error(f"Error evaluating lateral_movement rule: {e}")
+            return []
+
+    def _evaluate_credential_dump(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Evaluate credential dumping detection rule."""
+        params = rule["match_logic"]["parameters"]
+        threshold = params.get("threshold", 2)
+        group_by = params.get("group_by", "src_ip")
+        event_types = params.get("event_types", [])
+        window_seconds = rule.get("query_window_seconds", 300)
+
+        now = datetime.utcnow()
+        past = now - timedelta(seconds=window_seconds)
+
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": past.isoformat() + "Z",
+                                    "lte": now.isoformat() + "Z"
+                                }
+                            }
+                        },
+                        {
+                            "terms": {"event_type.keyword": event_types}
+                        }
+                    ]
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_source": {
+                    "terms": {
+                        "field": _agg_field(group_by),
+                        "size": 100
+                    }
+                }
+            }
+        }
+
+        try:
+            result = self.client.search(index="logs-*", body=query)
+            alerts = []
+
+            for bucket in result["aggregations"]["by_source"]["buckets"]:
+                src_ip = bucket["key"]
+                dump_count = bucket["doc_count"]
+
+                if dump_count >= threshold:
+                    alert = {
+                        "rule_id": rule["rule_id"],
+                        "rule_name": rule["name"],
+                        "severity": rule["severity"],
+                        "component": "network",
+                        "city_zone": None,
+                        "technique_id": rule["technique_id"],
+                        "technique_name": rule["technique_name"],
+                        "evidence": {
+                            "src_ip": src_ip,
+                            "credential_access_count": dump_count,
+                            "threshold": threshold,
+                            "time_window_seconds": window_seconds,
+                            "query": str(query)
+                        },
+                        "related_query": f"src_ip:{src_ip} AND event_type:({' OR '.join(event_types)})"
+                    }
+                    alerts.append(alert)
+                    logger.warning(f"Rule {rule['rule_id']} matched: {src_ip} attempted {dump_count} credential dumps")
+
+            return alerts
+
+        except Exception as e:
+            logger.error(f"Error evaluating credential_dump rule: {e}")
             return []

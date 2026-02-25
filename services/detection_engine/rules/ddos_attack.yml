@@ -1,0 +1,30 @@
+rule_id: ddos_attack_001
+name: Distributed Denial of Service (DDoS) Detection
+description: Detects DDoS attacks by identifying high-volume traffic from multiple source IPs targeting a single destination IP or service within a short time window
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: ddos_attack
+  parameters:
+    threshold: 100  # Minimum packet/request count
+    min_sources: 5  # Minimum distinct source IPs
+    group_by: dst_ip
+    event_types:
+      - network_connection
+      - traffic_spike
+      - ddos
+      - syn_flood
+      - udp_flood
+technique_id: T1498
+technique_name: "Network Denial of Service"
+response_actions:
+  - block_ip
+  - isolate_service
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate traffic spikes during peak hours or special events may trigger this rule.
+  Consider adjusting thresholds for high-traffic services or implementing rate limiting
+  to reduce false positives from legitimate distributed access patterns.

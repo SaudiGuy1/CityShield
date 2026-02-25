@@ -1,0 +1,29 @@
+rule_id: ransomware_001
+name: Ransomware Activity Detection
+description: Detects ransomware encryption activity by identifying mass file encryption events, encryption-related processes, and ransom note indicators
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: ransomware
+  parameters:
+    threshold: 1  # Single incident is critical
+    event_types:
+      - file_encryption
+      - ransomware_indicator
+      - mass_file_modification
+      - ransom_note_detected
+      - crypto_operation
+technique_id: T1486
+technique_name: "Data Encrypted for Impact"
+response_actions:
+  - isolate_service
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-iot
+  - logs-traffic
+false_positive_notes: |
+  Legitimate encryption operations (data archival, secure file transfers, backup encryption)
+  may trigger this rule. Establish baseline for normal encryption activity and whitelist
+  known legitimate encryption processes to minimize false positives.

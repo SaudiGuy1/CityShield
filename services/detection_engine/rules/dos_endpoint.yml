@@ -1,0 +1,30 @@
+rule_id: dos_endpoint_001
+name: Endpoint Denial of Service Detection
+description: Detects DoS attacks targeting specific endpoints or services by monitoring resource exhaustion patterns and high-volume requests to single assets
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: dos_endpoint
+  parameters:
+    threshold: 50  # Minimum event count per asset
+    group_by: asset_id
+    event_types:
+      - resource_exhaustion
+      - service_overload
+      - endpoint_dos
+      - cpu_spike
+      - memory_exhaustion
+technique_id: T1499
+technique_name: "Endpoint Denial of Service"
+response_actions:
+  - isolate_service
+  - block_ip
+log_sources:
+  - logs-traffic
+  - logs-iot
+  - logs-network
+false_positive_notes: |
+  Resource-intensive legitimate operations (batch processing, backups, system updates)
+  may trigger this rule. Monitor for repeated patterns and correlate with scheduled
+  maintenance windows to reduce false positives.
