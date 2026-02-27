@@ -1,0 +1,53 @@
+rule_id: sched_task_001
+name: Suspicious Scheduled Task Creation
+description: |
+  Detects creation of scheduled tasks with suspicious characteristics:
+  - SYSTEM privileges
+  - PowerShell or script execution
+  - Masquerading as legitimate Windows update tasks
+  - Tasks running from temporary directories
+  - Tasks with encoded commands or network activity
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: scheduled_task_creation
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - scheduled_task_creation
+      - process_creation
+    suspicious_indicators:
+      - task_name_masquerading
+      - system_privilege
+      - powershell_action
+      - temp_directory
+      - encoded_command
+      - network_download
+    process_filters:
+      - schtasks.exe
+technique_id: T1053.005
+technique_name: "Scheduled Task/Job: Scheduled Task"
+response_actions:
+  - isolate_service
+  - revoke_token
+  - block_ip
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate software installations and updates may create scheduled tasks.
+
+  Common false positives:
+  - Windows Update creating update tasks
+  - Software installers (Adobe, Google Chrome) creating update tasks
+  - Antivirus software creating scan tasks
+  - Backup software creating scheduled backup tasks
+
+  Reduce false positives by:
+  - Whitelisting signed executables from trusted vendors
+  - Excluding tasks created during known maintenance windows
+  - Monitoring for tasks with suspicious names mimicking system tasks
+  - Correlating with recent software installation events
+  - Flagging tasks that execute from \Temp, \AppData, or user directories

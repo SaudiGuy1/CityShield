@@ -1,0 +1,78 @@
+rule_id: obfuscation_001
+name: Obfuscated Command or Script Execution
+description: |
+  Detects execution of obfuscated commands and scripts using various techniques:
+  - Base64 encoded PowerShell commands
+  - String concatenation and character substitution
+  - Compression (Gzip, Deflate)
+  - XOR or other encoding schemes
+  - Environment variable abuse
+  - High entropy command lines
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: obfuscation_detection
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - process_creation
+      - obfuscated_execution
+      - powershell_execution
+    obfuscation_indicators:
+      - base64_encoded
+      - high_entropy
+      - string_concatenation
+      - character_substitution
+      - compression_detected
+      - xor_encoding
+      - environment_var_abuse
+    entropy_threshold: 6.5
+    suspicious_patterns:
+      - "-EncodedCommand"
+      - "-enc"
+      - "FromBase64String"
+      - "IO.Compression"
+      - "GZipStream"
+      - "[char]"
+      - "-bxor"
+      - "IEX"
+      - "Invoke-Expression"
+    process_filters:
+      - powershell.exe
+      - cmd.exe
+      - wscript.exe
+      - cscript.exe
+technique_id: T1027
+technique_name: "Obfuscated Files or Information"
+response_actions:
+  - isolate_service
+  - revoke_token
+  - block_ip
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Some legitimate software uses obfuscation for various purposes.
+
+  Common false positives:
+  - Software deployment tools using encoded parameters
+  - Legitimate automation scripts with Base64-encoded configurations
+  - Application installers with compressed payloads
+  - Administrative scripts protecting sensitive data
+
+  Reduce false positives by:
+  - Whitelisting signed scripts from trusted vendors
+  - Excluding known deployment tools (SCCM, Intune)
+  - Monitoring entropy score (very high entropy = likely malicious)
+  - Detecting multiple obfuscation techniques in single command
+  - Correlating with network connections to unknown IPs
+  - Flagging obfuscation combined with DownloadString/IEX
+  - Requiring code signing for encoded PowerShell execution
+
+  Entropy scoring guide:
+  - < 4.0: Plain text (normal)
+  - 4.0-6.0: Moderate complexity (may be normal)
+  - 6.0-7.5: High entropy (suspicious)
+  - > 7.5: Very high entropy (likely obfuscated/encrypted)

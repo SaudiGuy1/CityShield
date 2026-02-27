@@ -1,0 +1,65 @@
+rule_id: token_manip_001
+name: Access Token Manipulation Detected
+description: |
+  Detects attempts to manipulate Windows access tokens for privilege escalation:
+  - Token impersonation from high-privilege processes
+  - Token duplication and theft
+  - SeDebugPrivilege abuse
+  - Creation of processes with stolen tokens
+  - Suspicious runas or psexec usage
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: token_manipulation
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - token_manipulation
+      - process_access
+      - privilege_escalation
+      - process_creation
+    suspicious_indicators:
+      - token_theft
+      - privilege_escalation
+      - lsass_access
+      - token_impersonation
+      - sedebug_privilege_use
+    api_patterns:
+      - OpenProcessToken
+      - DuplicateToken
+      - DuplicateTokenEx
+      - ImpersonateLoggedOnUser
+      - SetThreadToken
+      - AdjustTokenPrivileges
+    target_processes:
+      - lsass.exe
+      - winlogon.exe
+      - services.exe
+technique_id: T1134
+technique_name: "Access Token Manipulation"
+response_actions:
+  - isolate_service
+  - revoke_token
+  - block_ip
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Token manipulation is used by legitimate software for specific purposes.
+
+  Common false positives:
+  - Task Scheduler running tasks as different users
+  - Windows services impersonating users
+  - Administrative tools using RunAs
+  - Security software accessing process tokens
+  - Backup software running with SYSTEM privileges
+
+  Reduce false positives by:
+  - Whitelisting known administrative tools (Task Scheduler, services.exe)
+  - Excluding system processes performing legitimate token operations
+  - Monitoring for token theft from critical processes (lsass, winlogon)
+  - Flagging unexpected privilege escalations (user → SYSTEM)
+  - Detecting access to lsass.exe from non-security software
+  - Correlating with unauthorized process creation as SYSTEM

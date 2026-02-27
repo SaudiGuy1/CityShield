@@ -1,0 +1,46 @@
+rule_id: cmd_exec_001
+name: Suspicious CMD Execution for Reconnaissance
+description: |
+  Detects suspicious cmd.exe execution patterns commonly used for system
+  reconnaissance, credential access preparation, and data staging.
+  Monitors for net.exe, reg.exe, systeminfo, whoami, and other discovery commands.
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: cmd_execution
+  parameters:
+    threshold: 5
+    group_by: src_ip
+    event_types:
+      - process_creation
+      - cmd_execution
+    suspicious_commands:
+      - "net user"
+      - "net group"
+      - "net localgroup"
+      - "systeminfo"
+      - "whoami"
+      - "reg save"
+      - "reg export"
+      - "tasklist"
+      - "netstat"
+      - "ipconfig /all"
+      - "net share"
+      - "net view"
+technique_id: T1059.003
+technique_name: "Command and Scripting Interpreter: Windows Command Shell"
+response_actions:
+  - isolate_service
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  System administrators and automated scripts may legitimately use these commands.
+
+  Reduce false positives by:
+  - Whitelisting known admin accounts and service accounts
+  - Excluding scheduled tasks that run system inventory scripts
+  - Monitoring for rapid succession (5+ commands in 5 minutes)
+  - Correlating with unusual login times or source IPs

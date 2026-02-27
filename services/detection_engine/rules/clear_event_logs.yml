@@ -1,0 +1,60 @@
+rule_id: log_clear_001
+name: Windows Event Logs Cleared
+description: |
+  Detects clearing of Windows event logs, a common post-compromise activity
+  to remove evidence of malicious actions. Monitors wevtutil, PowerShell
+  Clear-EventLog, and WMI-based log clearing methods.
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: log_clearing
+  parameters:
+    threshold: 1
+    group_by: asset_id
+    event_types:
+      - log_clearing
+      - event_log_cleared
+      - process_creation
+    suspicious_indicators:
+      - security_log_cleared
+      - multiple_logs_cleared
+      - all_logs_cleared
+      - automated_clearing
+    critical_logs:
+      - Security
+      - System
+      - "Windows PowerShell"
+      - "Microsoft-Windows-Sysmon/Operational"
+    process_filters:
+      - wevtutil.exe
+      - powershell.exe
+      - wmic.exe
+technique_id: T1070.001
+technique_name: "Indicator Removal: Clear Windows Event Logs"
+response_actions:
+  - isolate_service
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Event log clearing has limited legitimate use cases.
+
+  Possible false positives:
+  - Scheduled maintenance scripts clearing old logs
+  - System troubleshooting by IT administrators
+  - Disk space management on log servers
+  - Application-specific log rotation
+
+  Reduce false positives by:
+  - Requiring justification for Security log clearing
+  - Whitelisting approved log management tools
+  - Monitoring for clearing outside maintenance windows
+  - Flagging clearing of Security log (almost always suspicious)
+  - Detecting rapid clearing of multiple logs
+  - Correlating with recent authentication or privilege escalation events
+  - Alerting on clearing immediately after suspicious activity
+
+  NOTE: Clearing of Security event log should almost always generate an alert
+  unless performed by authorized log management systems.

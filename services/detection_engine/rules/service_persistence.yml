@@ -1,0 +1,59 @@
+rule_id: service_persist_001
+name: Windows Service Persistence Mechanism
+description: |
+  Detects creation or modification of Windows services for persistence:
+  - Services with binaries in suspicious locations (ProgramData, Public, Temp)
+  - Services masquerading as legitimate Windows services
+  - Services running PowerShell or scripts
+  - Modifications to critical Windows services
+  - Services with auto-start configured
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: service_persistence
+  parameters:
+    threshold: 1
+    group_by: asset_id
+    event_types:
+      - service_creation
+      - service_modification
+      - service_start
+    suspicious_indicators:
+      - suspicious_binary_location
+      - service_name_masquerading
+      - powershell_or_script
+      - critical_service_modification
+      - auto_start_enabled
+    binary_path_patterns:
+      - "\\ProgramData\\"
+      - "\\Users\\Public\\"
+      - "\\Temp\\"
+      - "\\AppData\\"
+      - "\\Windows\\Tasks\\"
+technique_id: T1543.003
+technique_name: "Create or Modify System Process: Windows Service"
+response_actions:
+  - isolate_service
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Some legitimate software creates services in non-standard locations.
+
+  Common false positives:
+  - Third-party software using ProgramData for service binaries
+  - Update services for browsers and applications
+  - Monitoring or security software creating services
+
+  Reduce false positives by:
+  - Whitelisting services from signed executables
+  - Excluding known software vendor service names
+  - Monitoring for services with:
+    * Names similar to Windows services (slight misspellings)
+    * Binaries in user-writable directories
+    * PowerShell or cmd.exe as service binary
+    * SYSTEM privileges combined with suspicious paths
+  - Correlating with recent compromise indicators
+  - Flagging services created outside maintenance windows

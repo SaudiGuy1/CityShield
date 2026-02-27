@@ -1,0 +1,81 @@
+rule_id: data_archive_001
+name: Suspicious Data Archiving Activity
+description: |
+  Detects archiving of data that may indicate preparation for exfiltration:
+  - Large archive creation in unusual locations
+  - Password-protected or encrypted archives
+  - Archives containing sensitive directories (Documents, Desktop, AppData)
+  - Split archives (volume spanning)
+  - Archiving during off-hours or by unauthorized users
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: data_archiving
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - process_creation
+      - file_creation
+      - data_staging
+    suspicious_indicators:
+      - password_protected_archive
+      - encrypted_archive
+      - large_archive
+      - sensitive_data_archived
+      - unusual_archive_location
+      - split_archive
+    archive_tools:
+      - rar.exe
+      - winrar.exe
+      - 7z.exe
+      - 7za.exe
+      - powershell.exe
+      - makecab.exe
+      - expand.exe
+    sensitive_paths:
+      - "\\Documents"
+      - "\\Desktop"
+      - "\\Downloads"
+      - "\\AppData"
+      - "\\Program Files"
+    suspicious_locations:
+      - "\\Temp"
+      - "\\Public"
+      - "\\ProgramData"
+    size_threshold_mb: 50
+technique_id: T1560.001
+technique_name: "Archive Collected Data: Archive via Utility"
+response_actions:
+  - isolate_service
+  - revoke_token
+  - block_ip
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Data archiving is common for legitimate purposes.
+
+  Common false positives:
+  - Users creating personal backups
+  - File transfers for legitimate business purposes
+  - Software installations using compressed archives
+  - Automated backup solutions
+  - Developers archiving project files
+
+  Reduce false positives by:
+  - Threshold for archive size (> 50 MB more suspicious)
+  - Whitelisting known backup software
+  - Monitoring for archives in temporary directories
+  - Flagging password-protected archives (less common for personal use)
+  - Detecting archives followed by network upload
+  - Correlating with data exfiltration indicators
+  - Excluding archives to network shares or known backup locations
+  - Monitoring for archiving of system directories (Program Files, Windows)
+
+  Risk scoring:
+  - Small archive to user directory: Low
+  - Large archive to Temp: Medium
+  - Password-protected archive to Temp: High
+  - Encrypted archive + network upload: Critical

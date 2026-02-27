@@ -1,0 +1,70 @@
+rule_id: defense_evasion_001
+name: Security Tools Disabled or Modified
+description: |
+  Detects attempts to disable or modify security tools and defensive mechanisms:
+  - Windows Defender real-time protection disabled
+  - Security services stopped or disabled
+  - Firewall disabled via netsh or PowerShell
+  - Event logging disabled
+  - UAC settings weakened
+  - Security product exclusions added
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: defense_evasion
+  parameters:
+    threshold: 2
+    group_by: asset_id
+    event_types:
+      - service_stop
+      - service_disabled
+      - registry_modification
+      - process_creation
+      - firewall_modification
+    suspicious_indicators:
+      - av_disabled
+      - firewall_disabled
+      - logging_disabled
+      - security_service_stopped
+      - exclusion_added
+      - uac_disabled
+    target_services:
+      - WinDefend
+      - MpsSvc
+      - EventLog
+      - wuauserv
+      - wscsvc
+    process_filters:
+      - powershell.exe
+      - net.exe
+      - sc.exe
+      - netsh.exe
+      - reg.exe
+      - wevtutil.exe
+technique_id: T1562.001
+technique_name: "Impair Defenses: Disable or Modify Tools"
+response_actions:
+  - isolate_service
+  - revoke_token
+  - block_ip
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate administrative activities may trigger this rule.
+
+  Common false positives:
+  - IT administrators troubleshooting security software
+  - Software installations temporarily disabling AV
+  - Maintenance scripts managing services
+  - Group Policy changes affecting security settings
+
+  Reduce false positives by:
+  - Whitelisting known maintenance windows
+  - Excluding IT admin workstations during approved changes
+  - Monitoring for MULTIPLE security impairments (threshold ≥ 2)
+  - Flagging defense evasion outside business hours
+  - Detecting rapid succession of security disablement
+  - Correlating with other attack indicators (process injection, lateral movement)
+  - Requiring re-enablement verification for legitimate changes

@@ -1,0 +1,65 @@
+rule_id: proc_inject_001
+name: Process Injection Detected
+description: |
+  Detects process injection techniques including:
+  - DLL injection using Windows API calls
+  - Reflective PE injection
+  - Process hollowing
+  - Cross-process memory manipulation
+  - Suspicious rundll32 usage
+  - PowerShell with memory manipulation
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: process_injection
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - process_injection
+      - process_access
+      - dll_load
+      - process_creation
+    suspicious_indicators:
+      - cross_process_memory_write
+      - reflective_injection
+      - process_hollowing
+      - suspicious_dll_load
+      - api_hooking
+    api_patterns:
+      - OpenProcess
+      - VirtualAllocEx
+      - WriteProcessMemory
+      - CreateRemoteThread
+      - NtCreateThreadEx
+      - QueueUserAPC
+    process_filters:
+      - powershell.exe
+      - rundll32.exe
+      - wmic.exe
+technique_id: T1055.001
+technique_name: "Process Injection: Dynamic-link Library Injection"
+response_actions:
+  - isolate_service
+  - revoke_token
+  - block_ip
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Some legitimate software uses process injection for valid purposes.
+
+  Common false positives:
+  - Antivirus/EDR software injecting into processes for monitoring
+  - Debugging tools (Visual Studio, WinDbg) during development
+  - Application compatibility shims
+  - Legitimate DLL hooking by accessibility tools
+
+  Reduce false positives by:
+  - Whitelisting signed security software
+  - Excluding developer workstations during debug sessions
+  - Monitoring for injections into critical processes (lsass, svchost)
+  - Flagging injections from temporary directories
+  - Detecting unusual parent-child process relationships
+  - Correlating with other suspicious activities (credential access, lateral movement)

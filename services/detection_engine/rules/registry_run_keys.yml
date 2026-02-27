@@ -1,0 +1,58 @@
+rule_id: registry_persist_001
+name: Suspicious Registry Run Key Persistence
+description: |
+  Detects additions or modifications to Windows registry run keys commonly
+  used for persistence. Monitors Run, RunOnce, and other autostart locations
+  for suspicious entries pointing to temporary directories, PowerShell execution,
+  or masquerading executables.
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: registry_persistence
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - registry_modification
+      - registry_add
+    persistence_keys:
+      - "\\CurrentVersion\\Run"
+      - "\\CurrentVersion\\RunOnce"
+      - "\\CurrentVersion\\RunServices"
+      - "\\CurrentVersion\\RunServicesOnce"
+      - "\\CurrentVersion\\Explorer\\User Shell Folders"
+      - "\\CurrentVersion\\Explorer\\Shell Folders"
+      - "\\Windows\\CurrentVersion\\Policies\\Explorer\\Run"
+    suspicious_indicators:
+      - temp_directory_execution
+      - powershell_execution
+      - script_execution
+      - name_masquerading
+      - external_download
+      - hidden_window
+technique_id: T1547.001
+technique_name: "Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder"
+response_actions:
+  - isolate_service
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate software frequently uses run keys for autostart functionality.
+
+  Common false positives:
+  - Software installations adding legitimate autostart entries
+  - User applications (Dropbox, OneDrive, Slack) adding run keys
+  - Corporate software (VPN clients, endpoint agents) using run keys
+
+  Reduce false positives by:
+  - Whitelisting known application paths (C:\Program Files\*)
+  - Excluding signed executables from trusted vendors
+  - Flagging entries with:
+    * Executables in \Temp, \AppData\Local\Temp, or Public directories
+    * PowerShell or script interpreter execution
+    * Command-line parameters with encoding or obfuscation
+    * Names similar to system processes (svchost, lsass, explorer variants)
+  - Monitoring for rapid creation/deletion patterns

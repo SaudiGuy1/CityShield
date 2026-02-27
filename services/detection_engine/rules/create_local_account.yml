@@ -1,0 +1,52 @@
+rule_id: account_create_001
+name: Suspicious Local Account Creation
+description: |
+  Detects creation of local user accounts with suspicious characteristics:
+  - Accounts added to privileged groups (Administrators, Remote Desktop Users)
+  - Hidden accounts (username ending with $)
+  - Accounts with passwords set to never expire
+  - Rapid account creation followed by privilege escalation
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: account_creation
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - user_account_creation
+      - user_group_modification
+      - process_creation
+    suspicious_indicators:
+      - admin_group_membership
+      - rdp_access_granted
+      - password_never_expires
+      - hidden_account
+      - rapid_privilege_escalation
+    process_filters:
+      - net.exe
+      - net1.exe
+      - powershell.exe
+technique_id: T1136.001
+technique_name: "Create Account: Local Account"
+response_actions:
+  - revoke_token
+  - isolate_service
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate account creation occurs during:
+  - IT onboarding processes
+  - Automated provisioning systems
+  - Service account creation
+
+  Reduce false positives by:
+  - Whitelisting known IT administrator workstations
+  - Excluding accounts created by trusted provisioning tools
+  - Monitoring for accounts immediately added to Administrators group
+  - Flagging accounts created outside business hours
+  - Detecting unusual naming patterns (short names, numeric suffixes)
+  - Correlating with unauthorized login sources
+  - Alert on hidden accounts (ending with $) unless from domain controller

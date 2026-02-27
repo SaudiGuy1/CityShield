@@ -1,0 +1,44 @@
+rule_id: powershell_exec_001
+name: Suspicious PowerShell Execution
+description: |
+  Detects suspicious PowerShell execution patterns including encoded commands,
+  execution policy bypasses, hidden windows, and network download attempts.
+  Common in initial access, execution, and defense evasion phases.
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: powershell_execution
+  parameters:
+    threshold: 3
+    group_by: src_ip
+    event_types:
+      - process_creation
+      - powershell_execution
+    suspicious_flags:
+      - EncodedCommand
+      - ExecutionPolicy Bypass
+      - NoProfile
+      - WindowStyle Hidden
+      - DownloadString
+      - DownloadFile
+      - Invoke-Expression
+      - IEX
+      - NonInteractive
+technique_id: T1059.001
+technique_name: "Command and Scripting Interpreter: PowerShell"
+response_actions:
+  - isolate_service
+  - block_ip
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate administrative scripts may trigger this rule if they use:
+  - Execution policy bypass for automation
+  - Encoded commands for complex parameter passing
+  - Remote script execution from trusted internal repositories
+
+  Whitelist known admin workstations and scheduled task hosts.
+  Consider adding exceptions for scripts signed with trusted certificates.

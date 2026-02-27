@@ -1,0 +1,74 @@
+rule_id: screen_capture_001
+name: Screen Capture Activity Detected
+description: |
+  Detects attempts to capture screenshots using various methods:
+  - PowerShell with System.Drawing and System.Windows.Forms
+  - Graphics.CopyFromScreen API usage
+  - Automated screenshot loops
+  - Screenshot capture with network upload
+  - Third-party screenshot tools (nircmd, etc.)
+enabled: true
+severity: medium
+query_window_seconds: 300
+match_logic:
+  type: screen_capture
+  parameters:
+    threshold: 3
+    group_by: asset_id
+    event_types:
+      - process_creation
+      - assembly_load
+      - file_creation
+      - network_connection
+    suspicious_indicators:
+      - screen_capture_api
+      - graphics_assembly_load
+      - automated_capture_loop
+      - screenshot_upload
+      - hidden_execution
+    api_patterns:
+      - CopyFromScreen
+      - System.Drawing.Bitmap
+      - System.Windows.Forms.Screen
+      - GetDesktopWindow
+      - BitBlt
+    assembly_loads:
+      - System.Windows.Forms
+      - System.Drawing
+    process_filters:
+      - powershell.exe
+      - nircmd.exe
+      - python.exe
+technique_id: T1113
+technique_name: "Screen Capture"
+response_actions:
+  - isolate_service
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Screen capture has many legitimate uses.
+
+  Common false positives:
+  - Remote desktop and support tools (TeamViewer, AnyDesk)
+  - Screen recording software (OBS, Camtasia)
+  - Screenshot utilities (Snagit, Greenshot)
+  - Monitoring and collaboration tools (Zoom, Teams recording)
+  - Automated testing frameworks
+  - Documentation tools
+
+  Reduce false positives by:
+  - Whitelisting known screenshot and remote access tools
+  - Threshold: Requiring 3+ captures in 5 minutes
+  - Monitoring for captures combined with network upload
+  - Flagging hidden window execution (WindowStyle Hidden)
+  - Detecting screenshots saved to temporary directories
+  - Correlating with other collection activities (keylogging, file staging)
+  - Excluding captures during known screen sharing sessions
+
+  Severity considerations:
+  - Single screenshot: Low severity (may be legitimate)
+  - Automated loop (3+ captures): Medium severity
+  - Capture + network upload: High severity
+  - Capture + encryption + upload: Critical severity

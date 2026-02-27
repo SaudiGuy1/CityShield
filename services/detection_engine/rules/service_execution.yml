@@ -1,0 +1,55 @@
+rule_id: service_exec_001
+name: Suspicious Windows Service Creation or Modification
+description: |
+  Detects creation or modification of Windows services with suspicious characteristics:
+  - Service binaries in temporary or user directories
+  - Services masquerading as legitimate Windows services
+  - Services executing PowerShell or scripts
+  - Services with SYSTEM privileges created by non-admin tools
+  - Modifications to critical Windows services
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: service_execution
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - service_creation
+      - service_modification
+      - process_creation
+    suspicious_indicators:
+      - temp_directory_binary
+      - name_masquerading
+      - powershell_service
+      - script_execution
+      - critical_service_modification
+    process_filters:
+      - sc.exe
+      - powershell.exe
+technique_id: T1569.002
+technique_name: "System Services: Service Execution"
+response_actions:
+  - isolate_service
+  - revoke_token
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate software may create services during installation or updates.
+
+  Common false positives:
+  - Software installers creating legitimate services
+  - System administrators creating services for monitoring or automation
+  - Update processes modifying service configurations
+
+  Reduce false positives by:
+  - Whitelisting known software installation processes
+  - Excluding services created by signed installers
+  - Monitoring for services with binaries in non-standard locations:
+    * C:\Windows\Temp
+    * C:\Users\*\AppData
+    * C:\ProgramData (unless from trusted vendor)
+  - Flagging services that mimic system service names with slight variations
+  - Correlating with privilege escalation or lateral movement activities
