@@ -90,7 +90,9 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 - Docker Compose 2.x or later
 - 8GB RAM minimum (16GB recommended)
 - 20GB free disk space
-- **Linux only**: OpenSearch requires `sudo sysctl -w vm.max_map_count=262144` (add to `/etc/sysctl.conf` for persistence)
+- **Linux (native only)**: If running Docker on a native Linux host, OpenSearch requires:
+  `sudo sysctl -w vm.max_map_count=262144`
+  (Not required on macOS or Windows when using Docker Desktop.)
 
 ## Quick Start
 
