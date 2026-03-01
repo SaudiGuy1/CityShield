@@ -70,10 +70,15 @@ jobs:
       - name: Wait for OpenSearch
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://localhost:9200/_cluster/health && break
-            echo "Waiting for OpenSearch... ($i)"
+            if curl -sf http://localhost:9200/_cluster/health; then
+              echo "OpenSearch is ready"
+              exit 0
+            fi
+            echo "Waiting for OpenSearch... ($i/30)"
             sleep 2
           done
+          echo "OpenSearch failed to start" >&2
+          exit 1
 
       - name: Run tests
         run: |
