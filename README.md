@@ -8,13 +8,18 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 
 - **Modular Simulation Layer**: Traffic management, IoT sensors, and network emulator services that generate realistic event streams
 - **Cyber Range**: Isolated attack/defense lab with a real Metasploitable target and Kali-based attacker container, with live packet capture via `range_logger`
+- **IoT Range**: Isolated IoT sensor hub training target with HTTP management interface and MQTT-like listener, reachable from the Research Lab terminal
 - **Centralized Logging**: Filebeat ships logs to OpenSearch for analysis
-- **Threat Detection**: 15 rule-based detection rules with MITRE ATT&CK mapping and optional threat intelligence enrichment (AbuseIPDB)
+- **Threat Detection**: 25 rule-based detection rules with MITRE ATT&CK mapping and optional threat intelligence enrichment (AbuseIPDB)
+- **MITRE ATT&CK Techniques**: 31 techniques with tactic mapping, available as configurable attack techniques in the Custom Scenario Builder
+- **OWASP Top 10 Scenarios**: 10 built-in OWASP-aligned training scenarios (A01-A10:2021) that generate simulated attack traffic
 - **Automated Response**: Python-based response manager executes Ansible playbooks for containment actions
 - **Interactive 3D City Visualization**: Real-time 3D smart city powered by Three.js / React Three Fiber with 6 zones (Traffic, IoT, Network, Security, Industrial, Cyber Range), orbit controls, hover/click interactions, and live data-driven building states
-- **Attack Scenario Engine**: 11 built-in scenarios with real-time stage progression, 4-stage execution per scenario, and live progress tracking in the UI
-- **Interactive Web UI**: React-based dashboard for monitoring, alert investigation, and scenario management
+- **Attack Scenario Engine**: 21+ built-in scenarios (including 10 OWASP) with real-time stage progression, 4-stage execution per scenario, and live progress tracking in the UI
+- **Attack Proposals**: Researchers submit attack proposals for admin approval before they become executable scenarios
+- **Interactive Web UI**: React-based dashboard for monitoring, alert investigation, scenario management, and MITRE technique reference
 - **Device Power Control**: Administrators can toggle devices on/off from the Device Management page or the 3D Asset Inspector, with real-time visual feedback in the 3D city
+- **Employee Cybersecurity Awareness Training Module**: Interactive security training portal (`/awareness`) with phishing, passwords, data protection, and incident reporting modules plus a 5-question knowledge check with pass/fail scoring
 - **Role-Based Access Control**: Administrator, Analyst, and Researcher roles with appropriate permissions
 - **Evaluation Metrics**: MTTD, MTTR, detection accuracy, false positive rate, and resource utilization tracking
 
@@ -76,32 +81,17 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 
 ## Quick Start
 
-### 1. Clone and Setup
+### 1. Clone, Bootstrap, and Start
 
 ```bash
 git clone https://github.com/SamiAhmedQMUL/CityShield.git
 cd CityShield
 
-# Run bootstrap script
+# Bootstrap: copies .env.example → .env, starts OpenSearch, creates indices
 ./scripts/bootstrap.sh
-```
 
-### 2. Configure Environment
-
-```bash
-# Copy and edit .env file
-cp .env.example .env
-
-# IMPORTANT: Update these values in .env:
-# - BACKEND_JWT_SECRET (generate a secure random string)
-# - OPENSEARCH_PASS (change default password)
-# - DEFAULT_ADMIN_PASS (change default admin password)
-```
-
-### 3. Start the Platform
-
-```bash
-docker compose up --build
+# Start all services (detached, with build)
+docker compose up -d --build
 ```
 
 Wait for all services to become healthy (2-3 minutes). Core services:
@@ -122,6 +112,8 @@ Wait for all services to become healthy (2-3 minutes). Core services:
 | `metasploitable` | — | Vulnerable training target |
 | `attacker` | — | Kali Linux attack container |
 | `range_logger` | — | Cyber range packet capture |
+| `iot_target` | — | IoT sensor hub training target |
+| `iot_range_logger` | — | IoT range packet capture |
 
 ### 4. Access the Platform
 
@@ -131,10 +123,17 @@ Wait for all services to become healthy (2-3 minutes). Core services:
 - **OpenSearch Dashboards**: http://localhost:5601
 
 **Default Login Credentials**:
-- Username: `admin`
-- Password: `CityShield@Admin2026`
 
-**⚠️ IMPORTANT**: Change the default admin password immediately after first login!
+| Account | Username | Password | Role |
+|---|---|---|---|
+| Administrator | `admin` | `CityShield@Admin2026` | Full platform access |
+| Researcher | `researcher` | `CityShield@Researcher2026` | Scenarios, proposals, research lab |
+
+Both accounts are seeded automatically on first startup (idempotent — safe to restart). Credentials are configured via environment variables in `.env` (`DEFAULT_ADMIN_*` / `DEFAULT_RESEARCHER_*`).
+
+**To change passwords**: Login as Administrator, navigate to **Admin > Users**, select the user, and update their password. To disable an account, toggle its **Active** status to inactive.
+
+**⚠️ IMPORTANT**: Change the default passwords immediately after first login!
 
 ## Using CityShield
 
@@ -166,13 +165,57 @@ Wait for all services to become healthy (2-3 minutes). Core services:
 
 | Role | Permissions |
 |------|-------------|
-| **Administrator** | Manage users, system configuration, toggle device power on/off, view all resources |
-| **Analyst** | View alerts and logs, investigate incidents, update alert status |
-| **Researcher** | Create scenarios, manage rules, run simulations, export datasets |
+| **Administrator** | Manage users, system configuration, toggle device power on/off, approve attack proposals, view all resources |
+| **Analyst** | View alerts and logs, investigate incidents, update alert status, execute response actions |
+| **Researcher** | Create scenarios, submit attack proposals, manage rules, run simulations, manage research lab |
+
+## Attack Proposals
+
+Researchers can submit attack proposals that require Administrator approval before becoming executable scenarios:
+
+1. Navigate to **Proposals** in the UI
+2. Click **Submit Proposal** — fill in title, description, target component, attack pattern, and optionally select MITRE techniques
+3. The proposal appears as **pending** for the admin
+4. Admin reviews and clicks **Approve** (creates a scenario) or **Reject** (with optional comment)
+5. Approved proposals appear in the Scenario Builder for execution
+
+**API Endpoints:**
+- `POST /api/proposals` — Submit proposal (Researcher/Admin)
+- `GET /api/proposals` — List proposals (filtered by role)
+- `PUT /api/proposals/{id}/review` — Approve/reject (Admin only)
+
+## MITRE ATT&CK Techniques
+
+The platform includes 31 MITRE ATT&CK techniques, each available as a configurable attack technique in the **Custom Scenario Builder**. Every technique has unique, purpose-specific parameters (e.g., credential dumping has dump source/tool selection, process injection has injection method/target processes).
+
+When creating a custom scenario, you can select MITRE techniques from a searchable multi-select. Selected technique IDs are persisted with the scenario and displayed as chips on scenario cards in the scenario list.
+
+**API Endpoints:**
+- `GET /api/mitre/techniques` — Full technique list (supports `?search=` and `?tactic=` query params)
+- `GET /api/scenarios/attack-techniques` — All 31 techniques with configurable parameters
+
+## OWASP Top 10 Scenarios
+
+10 built-in OWASP-aligned scenarios (A01-A10:2021) are seeded on startup:
+
+| Scenario | OWASP ID | Attack Pattern |
+|---|---|---|
+| Broken Access Control | A01:2021 | Brute Force |
+| Cryptographic Failures | A02:2021 | Data Exfiltration |
+| Injection | A03:2021 | Port Scan |
+| Insecure Design | A04:2021 | Port Scan |
+| Security Misconfiguration | A05:2021 | Port Scan |
+| Vulnerable Components | A06:2021 | Port Scan |
+| Authentication Failures | A07:2021 | Brute Force |
+| Integrity Failures | A08:2021 | Malware |
+| Logging Failures | A09:2021 | Data Exfiltration |
+| SSRF | A10:2021 | Port Scan |
+
+These appear in the Scenario Builder with an **OWASP** badge.
 
 ## Detection Rules
 
-CityShield includes 15 detection rules mapped to MITRE ATT&CK, including:
+CityShield includes 25 detection rules mapped to MITRE ATT&CK, including:
 
 | Rule | Technique | Tactic | Severity |
 |---|---|---|---|
@@ -217,6 +260,8 @@ cityshield/
 │   ├── scenario_runner/  # Scenario orchestration service
 │   ├── attacker/         # Kali-based attack container (nmap, netcat, etc.)
 │   ├── range_logger/     # tcpdump-based cyber range packet capture
+│   ├── iot_target/       # IoT sensor hub training target (HTTP + MQTT)
+│   ├── iot_range_logger/ # tcpdump-based IoT range packet capture
 │   └── researcher-lab/   # Per-user Ubuntu lab container (provisioned via UI)
 ├── infrastructure/       # Infrastructure configuration
 │   ├── filebeat/         # Filebeat log shipping config
@@ -350,54 +395,45 @@ Restart the detection engine to load the new rule.
 
 ## Troubleshooting
 
-### Services Won't Start
+### 1. Research Lab tools or banner are outdated
+
+Rebuild the image and re-provision:
 
 ```bash
-# Check service logs
-docker compose logs [service_name]
-
-# Common issues:
-# 1. Port conflicts - ensure ports 3000, 5601, 8000, 9200 are available
-# 2. Insufficient memory - increase Docker memory to 8GB+
-# 3. OpenSearch vm.max_map_count - run: sysctl -w vm.max_map_count=262144
+docker compose build researcher-lab-image
 ```
 
-### No Logs Appearing
+Then in the UI: Scenarios → Research Lab → **Remove** → **Provision Lab**.
+
+### 2. Research Lab terminal won't connect or session exits
+
+Re-provision the lab container (your home directory volume is preserved):
 
 ```bash
-# Check Filebeat status
-docker compose logs filebeat
-
-# Verify log files are being created
-docker compose exec traffic_sim ls -la /data/logs/
-
-# Check OpenSearch indices
-curl -u admin:Admin@123!Change http://localhost:9200/_cat/indices
+# Or from the UI: Scenarios → Research Lab → Remove → Provision Lab
+docker compose restart backend
 ```
 
-### No Alerts Generated
+If the container keeps exiting, check logs:
 
 ```bash
-# Check detection engine logs
-docker compose logs detection_engine
-
-# Verify rules are loaded
-curl -u admin:password http://localhost:8000/api/rules
-
-# Run a scenario to generate attack traffic
-python scripts/run_scenario.py traffic_scan_001 --wait
+docker logs cityshield-lab-<username>
 ```
 
-### Authentication Fails
+### 3. Backend returns errors or login fails
+
+Restart the backend so it reconnects to OpenSearch and re-seeds default users:
 
 ```bash
-# Reset admin password
-docker compose exec backend python -c "
-from app.core.security import get_password_hash
-print(get_password_hash('NewPassword123'))
-"
+docker compose restart backend
+```
 
-# Update in OpenSearch users index manually
+If OpenSearch is down:
+
+```bash
+docker compose up -d opensearch
+# Wait for it to become healthy, then:
+docker compose restart backend
 ```
 
 ## Cyber Range
@@ -451,31 +487,44 @@ attacker ──nmap/ping──▶ metasploitable
          detection_engine → alerts
 ```
 
-## Research Lab → Metasploitable
+## Research Lab
 
-The **Research Lab** (Scenarios → Research Lab tab) is the in-app attacker terminal.
-It provisions a per-user Ubuntu container with security tools, connected to both
-`cityshield_network` and the isolated `cyber_range_net` so it can reach Metasploitable directly.
+The **Research Lab** (Scenarios → Research Lab tab) provisions a per-user Ubuntu container
+with security tools (nmap, hydra, nikto, netcat, tcpdump, curl, wget, python3, ping, dig).
+It is connected to three Docker networks: `cityshield_network`, `cyber_range_net`, and
+`iot_range_net` — so it can reach both training targets directly.
 
-**Rebuild the lab image** (after changing the Dockerfile or welcome banner):
+### Provisioning from the UI
+
+1. Login as a **Researcher** or **Administrator**
+2. Navigate to **Scenarios** → click the **Research Lab** tab
+3. Click **Provision Lab** — a personal container is created with all tools installed
+4. The embedded terminal opens automatically once the container is running
+
+### Verifying Connectivity
+
+From the Research Lab terminal, confirm both targets are reachable:
+
+```bash
+# Cyber range target
+ping -c 2 metasploitable
+nmap -sT --top-ports 20 metasploitable
+
+# IoT range target
+ping -c 2 iot_target
+curl http://iot_target:8080/sensors
+nmap -sT -p 1883,8080 iot_target
+```
+
+### Rebuilding the Lab Image
+
+After modifying the Dockerfile or welcome banner:
 
 ```bash
 docker compose build researcher-lab-image
 ```
 
-**Re-provision** so the new image takes effect:
-
-1. In the UI → Scenarios → Research Lab → **Remove** the existing lab
-2. Click **Provision Lab** — the new container gets the updated banner and network connections
-
-**Verify everything works:**
-
-```bash
-./scripts/verify_research_lab_tools_and_targets.sh
-```
-
-The script builds the image, checks all 10 required tools are installed, confirms the
-welcome banner mentions Metasploitable, and tests DNS + ping + nmap connectivity.
+Then in the UI: Scenarios → Research Lab → **Remove** → **Provision Lab**.
 
 ## Security Considerations
 

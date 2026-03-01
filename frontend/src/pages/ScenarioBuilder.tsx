@@ -17,8 +17,13 @@ interface DeviceTarget {
   zone: string
 }
 
+interface MitreTechLookup {
+  id: string
+  name: string
+}
+
 export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderProps) {
-  const [scenarios, setScenarios] = useState<{ scenario_id: string; name?: string; description?: string; attack_pattern?: string; target_component?: string; components?: string[]; duration_seconds?: number }[]>([])
+  const [scenarios, setScenarios] = useState<{ scenario_id: string; name?: string; description?: string; attack_pattern?: string; target_component?: string; components?: string[]; duration_seconds?: number; category?: string; mitre_technique_ids?: string[] }[]>([])
   const [runs, setRuns] = useState<{ run_id: string; scenario_id: string; status: string; started_at?: string; scenario_name?: string; target_device_id?: string; results?: Record<string, unknown> }[]>([])
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState<{ [key: string]: boolean }>({})
@@ -26,6 +31,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
   const [devices, setDevices] = useState<DeviceTarget[]>([])
   const [analysisRunId, setAnalysisRunId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'scenarios' | 'lab'>('scenarios')
+  const [mitreLookup, setMitreLookup] = useState<MitreTechLookup[]>([])
   const navigate = useNavigate()
 
   const fetchData = useCallback(async () => {
@@ -37,7 +43,21 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
     fetchData()
     const interval = setInterval(fetchData, 5000)
     return () => clearInterval(interval)
+    // Fetch MITRE techniques for name lookup (once)
   }, [fetchData])
+
+  useEffect(() => {
+    const fetchMitre = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/mitre/techniques', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) setMitreLookup(await res.json())
+      } catch { /* ignore */ }
+    }
+    fetchMitre()
+  }, [])
 
   const fetchScenarios = async () => {
     try {
@@ -335,6 +355,9 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                       <div>
                         <strong style={{ color: 'var(--text-tertiary)' }}>Pattern:</strong>{' '}
                         <span className="badge badge-danger">{scenario.attack_pattern}</span>
+                        {scenario.category === 'owasp' && (
+                          <span className="badge badge-warning" style={{ marginLeft: '0.5rem' }}>OWASP</span>
+                        )}
                       </div>
                       <div>
                         <strong style={{ color: 'var(--text-tertiary)' }}>Duration:</strong>{' '}
@@ -347,6 +370,23 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                         </div>
                       )}
                     </div>
+                    {scenario.mitre_technique_ids && scenario.mitre_technique_ids.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                        {scenario.mitre_technique_ids.slice(0, 3).map(id => {
+                          const t = mitreLookup.find(m => m.id === id)
+                          return (
+                            <span key={id} className="badge badge-info" style={{ fontSize: '0.65rem' }}>
+                              {id}{t ? `: ${t.name}` : ''}
+                            </span>
+                          )
+                        })}
+                        {scenario.mitre_technique_ids.length > 3 && (
+                          <span className="badge badge-secondary" style={{ fontSize: '0.65rem' }}>
+                            +{scenario.mitre_technique_ids.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <button
                     className={`btn ${running[scenario.scenario_id] ? 'btn-secondary' : 'btn-danger'}`}

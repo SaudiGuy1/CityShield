@@ -16,12 +16,19 @@ interface AttackTechnique {
   name: string
   description: string
   mitre_technique: string
+  tactic?: string
   parameters: Record<string, ParameterConfig>
 }
 
 interface AttackConfig {
   technique: string
   parameters: Record<string, string | number | boolean>
+}
+
+interface MitreTechnique {
+  id: string
+  name: string
+  tactic: string
 }
 
 export default function CustomScenarioBuilder() {
@@ -37,10 +44,14 @@ export default function CustomScenarioBuilder() {
   const [executing, setExecuting] = useState(false)
   const [completedRunId, setCompletedRunId] = useState<string | null>(null)
   const [analysisRunId, setAnalysisRunId] = useState<string | null>(null)
+  const [mitreTechniques, setMitreTechniques] = useState<MitreTechnique[]>([])
+  const [selectedMitre, setSelectedMitre] = useState<string[]>([])
+  const [mitreSearch, setMitreSearch] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
     fetchAvailableTechniques()
+    fetchMitreTechniques()
   }, [])
 
   const fetchAvailableTechniques = async () => {
@@ -57,6 +68,24 @@ export default function CustomScenarioBuilder() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchMitreTechniques = async () => {
+    const token = localStorage.getItem('token')
+    try {
+      const res = await fetch('/api/mitre/techniques', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) setMitreTechniques(await res.json())
+    } catch (err) {
+      console.error('Failed to fetch MITRE techniques:', err)
+    }
+  }
+
+  const toggleMitre = (id: string) => {
+    setSelectedMitre(prev =>
+      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    )
   }
 
   const addToChain = () => {
@@ -111,7 +140,8 @@ export default function CustomScenarioBuilder() {
           description: scenarioDescription,
           target_component: targetComponent,
           target_device_id: targetDevice || null,
-          attack_chain: attackChain
+          attack_chain: attackChain,
+          mitre_technique_ids: selectedMitre
         })
       })
 
@@ -243,6 +273,7 @@ export default function CustomScenarioBuilder() {
                 setScenarioName('')
                 setScenarioDescription('')
                 setAttackChain([])
+                setSelectedMitre([])
               }}
             >
               Create Another Scenario
@@ -316,6 +347,55 @@ export default function CustomScenarioBuilder() {
                   style={{ width: '100%' }}
                 />
               </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
+                  MITRE ATT&CK Techniques (Optional)
+                </label>
+                {selectedMitre.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                    {selectedMitre.map(id => {
+                      const t = mitreTechniques.find(m => m.id === id)
+                      return (
+                        <span
+                          key={id}
+                          className="badge badge-info"
+                          style={{ cursor: 'pointer', fontSize: '0.7rem' }}
+                          onClick={() => toggleMitre(id)}
+                          title="Click to remove"
+                        >
+                          {id}{t ? ` ${t.name}` : ''} ✕
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={mitreSearch}
+                  onChange={e => setMitreSearch(e.target.value)}
+                  placeholder="Search techniques by ID or name..."
+                  style={{ width: '100%', marginBottom: '0.5rem' }}
+                />
+                <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '0.375rem', padding: '0.5rem' }}>
+                  {mitreTechniques
+                    .filter(t => {
+                      if (!mitreSearch) return true
+                      const q = mitreSearch.toLowerCase()
+                      return t.id.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || t.tactic.toLowerCase().includes(q)
+                    })
+                    .map(t => (
+                      <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', fontSize: '0.8rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedMitre.includes(t.id)}
+                          onChange={() => toggleMitre(t.id)}
+                        />
+                        <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{t.id}</span>
+                        {t.name}
+                      </label>
+                    ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -355,6 +435,11 @@ export default function CustomScenarioBuilder() {
                         <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>
                           {tech.mitre_technique}
                         </span>
+                        {tech.tactic && (
+                          <span className="badge badge-secondary" style={{ fontSize: '0.6rem' }}>
+                            {tech.tactic}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

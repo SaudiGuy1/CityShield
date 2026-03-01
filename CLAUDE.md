@@ -61,21 +61,22 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main` and `devel
 
 ## Architecture
 
-**Microservices on Docker Compose** — two Docker networks: `cityshield_network` (main bridge for all services) and `cyber_range_net` (isolated network for Metasploitable, attacker, range_logger). OpenSearch is the sole data store (no traditional database).
+**Microservices on Docker Compose** — three Docker networks: `cityshield_network` (main bridge for all services), `cyber_range_net` (isolated network for Metasploitable, attacker, range_logger), and `iot_range_net` (isolated network for IoT target + logger). OpenSearch is the sole data store (no traditional database).
 
 ### Layers
 
 - **Frontend** (`frontend/`): React 18 + TypeScript + Vite. Served via nginx in production (port 3000→80). Vite dev server proxies `/api` and `/ws` to backend at `:8000`.
-- **Backend API** (`backend/`): FastAPI with JWT auth (HS256, bcrypt passwords) + RBAC (Administrator, Analyst, Researcher). Entry point: `app/main.py`. On startup, auto-creates default admin user and seeds Metasploitable asset into `city-assets` index. Serves REST API on `:8000` and a WebSocket at `/ws/city-telemetry`.
-- **Data Store**: OpenSearch 2.11 (port 9200). Indices: `logs-traffic`, `logs-iot`, `logs-network`, `alerts`, `rules`, `scenarios`, `users`, `scenario_runs`, `city-assets`, `action-audit-log`.
+- **Backend API** (`backend/`): FastAPI with JWT auth (HS256, bcrypt passwords) + RBAC (Administrator, Analyst, Researcher). Entry point: `app/main.py`. On startup, auto-creates default admin and researcher users, seeds Metasploitable + IoT range assets, and seeds OWASP scenarios. Serves REST API on `:8000` and a WebSocket at `/ws/city-telemetry`.
+- **Data Store**: OpenSearch 2.11 (port 9200). Indices: `logs-traffic`, `logs-iot`, `logs-network`, `alerts`, `rules`, `scenarios`, `users`, `scenario_runs`, `city-assets`, `action-audit-log`, `attack-proposals`.
 - **Filebeat** (`infrastructure/filebeat/`): Ships JSONL logs from simulators' shared volume to OpenSearch `logs-*` indices (secondary pipeline; simulators also write directly to OpenSearch).
 
 ### Backend Module Layout (`backend/app/`)
 
-- **`api/`** — Route modules: `routes_auth`, `routes_alerts`, `routes_rules`, `routes_scenarios`, `routes_logs`, `routes_metrics`, `routes_users`, `routes_devices`, `routes_overview`, `routes_health`, `routes_websocket`, `routes_lab`, `routes_actions`, `threat_knowledge`
+- **`api/`** — Route modules: `routes_auth`, `routes_alerts`, `routes_rules`, `routes_scenarios`, `routes_logs`, `routes_metrics`, `routes_users`, `routes_devices`, `routes_overview`, `routes_health`, `routes_websocket`, `routes_lab`, `routes_actions`, `routes_proposals`, `routes_mitre`, `threat_knowledge`
 - **`core/`** — `config.py` (Pydantic BaseSettings), `security.py` (JWT + bcrypt), `rbac.py` (role decorators)
-- **`models/`** — Pydantic models: `alert`, `device`, `rule`, `scenario`, `user`, `action`
-- **`services/`** — Business logic: `attack_engine`, `device_service`, `lab_service`, `metrics_service`, `rule_service`, `scenario_service`, `action_service`
+- **`models/`** — Pydantic models: `alert`, `device`, `rule`, `scenario`, `user`, `action`, `proposal`
+- **`services/`** — Business logic: `attack_engine`, `device_service`, `lab_service`, `metrics_service`, `rule_service`, `scenario_service`, `action_service`, `proposal_service`
+- **`data/`** — Static data files: `mitre_techniques.json` (curated MITRE ATT&CK technique list)
 - **`db/`** — `opensearch_client.py` (client wrapper + index creation with full mappings)
 
 ### Microservices (`services/`)
@@ -100,10 +101,20 @@ Each is a FastAPI app with a background thread generating events, writing to bot
 
 ### Cyber Range Components
 
-On the isolated `cyber_range_net` network:
-- **`metasploitable`** — Vulnerable target VM (tleemcjr/metasploitable2)
+On the isolated `cyber_range_net` network (subnet 172.20.0.0/16):
+- **`metasploitable`** — Vulnerable target VM (tleemcjr/metasploitable2), IP 172.20.0.2
 - **`attacker`** — Kali Linux container with nmap, netcat, curl
 - **`range_logger`** — Python tcpdump service capturing packets to JSONL for Filebeat
+
+### IoT Range Components
+
+On the isolated `iot_range_net` network (subnet 172.21.0.0/16):
+- **`iot_target`** — FastAPI-based IoT sensor hub (HTTP :8080, MQTT-like TCP :1883), IP 172.21.0.2. Endpoints: `/health`, `/status`, `/sensors`, `/config`
+- **`iot_range_logger`** — Python tcpdump service capturing IoT range packets to `/data/logs/iot_range.log` for Filebeat
+
+### Research Lab (`services/researcher-lab/`)
+
+Per-user Ubuntu container provisioned via the UI (Scenarios → Research Lab tab). Connected to `cityshield_network`, `cyber_range_net`, and `iot_range_net` so it can reach both Metasploitable and the IoT target directly. Managed by `backend/app/services/lab_service.py` which uses the Docker API to create/destroy containers.
 
 ### Key Data Flows
 
@@ -118,8 +129,14 @@ On the isolated `cyber_range_net` network:
 - Auth state held in `App.tsx` (no context provider); JWT stored in `localStorage` key `token`
 - Two data channels: REST polling (5s intervals in `useCityData` hook) and authenticated WebSocket (`useAssetStream` hook)
 - 3D city visualization uses React Three Fiber (`components/smartcity/`) — buildings represent city components with color/height reflecting status and event count
-- Pages: `Overview` (dashboard + 3D city), `Alerts`, `Rules`, `ScenarioBuilder`, `CustomScenarioBuilder`, `DeviceManagement`, `AdminUsers`, `Login`
+- Pages: `Overview` (dashboard + 3D city), `Alerts`, `Rules`, `ScenarioBuilder`, `CustomScenarioBuilder`, `DeviceManagement`, `AdminUsers`, `AttackProposals`, `SecurityAwareness`, `Login`
 - All routes except `/login` wrapped in `ProtectedRoute`
+
+## Prerequisites
+
+- Docker Desktop 4.x+ with Docker Compose 2.x+
+- 8GB RAM minimum (16GB recommended)
+- On Linux, OpenSearch requires: `sysctl -w vm.max_map_count=262144`
 
 ## Environment Configuration
 
@@ -148,25 +165,39 @@ Copy `.env.example` to `.env` before running. Key variables:
 
 YAML files in `services/detection_engine/rules/`. Each rule specifies `match_logic`, severity, query window, MITRE technique mapping, response actions, log sources, and false positive notes. Restart `detection_engine` container after adding/modifying rules.
 
-### Current Rules (11 Total)
+### Current Rules (25 Total)
 
-| Rule ID | MITRE Technique | Match Logic Type | Severity | Description |
-|---|---|---|---|---|
-| `net_scan_001` | T1046 | `net_scan` | high | Network Service Scanning |
-| `iot_anomaly_001` | T1565 | `iot_anomaly` | critical | IoT Sensor Data Manipulation |
-| `brute_force_001` | T1110 | `brute_force` | high | Brute Force Authentication |
-| `c2_beacon_001` | T1071 | `c2_beacon` | critical | C2 Beaconing Detection |
-| `data_exfil_001` | T1041 | `data_exfiltration` | critical | Data Exfiltration |
-| `ddos_attack_001` | T1498 | `ddos_attack` | critical | DDoS Attack Detection |
-| `dos_endpoint_001` | T1499 | `dos_endpoint` | high | Endpoint DoS Detection |
-| `ransomware_001` | T1486 | `ransomware` | critical | Ransomware Activity |
-| `web_exploit_001` | T1190 | `web_exploit` | high | Web Application Exploitation |
-| `lateral_movement_001` | T1570 | `lateral_movement` | high | Lateral Tool Transfer |
-| `credential_dump_001` | T1003 | `credential_dump` | critical | OS Credential Dumping |
+| Rule ID | MITRE Technique | Match Logic Type | Severity |
+|---|---|---|---|
+| `net_scan_001` | T1046 | `net_scan` | high |
+| `iot_anomaly_001` | T1565 | `iot_anomaly` | critical |
+| `brute_force_001` | T1110 | `brute_force` | high |
+| `c2_beacon_001` | T1071 | `c2_beacon` | critical |
+| `data_exfil_001` | T1041 | `data_exfiltration` | critical |
+| `ddos_attack_001` | T1498 | `ddos_attack` | critical |
+| `dos_endpoint_001` | T1499 | `dos_endpoint` | high |
+| `ransomware_001` | T1486 | `ransomware` | critical |
+| `web_exploit_001` | T1190 | `web_exploit` | high |
+| `lateral_movement_001` | T1570 | `lateral_movement` | high |
+| `credential_dump_001` | T1003 | `credential_dump` | critical |
+| `log_clear_001` | T1070.001 | `log_clearing` | critical |
+| `cmd_exec_001` | T1059.003 | `cmd_execution` | high |
+| `account_create_001` | T1136.001 | `account_creation` | critical |
+| `data_archive_001` | T1560.001 | `data_archiving` | high |
+| `defense_evasion_001` | T1562.001 | `defense_evasion` | critical |
+| `obfuscation_001` | T1027 | `obfuscation_detection` | high |
+| `powershell_exec_001` | T1059.001 | `powershell_execution` | high |
+| `proc_inject_001` | T1055.001 | `process_injection` | critical |
+| `registry_persist_001` | T1547.001 | `registry_persistence` | high |
+| `sched_task_001` | T1053.005 | `scheduled_task_creation` | critical |
+| `screen_capture_001` | T1113 | `screen_capture` | medium |
+| `service_exec_001` | T1569.002 | `service_execution` | critical |
+| `service_persist_001` | T1543.003 | `service_persistence` | critical |
+| `token_manip_001` | T1134 | `token_manipulation` | critical |
 
 ### Supported Match Logic Types
 
-The rule engine uses `.keyword` suffix for text field aggregations in OpenSearch queries.
+The rule engine (`services/detection_engine/rule_runtime.py`) uses `.keyword` suffix for text field aggregations in OpenSearch queries. Match logic types include:
 
 - **`net_scan`** — Aggregates distinct destination ports per source IP
 - **`iot_anomaly`** — Counts anomaly events per sensor/actor
@@ -179,6 +210,20 @@ The rule engine uses `.keyword` suffix for text field aggregations in OpenSearch
 - **`web_exploit`** — Detects SQL injection, XSS, command injection patterns
 - **`lateral_movement`** — Detects service-to-service propagation
 - **`credential_dump`** — Detects credential access attempts
+- **`log_clearing`** — Detects event log clearing activity
+- **`cmd_execution`** — Detects suspicious command shell execution
+- **`account_creation`** — Detects suspicious local account creation
+- **`data_archiving`** — Detects suspicious data archiving before exfiltration
+- **`defense_evasion`** — Detects security tool disabling/modification
+- **`obfuscation_detection`** — Detects obfuscated commands or scripts
+- **`powershell_execution`** — Detects suspicious PowerShell execution
+- **`process_injection`** — Detects DLL injection and similar techniques
+- **`registry_persistence`** — Detects registry run key persistence mechanisms
+- **`scheduled_task_creation`** — Detects suspicious scheduled task creation
+- **`screen_capture`** — Detects screen capture activity
+- **`service_execution`** — Detects suspicious Windows service creation
+- **`service_persistence`** — Detects Windows service persistence mechanisms
+- **`token_manipulation`** — Detects access token manipulation
 
 ### Response Actions
 

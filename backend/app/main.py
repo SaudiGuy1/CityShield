@@ -24,6 +24,8 @@ from .api import (
     routes_websocket,
     routes_devices,
     routes_lab,
+    routes_proposals,
+    routes_mitre,
 )
 from .api.routes_overview import init_opensearch_dashboards
 
@@ -60,6 +62,34 @@ def create_default_admin():
 
     except Exception as e:
         logger.error(f"Error creating default admin user: {e}")
+
+
+def create_default_researcher():
+    """Create default researcher user if it doesn't exist."""
+    try:
+        query = {
+            "query": {"term": {"username": settings.default_researcher_user}},
+            "size": 1
+        }
+        existing = opensearch_client.search("users", query)
+
+        if not existing:
+            logger.info("Creating default researcher user...")
+            researcher_doc = {
+                "username": settings.default_researcher_user,
+                "email": settings.default_researcher_email,
+                "role": Role.RESEARCHER,
+                "hashed_password": get_password_hash(settings.default_researcher_pass),
+                "created_at": datetime.utcnow().isoformat(),
+                "is_active": True
+            }
+            opensearch_client.index_document("users", researcher_doc, doc_id=settings.default_researcher_user)
+            logger.info(f"Default researcher user created: {settings.default_researcher_user}")
+        else:
+            logger.info("Default researcher user already exists")
+
+    except Exception as e:
+        logger.error(f"Error creating default researcher user: {e}")
 
 
 def _seed_cyber_range_asset(retries: int = 5, delay: float = 3.0):
@@ -109,6 +139,183 @@ def _seed_cyber_range_asset(retries: int = 5, delay: float = 3.0):
     logger.error("Failed to seed cyber range asset after all retries")
 
 
+def _seed_iot_range_asset(retries: int = 5, delay: float = 3.0):
+    """Ensure the IoT training target asset exists in city-assets."""
+    import time
+
+    doc_id = "iot-range-target"
+    asset = {
+        "asset_id": doc_id,
+        "name": "IoT Sensor Hub (Training Target)",
+        "asset_type": "training_target",
+        "asset_class": "iot_device",
+        "criticality": "low",
+        "status": "active",
+        "device_type": "virtual",
+        "lifecycle_state": "operational",
+        "location": {
+            "zone": "iot-range",
+            "subnet": "172.21.0.0/16",
+            "building": "IoT Research Lab",
+        },
+        "network": {
+            "ip_address": "172.21.0.2",
+            "mac_address": "02:42:ac:15:00:02",
+        },
+        "tags": ["training", "iot", "vulnerable-by-design", "iot-range"],
+        "@timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+    for attempt in range(1, retries + 1):
+        try:
+            existing = opensearch_client.get_document("city-assets", doc_id)
+            if existing:
+                logger.info("IoT range asset already exists")
+                return
+            opensearch_client.index_document("city-assets", asset, doc_id=doc_id)
+            logger.info(f"Seeded IoT range asset: {doc_id}")
+            return
+        except Exception as e:
+            logger.warning(
+                f"IoT range seed attempt {attempt}/{retries} failed: {e}"
+            )
+            if attempt < retries:
+                time.sleep(delay)
+
+    logger.error("Failed to seed IoT range asset after all retries")
+
+
+def _seed_owasp_scenarios():
+    """Seed OWASP Top 10 scenarios if they don't exist."""
+    owasp_scenarios = [
+        {
+            "scenario_id": "owasp-a01-broken-access",
+            "name": "OWASP A01: Broken Access Control",
+            "description": "Simulates broken access control attacks including unauthorized function access, IDOR, and privilege escalation against smart city management APIs.",
+            "components": ["network_infrastructure"],
+            "duration_seconds": 120,
+            "attack_pattern": "Brute Force",
+            "parameters": {"owasp_id": "A01:2021", "mitre_technique": "T1078"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a02-crypto-failures",
+            "name": "OWASP A02: Cryptographic Failures",
+            "description": "Simulates attacks exploiting weak or missing encryption on IoT sensor data transmissions and management interfaces.",
+            "components": ["iot_sensors"],
+            "duration_seconds": 120,
+            "attack_pattern": "Data Exfiltration",
+            "parameters": {"owasp_id": "A02:2021", "mitre_technique": "T1040"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a03-injection",
+            "name": "OWASP A03: Injection",
+            "description": "Simulates SQL injection, command injection, and LDAP injection against smart city web applications and APIs.",
+            "components": ["network_infrastructure"],
+            "duration_seconds": 180,
+            "attack_pattern": "Port Scan",
+            "parameters": {"owasp_id": "A03:2021", "mitre_technique": "T1190"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a04-insecure-design",
+            "name": "OWASP A04: Insecure Design",
+            "description": "Simulates exploitation of design flaws in traffic management system allowing unauthorized traffic signal manipulation.",
+            "components": ["traffic_management"],
+            "duration_seconds": 150,
+            "attack_pattern": "Port Scan",
+            "parameters": {"owasp_id": "A04:2021", "mitre_technique": "T1565"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a05-security-misconfig",
+            "name": "OWASP A05: Security Misconfiguration",
+            "description": "Simulates discovery and exploitation of misconfigured IoT devices, default credentials, and unnecessary services.",
+            "components": ["iot_sensors"],
+            "duration_seconds": 180,
+            "attack_pattern": "Port Scan",
+            "parameters": {"owasp_id": "A05:2021", "mitre_technique": "T1046"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a06-vulnerable-components",
+            "name": "OWASP A06: Vulnerable and Outdated Components",
+            "description": "Simulates attacks targeting known vulnerabilities in outdated firmware and software on city infrastructure devices.",
+            "components": ["network_infrastructure"],
+            "duration_seconds": 120,
+            "attack_pattern": "Port Scan",
+            "parameters": {"owasp_id": "A06:2021", "mitre_technique": "T1190"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a07-auth-failures",
+            "name": "OWASP A07: Identification and Authentication Failures",
+            "description": "Simulates credential stuffing, brute force, and session hijacking attacks against city infrastructure authentication systems.",
+            "components": ["network_infrastructure"],
+            "duration_seconds": 180,
+            "attack_pattern": "Brute Force",
+            "parameters": {"owasp_id": "A07:2021", "mitre_technique": "T1110"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a08-integrity-failures",
+            "name": "OWASP A08: Software and Data Integrity Failures",
+            "description": "Simulates supply chain attacks and integrity violations through tampered IoT firmware updates and sensor data manipulation.",
+            "components": ["iot_sensors"],
+            "duration_seconds": 120,
+            "attack_pattern": "Malware",
+            "parameters": {"owasp_id": "A08:2021", "mitre_technique": "T1565"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a09-logging-failures",
+            "name": "OWASP A09: Security Logging and Monitoring Failures",
+            "description": "Simulates attacks that exploit insufficient logging, including log tampering and detection evasion techniques.",
+            "components": ["security"],
+            "duration_seconds": 120,
+            "attack_pattern": "Data Exfiltration",
+            "parameters": {"owasp_id": "A09:2021", "mitre_technique": "T1562"},
+            "category": "owasp",
+        },
+        {
+            "scenario_id": "owasp-a10-ssrf",
+            "name": "OWASP A10: Server-Side Request Forgery (SSRF)",
+            "description": "Simulates SSRF attacks against city backend services, attempting to reach internal infrastructure through web application proxies.",
+            "components": ["network_infrastructure"],
+            "duration_seconds": 120,
+            "attack_pattern": "Port Scan",
+            "parameters": {"owasp_id": "A10:2021", "mitre_technique": "T1190"},
+            "category": "owasp",
+        },
+    ]
+
+    seeded = 0
+    for scenario_def in owasp_scenarios:
+        try:
+            existing = opensearch_client.get_document(
+                "scenarios", scenario_def["scenario_id"]
+            )
+            if existing:
+                continue
+            doc = {
+                **scenario_def,
+                "created_at": datetime.utcnow().isoformat(),
+                "created_by": "system",
+            }
+            opensearch_client.index_document(
+                "scenarios", doc, doc_id=scenario_def["scenario_id"]
+            )
+            seeded += 1
+        except Exception as e:
+            logger.warning(
+                f"Failed to seed OWASP scenario {scenario_def['scenario_id']}: {e}"
+            )
+
+    if seeded:
+        logger.info(f"Seeded {seeded} OWASP Top 10 scenarios")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
@@ -116,14 +323,27 @@ async def lifespan(app: FastAPI):
     logger.info("Starting CityShield Backend API...")
     logger.info(f"Connecting to OpenSearch at {settings.opensearch_url}")
 
-    # Create default admin user
+    # Create default users
     create_default_admin()
+    create_default_researcher()
 
     # Seed cyber range asset into city-assets (idempotent)
     try:
         _seed_cyber_range_asset()
     except Exception as e:
         logger.debug(f"Cyber range asset seeding skipped: {e}")
+
+    # Seed IoT range asset into city-assets (idempotent)
+    try:
+        _seed_iot_range_asset()
+    except Exception as e:
+        logger.debug(f"IoT range asset seeding skipped: {e}")
+
+    # Seed OWASP Top 10 scenarios (idempotent)
+    try:
+        _seed_owasp_scenarios()
+    except Exception as e:
+        logger.debug(f"OWASP scenario seeding skipped: {e}")
 
     # Initialize OpenSearch Dashboards (non-blocking)
     try:
@@ -172,6 +392,8 @@ app.include_router(routes_logs.router)
 app.include_router(routes_overview.router)
 app.include_router(routes_websocket.router)
 app.include_router(routes_lab.router)
+app.include_router(routes_proposals.router)
+app.include_router(routes_mitre.router)
 
 
 @app.get("/")

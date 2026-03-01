@@ -4,6 +4,15 @@ networks:
   cyber_range_net:
     driver: bridge
     internal: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  iot_range_net:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
 
 volumes:
   opensearch_data:
@@ -88,6 +97,9 @@ services:
       - DEFAULT_ADMIN_USER=${DEFAULT_ADMIN_USER}
       - DEFAULT_ADMIN_PASS=${DEFAULT_ADMIN_PASS}
       - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL}
+      - DEFAULT_RESEARCHER_USER=${DEFAULT_RESEARCHER_USER:-researcher}
+      - DEFAULT_RESEARCHER_PASS=${DEFAULT_RESEARCHER_PASS:-CityShield@Researcher2026}
+      - DEFAULT_RESEARCHER_EMAIL=${DEFAULT_RESEARCHER_EMAIL:-researcher@cityshield.example.com}
       - USE_MOCK_CITY_COMPONENTS=${USE_MOCK_CITY_COMPONENTS:-true}
     volumes:
       - ./backend/app:/app/app:ro
@@ -253,7 +265,8 @@ services:
     image: tleemcjr/metasploitable2
     container_name: metasploitable
     networks:
-      - cyber_range_net
+      cyber_range_net:
+        ipv4_address: 172.20.0.2
     restart: unless-stopped
     labels:
       - cityshield.role=training-target
@@ -286,6 +299,33 @@ services:
     restart: unless-stopped
     labels:
       - cityshield.role=training-logger
+
+  iot_target:
+    build: ./services/iot_target
+    container_name: iot_target
+    networks:
+      iot_range_net:
+        ipv4_address: 172.21.0.2
+    restart: unless-stopped
+    labels:
+      - cityshield.role=iot-training-target
+
+  iot_range_logger:
+    build: ./services/iot_range_logger
+    container_name: cityshield_iot_range_logger
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    networks:
+      - iot_range_net
+      - cityshield_network
+    volumes:
+      - logs_volume:/data/logs
+    depends_on:
+      - iot_target
+    restart: unless-stopped
+    labels:
+      - cityshield.role=iot-training-logger
 
   researcher-lab-image:
     build: ./services/researcher-lab

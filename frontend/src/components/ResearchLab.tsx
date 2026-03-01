@@ -6,7 +6,7 @@ interface LabStatus {
   container_id: string | null
   name: string
   provisioned: boolean
-  targets?: { metasploitable?: boolean }
+  targets?: { metasploitable?: boolean; iot_target?: boolean }
 }
 
 export default function ResearchLab() {
@@ -105,6 +105,11 @@ export default function ResearchLab() {
           {isRunning && labStatus?.targets?.metasploitable && (
             <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
               Metasploitable Reachable
+            </span>
+          )}
+          {isRunning && labStatus?.targets?.iot_target && (
+            <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>
+              IoT Target Reachable
             </span>
           )}
         </div>

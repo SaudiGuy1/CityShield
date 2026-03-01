@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     default_admin_pass: str = os.getenv("DEFAULT_ADMIN_PASS", "admin")
     default_admin_email: str = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@cityshield.local")
 
+    # Default Researcher
+    default_researcher_user: str = os.getenv("DEFAULT_RESEARCHER_USER", "researcher")
+    default_researcher_pass: str = os.getenv("DEFAULT_RESEARCHER_PASS", "CityShield@Researcher2026")
+    default_researcher_email: str = os.getenv("DEFAULT_RESEARCHER_EMAIL", "researcher@cityshield.example.com")
+
     # Application
     app_name: str = "CityShield Backend API"
     app_version: str = "1.0.0"

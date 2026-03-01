@@ -66,6 +66,7 @@ COMPONENT_DEVICE_MAP: Dict[str, List[str]] = {
     "security": ["sec-siem-01", "sec-edr-02", "sec-scan-03", "sec-auth-04"],
     "industrial_systems": ["ind-power-01", "ind-scada-02", "ind-plc-03", "ind-wind-04", "ind-grid-05", "ind-rail-06"],
     "cyber_range": ["cyber-range-metasploitable"],
+    "iot_range": ["iot-range-target"],
 }
 
 

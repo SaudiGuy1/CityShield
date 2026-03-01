@@ -8,6 +8,8 @@ import ScenarioBuilder from './pages/ScenarioBuilder'
 import CustomScenarioBuilder from './pages/CustomScenarioBuilder'
 import Rules from './pages/Rules'
 import AdminUsers from './pages/AdminUsers'
+import AttackProposals from './pages/AttackProposals'
+import SecurityAwareness from './pages/SecurityAwareness'
 import Nav from './components/Nav'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -64,6 +66,12 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/rules" element={<ProtectedRoute isAuth={isAuthenticated}><Rules /></ProtectedRoute>} />
+        <Route path="/awareness" element={<ProtectedRoute isAuth={isAuthenticated}><SecurityAwareness /></ProtectedRoute>} />
+        <Route path="/proposals" element={
+          <ProtectedRoute isAuth={isAuthenticated}>
+            <AttackProposals user={user} />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/users" element={<ProtectedRoute isAuth={isAuthenticated}><AdminUsers user={user} /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

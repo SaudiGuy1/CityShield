@@ -126,8 +126,7 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
     switch(role) {
       case 'Administrator': return 'badge-danger'
       case 'Analyst': return 'badge-primary'
-      case 'Responder': return 'badge-warning'
-      case 'Viewer': return 'badge-secondary'
+      case 'Researcher': return 'badge-warning'
       default: return 'badge-secondary'
     }
   }
@@ -232,10 +231,9 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
                   onChange={e => setFormData({ ...formData, role: e.target.value })}
                   required
                 >
-                  <option value="Viewer">Viewer - Read-only access</option>
-                  <option value="Analyst">Analyst - View and analyze data</option>
-                  <option value="Responder">Responder - Manage alerts and respond</option>
-                  <option value="Administrator">Administrator - Full system access</option>
+                  <option value="Analyst">Analyst - View and analyze security data, execute response actions</option>
+                  <option value="Researcher">Researcher - Design scenarios, configure rules, manage research lab</option>
+                  <option value="Administrator">Administrator - Full system access including user management</option>
                 </select>
               </div>
 
@@ -337,21 +335,15 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
         <h3>Role Permissions</h3>
         <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
           <div>
-            <span className="badge badge-secondary">Viewer</span>
-            <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-              Read-only access to dashboards and reports
-            </p>
-          </div>
-          <div>
             <span className="badge badge-primary">Analyst</span>
             <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-              View and analyze security data, create reports
+              View and analyze security data, execute manual response actions on alerts
             </p>
           </div>
           <div>
-            <span className="badge badge-warning">Responder</span>
+            <span className="badge badge-warning">Researcher</span>
             <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-              Manage and respond to security alerts, update statuses
+              Design and run attack scenarios, configure detection rules, manage research lab
             </p>
           </div>
           <div>

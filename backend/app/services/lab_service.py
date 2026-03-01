@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 IMAGE_NAME = "cityshield-lab:latest"
 NETWORK_SUFFIX = "cityshield_network"
 CYBER_RANGE_NETWORK_SUFFIX = "cyber_range_net"
+IOT_RANGE_NETWORK_SUFFIX = "iot_range_net"
 CONTAINER_PREFIX = "cityshield-lab-"
 VOLUME_PREFIX = "cityshield-lab-"
 
@@ -72,6 +73,43 @@ class LabService:
             logger.warning(f"Could not connect {container.name} to {cr_net_name}: {e}")
 
     @staticmethod
+    def _find_iot_range_network() -> str | None:
+        """Find the iot_range_net network (Docker Compose adds a project prefix)."""
+        client = docker.from_env()
+        for net in client.networks.list():
+            if net.name.endswith(IOT_RANGE_NETWORK_SUFFIX):
+                return net.name
+        return None
+
+    @staticmethod
+    def _ensure_iot_range_connected(container) -> None:
+        """Ensure a container is connected to iot_range_net."""
+        net_name = LabService._find_iot_range_network()
+        if not net_name:
+            return
+        container.reload()
+        connected_nets = container.attrs.get("NetworkSettings", {}).get("Networks", {})
+        if net_name in connected_nets:
+            return
+        try:
+            client = docker.from_env()
+            net = client.networks.get(net_name)
+            net.connect(container)
+            logger.info(f"Connected {container.name} to {net_name}")
+        except Exception as e:
+            logger.warning(f"Could not connect {container.name} to {net_name}: {e}")
+
+    @staticmethod
+    def _is_iot_target_running() -> bool:
+        """Check if the iot_target container is running."""
+        try:
+            client = docker.from_env()
+            container = client.containers.get("iot_target")
+            return container.status == "running"
+        except Exception:
+            return False
+
+    @staticmethod
     def _is_metasploitable_running() -> bool:
         """Check if the metasploitable container is running."""
         try:
@@ -93,7 +131,10 @@ class LabService:
                 "container_id": container.short_id,
                 "name": name,
                 "provisioned": True,
-                "targets": {"metasploitable": LabService._is_metasploitable_running()},
+                "targets": {
+                    "metasploitable": LabService._is_metasploitable_running(),
+                    "iot_target": LabService._is_iot_target_running(),
+                },
             }
         except NotFound:
             return {
@@ -101,7 +142,10 @@ class LabService:
                 "container_id": None,
                 "name": name,
                 "provisioned": False,
-                "targets": {"metasploitable": LabService._is_metasploitable_running()},
+                "targets": {
+                    "metasploitable": LabService._is_metasploitable_running(),
+                    "iot_target": LabService._is_iot_target_running(),
+                },
             }
 
     @staticmethod
@@ -151,6 +195,8 @@ class LabService:
 
         # Also connect to cyber_range_net so the lab can reach Metasploitable
         LabService._ensure_cyber_range_connected(container)
+        # Connect to iot_range_net so the lab can reach the IoT target
+        LabService._ensure_iot_range_connected(container)
 
         return LabService.get_status(username)
 
@@ -164,6 +210,7 @@ class LabService:
             if container.status != "running":
                 container.start()
             LabService._ensure_cyber_range_connected(container)
+            LabService._ensure_iot_range_connected(container)
             return LabService.get_status(username)
         except NotFound:
             raise ValueError(f"Lab container {name} not found. Provision it first.")

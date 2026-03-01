@@ -12,6 +12,10 @@ export default function Nav({ user, activeAttack, onLogout }: { user: { username
           <Link to="/devices">Devices</Link>
           <Link to="/scenarios">Scenarios</Link>
           <Link to="/rules">Rules</Link>
+          <Link to="/awareness">Awareness</Link>
+          {(user?.role === 'Researcher' || user?.role === 'Administrator') && (
+            <Link to="/proposals">Proposals</Link>
+          )}
           {user?.role === 'Administrator' && (
             <Link to="/admin/users">Users</Link>
           )}

@@ -66,7 +66,9 @@ class OpenSearchClient:
                         "attack_pattern": {"type": "keyword"},
                         "parameters": {"type": "object"},
                         "created_at": {"type": "date"},
-                        "created_by": {"type": "keyword"}
+                        "created_by": {"type": "keyword"},
+                        "category": {"type": "keyword"},
+                        "mitre_technique_ids": {"type": "keyword"},
                     }
                 }
             },
@@ -79,6 +81,10 @@ class OpenSearchClient:
                         "started_at": {"type": "date"},
                         "completed_at": {"type": "date"},
                         "started_by": {"type": "keyword"},
+                        "target_device_id": {"type": "keyword"},
+                        "target_component_id": {"type": "keyword"},
+                        "stages": {"type": "object"},
+                        "custom_parameters": {"type": "object"},
                         "results": {"type": "object"}
                     }
                 }
@@ -174,6 +180,27 @@ class OpenSearchClient:
                     }
                 }
             },
+            "attack-proposals": {
+                "mappings": {
+                    "properties": {
+                        "proposal_id": {"type": "keyword"},
+                        "title": {"type": "text"},
+                        "description": {"type": "text"},
+                        "technique_ids": {"type": "keyword"},
+                        "target_component": {"type": "keyword"},
+                        "attack_pattern": {"type": "keyword"},
+                        "duration_seconds": {"type": "integer"},
+                        "parameters": {"type": "object"},
+                        "submitted_by": {"type": "keyword"},
+                        "submitted_at": {"type": "date"},
+                        "status": {"type": "keyword"},
+                        "reviewed_by": {"type": "keyword"},
+                        "reviewed_at": {"type": "date"},
+                        "review_comment": {"type": "text"},
+                        "scenario_id": {"type": "keyword"},
+                    }
+                }
+            },
             "action-audit-log": {
                 "mappings": {
                     "properties": {
@@ -203,6 +230,38 @@ class OpenSearchClient:
                     logger.info(f"Created index: {index_name}")
             except Exception as e:
                 logger.error(f"Error creating index {index_name}: {e}")
+
+        # Migrate existing indices: add new fields via put_mapping (safe, additive only)
+        self._migrate_mappings()
+
+    def _migrate_mappings(self):
+        """Add new fields to existing indices via put_mapping (safe, additive)."""
+        migrations = {
+            "scenarios": {
+                "mitre_technique_ids": {"type": "keyword"},
+            },
+            "scenario_runs": {
+                "target_device_id": {"type": "keyword"},
+                "target_component_id": {"type": "keyword"},
+                "stages": {"type": "object"},
+                "custom_parameters": {"type": "object"},
+            },
+        }
+        for index_name, new_fields in migrations.items():
+            try:
+                if not self.client.indices.exists(index=index_name):
+                    continue
+                current = self.client.indices.get_mapping(index=index_name)
+                props = current[index_name]["mappings"].get("properties", {})
+                missing = {k: v for k, v in new_fields.items() if k not in props}
+                if missing:
+                    self.client.indices.put_mapping(
+                        index=index_name,
+                        body={"properties": missing},
+                    )
+                    logger.info(f"Migrated index {index_name}: added {list(missing.keys())}")
+            except Exception as e:
+                logger.warning(f"Mapping migration for {index_name} skipped: {e}")
 
     def index_document(self, index: str, document: Dict[str, Any], doc_id: Optional[str] = None) -> Dict:
         """Index a document."""

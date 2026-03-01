@@ -13,6 +13,8 @@ class ScenarioBase(BaseModel):
     duration_seconds: int
     attack_pattern: str  # Type of attack pattern
     parameters: Dict[str, Any] = {}
+    category: Optional[str] = None  # e.g., "owasp", "mitre", "custom"
+    mitre_technique_ids: List[str] = []
 
 
 class ScenarioCreate(ScenarioBase):
@@ -28,6 +30,8 @@ class ScenarioUpdate(BaseModel):
     duration_seconds: Optional[int] = None
     attack_pattern: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
+    category: Optional[str] = None
+    mitre_technique_ids: Optional[List[str]] = None
 
 
 class Scenario(ScenarioBase):
@@ -82,3 +86,4 @@ class CustomScenarioCreate(BaseModel):
     target_device_id: Optional[str] = None
     attack_chain: List[AttackConfiguration]
     duration_seconds: Optional[int] = None  # Optional, calculated from chain if not provided
+    mitre_technique_ids: List[str] = []

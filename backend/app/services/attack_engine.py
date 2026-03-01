@@ -335,14 +335,209 @@ class DataExfiltrationAttack(AttackTechnique):
         }
 
 
+class GenericMitreAttack(AttackTechnique):
+    """Generic attack technique for MITRE ATT&CK techniques without specialized implementations.
+
+    Generates realistic events matching the technique's tactic and description,
+    using configurable intensity and event count.
+    """
+
+    # Map tactics to event generation profiles
+    TACTIC_PROFILES = {
+        'Reconnaissance': {
+            'event_type': 'reconnaissance',
+            'severity': 'high',
+            'default_zone': 'zone-c',
+            'default_component': 'network_infrastructure',
+            'dst_port': 443,
+        },
+        'Initial Access': {
+            'event_type': 'initial_access',
+            'severity': 'critical',
+            'default_zone': 'zone-c',
+            'default_component': 'network_infrastructure',
+            'dst_port': 443,
+        },
+        'Execution': {
+            'event_type': 'command_execution',
+            'severity': 'critical',
+            'default_zone': 'zone-a',
+            'default_component': 'traffic_management',
+            'dst_port': 445,
+        },
+        'Persistence': {
+            'event_type': 'persistence',
+            'severity': 'critical',
+            'default_zone': 'zone-a',
+            'default_component': 'traffic_management',
+            'dst_port': 135,
+        },
+        'Privilege Escalation': {
+            'event_type': 'privilege_escalation',
+            'severity': 'critical',
+            'default_zone': 'zone-d',
+            'default_component': 'security',
+            'dst_port': 445,
+        },
+        'Defense Evasion': {
+            'event_type': 'defense_evasion',
+            'severity': 'critical',
+            'default_zone': 'zone-d',
+            'default_component': 'security',
+            'dst_port': 443,
+        },
+        'Credential Access': {
+            'event_type': 'credential_access',
+            'severity': 'critical',
+            'default_zone': 'zone-c',
+            'default_component': 'network_infrastructure',
+            'dst_port': 389,
+        },
+        'Lateral Movement': {
+            'event_type': 'lateral_movement',
+            'severity': 'critical',
+            'default_zone': 'zone-c',
+            'default_component': 'network_infrastructure',
+            'dst_port': 22,
+        },
+        'Collection': {
+            'event_type': 'data_collection',
+            'severity': 'high',
+            'default_zone': 'zone-d',
+            'default_component': 'security',
+            'dst_port': 443,
+        },
+        'Command and Control': {
+            'event_type': 'c2_communication',
+            'severity': 'critical',
+            'default_zone': 'zone-b',
+            'default_component': 'iot_sensors',
+            'dst_port': 443,
+        },
+        'Exfiltration': {
+            'event_type': 'data_exfiltration',
+            'severity': 'critical',
+            'default_zone': 'zone-d',
+            'default_component': 'security',
+            'dst_port': 443,
+        },
+        'Impact': {
+            'event_type': 'impact',
+            'severity': 'critical',
+            'default_zone': 'zone-a',
+            'default_component': 'traffic_management',
+            'dst_port': 502,
+        },
+    }
+
+    # Parameter names that represent event count across different techniques
+    COUNT_PARAMS = [
+        'intensity', 'target_hosts', 'attempts', 'connection_attempts',
+        'login_events', 'commands', 'persistence_events', 'events',
+        'entries_created', 'escalation_attempts', 'target_processes',
+        'disable_events', 'file_events', 'removal_events', 'dump_events',
+        'capture_events', 'lateral_hops', 'tools_transferred', 'screenshots',
+        'tools_downloaded', 'packets_per_second', 'duration_events',
+        'intensity_events', 'files_encrypted', 'records_modified',
+        'beacon_count', 'data_volume_mb',
+    ]
+
+    async def execute(self) -> Dict[str, Any]:
+        technique_id = self.config.get('mitre_id', 'T0000')
+        technique_name = self.config.get('technique_name', 'Unknown')
+        tactic = self.config.get('tactic', 'Execution')
+        # Find the event count from whichever parameter name this technique uses
+        intensity = 20
+        for p in self.COUNT_PARAMS:
+            if p in self.config:
+                intensity = int(self.config[p])
+                break
+        delay = self.config.get('delay_ms', self.config.get('interval_seconds', 0.2) * 1000 if 'interval_seconds' in self.config else 200) / 1000
+
+        profile = self.TACTIC_PROFILES.get(tactic, self.TACTIC_PROFILES['Execution'])
+        src_ip = self.config.get('src_ip', '10.0.3.99')
+        component = self.config.get('component', profile['default_component'])
+        zone = self.config.get('zone', profile['default_zone'])
+
+        logger.info(f"Starting generic MITRE attack: {technique_id} {technique_name} ({tactic}), {intensity} events")
+
+        for i in range(intensity):
+            target_ip = f"10.0.1.{random.randint(10, 50)}"
+            event = {
+                '@timestamp': datetime.utcnow().isoformat() + 'Z',
+                'component': component,
+                'event_type': profile['event_type'],
+                'severity': profile['severity'],
+                'city_zone': zone,
+                'src_ip': src_ip,
+                'dst_ip': target_ip,
+                'src_port': random.randint(40000, 65000),
+                'dst_port': profile['dst_port'],
+                'asset_id': self.config.get('target_device'),
+                'message': f"{technique_name} activity detected: {src_ip} -> {target_ip} ({technique_id})",
+                'metadata': {
+                    'mitre_technique': technique_id,
+                    'mitre_tactic': tactic,
+                    'technique_name': technique_name,
+                    'event_index': i + 1,
+                    'total_events': intensity,
+                    **{k: v for k, v in self.config.items()
+                       if k not in ('run_id', 'target_device', 'component', 'zone',
+                                    'src_ip', 'mitre_id', 'technique_name', 'tactic', 'technique')
+                       and not callable(v)},
+                }
+            }
+            self._log_event(event)
+            await asyncio.sleep(delay)
+
+        return {
+            'technique': technique_name,
+            'status': 'completed',
+            'events_generated': len(self.events_generated),
+            'intensity': intensity,
+            'detection_expected': intensity >= 5,
+            'mitre_technique': technique_id,
+        }
+
+
 class AttackExecutionEngine:
     """Main engine for executing real attacks."""
 
     TECHNIQUE_MAP = {
+        # Specialized implementations
         'brute_force': BruteForceAttack,
         'port_scan': PortScanAttack,
         'c2_beacon': C2BeaconingAttack,
         'data_exfiltration': DataExfiltrationAttack,
+        # Generic MITRE technique keys (mapped by mitre_id in config)
+        'active_scanning': GenericMitreAttack,
+        'exploit_public_app': GenericMitreAttack,
+        'external_remote_services': GenericMitreAttack,
+        'valid_accounts': GenericMitreAttack,
+        'command_scripting': GenericMitreAttack,
+        'scheduled_task': GenericMitreAttack,
+        'system_services': GenericMitreAttack,
+        'boot_autostart': GenericMitreAttack,
+        'create_modify_process': GenericMitreAttack,
+        'abuse_elevation': GenericMitreAttack,
+        'process_injection': GenericMitreAttack,
+        'token_manipulation': GenericMitreAttack,
+        'impair_defenses': GenericMitreAttack,
+        'obfuscated_files': GenericMitreAttack,
+        'indicator_removal': GenericMitreAttack,
+        'credential_dumping': GenericMitreAttack,
+        'network_sniffing': GenericMitreAttack,
+        'remote_services': GenericMitreAttack,
+        'lateral_tool_transfer': GenericMitreAttack,
+        'input_capture': GenericMitreAttack,
+        'screen_capture': GenericMitreAttack,
+        'archive_data': GenericMitreAttack,
+        'app_layer_protocol': GenericMitreAttack,
+        'ingress_tool_transfer': GenericMitreAttack,
+        'network_dos': GenericMitreAttack,
+        'endpoint_dos': GenericMitreAttack,
+        'data_encrypted_impact': GenericMitreAttack,
+        'data_manipulation': GenericMitreAttack,
     }
 
     def __init__(self, run_id: str, scenario_config: Dict[str, Any]):
