@@ -70,6 +70,18 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
     │  │  Logger  │                                   │
     │  └──────────┘                                   │
     └─────────────────────────────────────────────────┘
+
+    ┌──────── IoT Range (isolated network) ─────────┐
+    │  ┌────────────────┐                            │
+    │  │   IoT Target   │  HTTP :8080 + TCP :1883    │
+    │  │  (Sensor Hub)  │                            │
+    │  └────────────────┘                            │
+    │       ▲ tcpdump                                │
+    │  ┌──────────────┐                              │
+    │  │ IoT Range    │──▶ Filebeat ──▶ OpenSearch   │
+    │  │   Logger     │                              │
+    │  └──────────────┘                              │
+    └────────────────────────────────────────────────┘
 ```
 
 ## Prerequisites
@@ -78,6 +90,7 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 - Docker Compose 2.x or later
 - 8GB RAM minimum (16GB recommended)
 - 20GB free disk space
+- **Linux only**: OpenSearch requires `sudo sysctl -w vm.max_map_count=262144` (add to `/etc/sysctl.conf` for persistence)
 
 ## Quick Start
 
@@ -115,7 +128,7 @@ Wait for all services to become healthy (2-3 minutes). Core services:
 | `iot_target` | — | IoT sensor hub training target |
 | `iot_range_logger` | — | IoT range packet capture |
 
-### 4. Access the Platform
+### 2. Access the Platform
 
 - **Frontend UI**: http://localhost:3000
 - **Backend API**: http://localhost:8000
@@ -133,7 +146,23 @@ Both accounts are seeded automatically on first startup (idempotent — safe to 
 
 **To change passwords**: Login as Administrator, navigate to **Admin > Users**, select the user, and update their password. To disable an account, toggle its **Active** status to inactive.
 
-**⚠️ IMPORTANT**: Change the default passwords immediately after first login!
+**IMPORTANT**: Change the default passwords immediately after first login!
+
+### 3. Verify the Platform
+
+```bash
+# Check all containers are running
+docker compose ps
+
+# Backend health
+curl -s http://localhost:8000/api/health | python3 -m json.tool
+
+# OpenSearch health
+curl -s http://localhost:9200/_cluster/health | python3 -m json.tool
+
+# Frontend serves (should return HTML)
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
+```
 
 ## Using CityShield
 
@@ -325,7 +354,22 @@ docker compose restart backend
 
 See [docs/device-inventory.md](docs/device-inventory.md) for the complete 25-asset inventory with schema reference.
 
-### Additional Frontend Dependencies
+## Frontend Routes
+
+| Path | Page | Access |
+|---|---|---|
+| `/` | Overview (dashboard + 3D city) | All authenticated |
+| `/alerts` | Alert investigation | All authenticated |
+| `/rules` | Detection rules + auto-response config | All authenticated |
+| `/scenarios` | Scenario builder + Research Lab tab | All authenticated |
+| `/scenarios/custom` | Custom scenario builder (MITRE selection) | All authenticated |
+| `/devices` | Device management + power control | All authenticated |
+| `/awareness` | Security awareness training + quiz | All authenticated |
+| `/proposals` | Attack proposals (submit / review) | All authenticated |
+| `/admin/users` | User management | Administrator only |
+| `/login` | Login | Public |
+
+## Key Frontend Dependencies
 
 | Package | Version | Purpose |
 |---|---|---|
@@ -362,10 +406,10 @@ pytest
 # Lint backend
 ruff check app/
 
-# Frontend tests (after frontend is built)
+# Frontend lint and type-check
 cd frontend
-npm test
 npm run lint
+npm run build     # includes tsc type-check
 ```
 
 ### Adding Custom Rules
@@ -395,7 +439,47 @@ Restart the detection engine to load the new rule.
 
 ## Troubleshooting
 
-### 1. Research Lab tools or banner are outdated
+### OpenSearch won't start or keeps restarting
+
+**Linux**: OpenSearch requires a higher virtual memory limit:
+
+```bash
+sudo sysctl -w vm.max_map_count=262144
+# Make permanent:
+echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+```
+
+**Low memory**: OpenSearch needs at least 4GB. Increase Docker Desktop memory allocation in Settings → Resources → Memory.
+
+Check health: `curl -s http://localhost:9200/_cluster/health | python3 -m json.tool`
+
+### Port conflicts (address already in use)
+
+Find what's using a port and stop it, or change the port in `.env`:
+
+```bash
+lsof -i :9200   # OpenSearch
+lsof -i :8000   # Backend
+lsof -i :3000   # Frontend
+```
+
+### Backend returns errors or login fails
+
+Restart the backend so it reconnects to OpenSearch and re-seeds default users:
+
+```bash
+docker compose restart backend
+```
+
+If OpenSearch is down:
+
+```bash
+docker compose up -d opensearch
+# Wait for it to become healthy (~30s), then:
+docker compose restart backend
+```
+
+### Research Lab tools or banner are outdated
 
 Rebuild the image and re-provision:
 
@@ -405,7 +489,7 @@ docker compose build researcher-lab-image
 
 Then in the UI: Scenarios → Research Lab → **Remove** → **Provision Lab**.
 
-### 2. Research Lab terminal won't connect or session exits
+### Research Lab terminal won't connect or session exits
 
 Re-provision the lab container (your home directory volume is preserved):
 
@@ -420,20 +504,19 @@ If the container keeps exiting, check logs:
 docker logs cityshield-lab-<username>
 ```
 
-### 3. Backend returns errors or login fails
-
-Restart the backend so it reconnects to OpenSearch and re-seeds default users:
+### Docker Compose errors
 
 ```bash
-docker compose restart backend
-```
+# Validate config
+docker compose config > /dev/null
 
-If OpenSearch is down:
+# Clean restart (removes volumes — OpenSearch data will be lost)
+docker compose down -v
+docker compose up -d --build
 
-```bash
-docker compose up -d opensearch
-# Wait for it to become healthy, then:
-docker compose restart backend
+# View logs for a specific service
+docker compose logs -f backend
+docker compose logs -f detection_engine
 ```
 
 ## Cyber Range

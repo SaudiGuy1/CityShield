@@ -72,7 +72,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main` and `devel
 
 ### Backend Module Layout (`backend/app/`)
 
-- **`api/`** — Route modules: `routes_auth`, `routes_alerts`, `routes_rules`, `routes_scenarios`, `routes_logs`, `routes_metrics`, `routes_users`, `routes_devices`, `routes_overview`, `routes_health`, `routes_websocket`, `routes_lab`, `routes_actions`, `routes_proposals`, `routes_mitre`, `threat_knowledge`
+- **`api/`** — Route modules: `routes_auth`, `routes_alerts`, `routes_rules`, `routes_scenarios`, `routes_logs`, `routes_metrics`, `routes_users`, `routes_devices`, `routes_overview`, `routes_health`, `routes_websocket`, `routes_lab`, `routes_actions`, `routes_proposals`, `routes_mitre`; data module: `threat_knowledge` (MITRE ATT&CK knowledge base used by alert analysis)
 - **`core/`** — `config.py` (Pydantic BaseSettings), `security.py` (JWT + bcrypt), `rbac.py` (role decorators)
 - **`models/`** — Pydantic models: `alert`, `device`, `rule`, `scenario`, `user`, `action`, `proposal`
 - **`services/`** — Business logic: `attack_engine`, `device_service`, `lab_service`, `metrics_service`, `rule_service`, `scenario_service`, `action_service`, `proposal_service`

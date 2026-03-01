@@ -19,10 +19,15 @@ client = TestClient(app)
 @pytest.fixture
 def auth_headers():
     """Get authentication headers for testing."""
-    # Login as admin to get token
+    from app.core.config import settings
+
+    # Login as admin to get token (password comes from config/env)
     response = client.post(
         "/api/auth/login",
-        json={"username": "admin", "password": "Admin@123!Change"}
+        json={
+            "username": settings.default_admin_user,
+            "password": settings.default_admin_pass,
+        }
     )
     assert response.status_code == 200
     token = response.json()["access_token"]

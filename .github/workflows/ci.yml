@@ -11,10 +11,10 @@ jobs:
     name: Lint Backend (Python)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -31,11 +31,34 @@ jobs:
   test-backend:
     name: Test Backend (Pytest)
     runs-on: ubuntu-latest
+
+    services:
+      opensearch:
+        image: opensearchproject/opensearch:2.11.1
+        ports:
+          - 9200:9200
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+        options: >-
+          --health-cmd "curl -f http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      OPENSEARCH_URL: http://localhost:9200
+      OPENSEARCH_USER: admin
+      OPENSEARCH_PASS: admin
+      DEFAULT_ADMIN_USER: admin
+      DEFAULT_ADMIN_PASS: CityShield@Admin2026
+      BACKEND_JWT_SECRET: ci-test-secret-key-for-testing
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -43,6 +66,14 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
+
+      - name: Wait for OpenSearch
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9200/_cluster/health && break
+            echo "Waiting for OpenSearch... ($i)"
+            sleep 2
+          done
 
       - name: Run tests
         run: |
@@ -53,7 +84,7 @@ jobs:
     name: Validate Docker Compose
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Validate docker-compose.yml
         run: |
@@ -64,10 +95,10 @@ jobs:
     name: Lint Frontend (ESLint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
@@ -85,10 +116,10 @@ jobs:
     name: Build Frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
