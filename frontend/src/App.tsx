@@ -62,7 +62,7 @@ function AnimatedRoutes({
         } />
         <Route path="/alerts" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition><Alerts /></PageTransition>
+            <PageTransition><Alerts activeAttack={activeAttack} /></PageTransition>
           </ProtectedRoute>
         } />
         <Route path="/devices" element={

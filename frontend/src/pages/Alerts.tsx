@@ -6,6 +6,7 @@ import ActionConfirmDialog from '../components/ActionConfirmDialog'
 import ActionHistoryTable from '../components/ActionHistoryTable'
 import ExecutionDetailsModal from '../components/ExecutionDetailsModal'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
+import type { ActiveAttack } from '../App'
 
 interface AlertItem {
   alert_id: string
@@ -65,7 +66,7 @@ interface ActionAuditEntry {
   error?: string
 }
 
-export default function Alerts() {
+export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack | null }) {
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ severity: '', status: '' })
@@ -121,9 +122,10 @@ export default function Alerts() {
 
   useEffect(() => {
     fetchAlerts()
-    const interval = setInterval(fetchAlerts, 5000)
+    const pollInterval = activeAttack ? 2000 : 5000
+    const interval = setInterval(fetchAlerts, pollInterval)
     return () => clearInterval(interval)
-  }, [fetchAlerts])
+  }, [fetchAlerts, activeAttack])
 
   useEffect(() => {
     if (expandedId) {
@@ -389,6 +391,27 @@ export default function Alerts() {
           </span>
         </div>
       </div>
+
+      {/* Attack in Progress Banner */}
+      {activeAttack && (
+        <div className="card" style={{
+          marginBottom: '1rem',
+          borderLeft: '4px solid var(--accent-danger)',
+          background: 'rgba(239,68,68,0.08)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '1.5rem' }}>&#9888;</span>
+            <div>
+              <div style={{ fontWeight: 600, color: 'var(--accent-danger)' }}>
+                Attack in Progress: {activeAttack.scenarioName}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Target: {activeAttack.targetComponent.replace(/_/g, ' ')} | Pattern: {activeAttack.attackPattern} | New alerts will appear as attack stages complete
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>

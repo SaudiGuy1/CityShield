@@ -1,8 +1,10 @@
 import { useRef, useMemo, useState, useEffect, useCallback, Suspense } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Stars } from '@react-three/drei'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as THREE from 'three'
+import type { ActiveAttack } from '../App'
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -52,6 +54,16 @@ const DEVICES: Record<string, DeviceInfo> = {
   firewall: { id: 'firewall', name: 'Firewall Tower', district: 'Security Ops', type: 'Next-Gen Firewall', status: 'online', ip: '10.0.0.2', uptime: '99.99%', cpu: 45, memory: 56, temp: 44, bandwidth: 2340, alerts: 1, firmware: 'v6.1.0', lastScan: '30 sec ago', color: '#00ff88' },
   power: { id: 'power', name: 'Power Plant', district: 'Industrial', type: 'SCADA Controller', status: 'critical', ip: '10.5.0.100', uptime: '97.45%', cpu: 89, memory: 91, temp: 72, bandwidth: 34, alerts: 5, firmware: 'v1.9.8', lastScan: '15 min ago', color: '#ffaa00' },
   range: { id: 'range', name: 'Range Server', district: 'Cyber Range', type: 'Sandbox Host', status: 'online', ip: '10.6.0.1', uptime: '99.50%', cpu: 67, memory: 78, temp: 55, bandwidth: 534, alerts: 0, firmware: 'v3.4.2', lastScan: '3 min ago', color: '#00ff88' },
+  metasploitable: { id: 'metasploitable', name: 'Metasploitable', district: 'Cyber Range', type: 'Vulnerable Target VM', status: 'warning', ip: '172.20.0.2', uptime: '99.2%', cpu: 42, memory: 55, temp: 38, bandwidth: 89, alerts: 0, firmware: 'metasploitable2', lastScan: '10 min ago', color: '#ff6b35' },
+}
+
+const TARGET_TO_DEVICE: Record<string, string> = {
+  traffic_management: 'traffic', traffic_sim: 'traffic',
+  iot_sensors: 'sensor', iot_sim: 'sensor',
+  network_infrastructure: 'router', network_emulator: 'router',
+  security: 'firewall', security_operations: 'firewall',
+  industrial_systems: 'power', industrial_controls: 'power',
+  cyber_range: 'range',
 }
 
 const ATTACK_COLOR = new THREE.Color('#ff003c')
@@ -91,14 +103,25 @@ function makeWindowTex(cols: number, rows: number, litColor: string, litChance =
    BUILDING
    ═══════════════════════════════════════════════════ */
 
-function Building({ b, isSelected, onSelect, cityState }: {
-  b: Bld; isSelected: boolean; onSelect: (b: Bld) => void; cityState: CityState
+function Building({ b, isSelected, onSelect, cityState, attackedDeviceId }: {
+  b: Bld; isSelected: boolean; onSelect: (b: Bld) => void; cityState: CityState; attackedDeviceId: string | null
 }) {
   const ref = useRef<THREE.Mesh>(null!)
   const edgeRef = useRef<THREE.LineSegments>(null!)
+  const ringRef = useRef<THREE.Mesh>(null!)
+  const lightRef = useRef<THREE.PointLight>(null!)
   const [hov, setHov] = useState(false)
   const isClickable = !!b.deviceId
   const originalColor = useMemo(() => new THREE.Color(b.glow), [b.glow])
+
+  // Determine once whether this building is in the attacked district
+  const isAttackedBuilding = useMemo(() => {
+    if (cityState !== 'cyberattack' || !attackedDeviceId) return false
+    if (b.deviceId === attackedDeviceId) return true
+    const mainBuilding = BUILDINGS.find(m => m.deviceId === attackedDeviceId)
+    return !!(mainBuilding && !b.deviceId && b.glow === mainBuilding.glow &&
+      Math.abs(b.x - mainBuilding.x) < 10 && Math.abs(b.z - mainBuilding.z) < 10)
+  }, [cityState, attackedDeviceId, b])
 
   const tex = useMemo(() => makeWindowTex(
     Math.max(4, Math.floor(b.w * 3)),
@@ -112,31 +135,60 @@ function Building({ b, isSelected, onSelect, cityState }: {
     const t = clock.getElapsedTime()
 
     if (cityState === 'cyberattack') {
-      const pulse = Math.sin(t * 4 + b.x) * 0.5 + 0.5
-      mat.emissive.copy(originalColor).lerp(ATTACK_COLOR, pulse * 0.7)
-      mat.emissiveIntensity = 0.4 + pulse * 1.5
+      if (isAttackedBuilding) {
+        // Dramatic red flash: fast pulsing emissive
+        const pulse = Math.sin(t * 8) * 0.5 + 0.5
+        mat.emissive.copy(ATTACK_COLOR)
+        mat.emissiveIntensity = 1.5 + pulse * 3.5
+
+        // Scale pulsing — throb effect
+        const scalePulse = 1.0 + Math.sin(t * 6) * 0.04
+        ref.current.scale.set(scalePulse, scalePulse, scalePulse)
+
+        // Animate red point light above building
+        if (lightRef.current) {
+          lightRef.current.intensity = 8 + pulse * 12
+        }
+
+        // Animate ground ring
+        if (ringRef.current) {
+          const ringMat = ringRef.current.material as THREE.MeshBasicMaterial
+          ringMat.opacity = 0.3 + pulse * 0.7
+          ringRef.current.rotation.z = t * 1.5
+          const ringScale = 1.0 + Math.sin(t * 3) * 0.15
+          ringRef.current.scale.set(ringScale, ringScale, 1)
+        }
+      } else {
+        mat.emissive.copy(originalColor)
+        const targetI = isSelected ? 2.0 : hov ? 1.5 : 0.3
+        mat.emissiveIntensity += (targetI - mat.emissiveIntensity) * 0.1
+        ref.current.scale.setScalar(1)
+      }
     } else if (cityState === 'critical') {
       const pulse = Math.sin(t * 2) * 0.2 + 0.8
       mat.emissive.copy(originalColor).lerp(ATTACK_COLOR, 0.3)
       mat.emissiveIntensity = 0.5 * pulse
+      ref.current.scale.setScalar(1)
     } else if (cityState === 'alert') {
       mat.emissive.copy(originalColor)
       mat.emissiveIntensity = isSelected ? 2.0 : hov ? 1.5 : 0.5
+      ref.current.scale.setScalar(1)
     } else {
       mat.emissive.copy(originalColor)
       const targetI = isSelected ? 2.0 : hov ? 1.5 : 0.4
       mat.emissiveIntensity += (targetI - mat.emissiveIntensity) * 0.1
+      ref.current.scale.setScalar(1)
     }
 
     if (edgeRef.current) {
       const eMat = edgeRef.current.material as THREE.LineBasicMaterial
-      eMat.opacity = isSelected ? 1.0 : hov ? 0.8 : 0.15
+      eMat.opacity = isAttackedBuilding ? 1.0 : isSelected ? 1.0 : hov ? 0.8 : 0.15
+      if (isAttackedBuilding) eMat.color.set('#ff0000')
+      else eMat.color.set(b.glow)
     }
-    if (isSelected) {
+    if (isSelected && !isAttackedBuilding) {
       const pulse = Math.sin(t * 3) * 0.15 + 0.85
       ref.current.scale.setScalar(pulse * 0.02 + 0.99)
-    } else {
-      ref.current.scale.setScalar(1)
     }
   })
 
@@ -153,19 +205,31 @@ function Building({ b, isSelected, onSelect, cityState }: {
       </mesh>
       <mesh position={[0, b.h + 0.04, 0]}>
         <boxGeometry args={[b.w + 0.08, isSelected ? 0.15 : 0.06, b.d + 0.08]} />
-        <meshBasicMaterial color={b.glow} toneMapped={false} />
+        <meshBasicMaterial color={isAttackedBuilding ? '#ff0000' : b.glow} toneMapped={false} />
       </mesh>
       <lineSegments ref={edgeRef} position={[0, b.h / 2, 0]}>
         <edgesGeometry args={[new THREE.BoxGeometry(b.w, b.h, b.d)]} />
         <lineBasicMaterial color={b.glow} transparent opacity={0.15} />
       </lineSegments>
-      {isSelected && (
+
+      {/* Attack effects: red point light + pulsing ground ring */}
+      {isAttackedBuilding && (
+        <>
+          <pointLight ref={lightRef} position={[0, b.h + 3, 0]} color="#ff0000" intensity={12} distance={20} decay={2} />
+          <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+            <ringGeometry args={[Math.max(b.w, b.d) * 0.7, Math.max(b.w, b.d) * 1.2, 32]} />
+            <meshBasicMaterial color="#ff0000" transparent opacity={0.7} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+        </>
+      )}
+
+      {isSelected && !isAttackedBuilding && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
           <ringGeometry args={[Math.max(b.w, b.d) * 0.8, Math.max(b.w, b.d) * 0.95, 32]} />
           <meshBasicMaterial color={b.glow} transparent opacity={0.6} toneMapped={false} side={THREE.DoubleSide} />
         </mesh>
       )}
-      {isClickable && !isSelected && (
+      {isClickable && !isSelected && !isAttackedBuilding && (
         <mesh position={[0, b.h + 1.2, 0]}>
           <octahedronGeometry args={[0.2, 0]} />
           <meshBasicMaterial color={b.glow} toneMapped={false} transparent opacity={hov ? 1 : 0.5} />
@@ -220,6 +284,7 @@ const BUILDINGS: Bld[] = [
   { x: 11, z: 16, w: 1.5, d: 1.5, h: 3.5, color: '#081610', glow: '#00ff88' },
   { x: 12, z: 11, w: 1.8, d: 1.8, h: 3, color: '#061410', glow: '#00ff88' },
   { x: 18, z: 12, w: 1.5, d: 1.5, h: 2.5, color: '#081610', glow: '#00ff88' },
+  { x: 15, z: 17, w: 2.5, d: 2.5, h: 5, color: '#120a06', glow: '#ff6b35', name: 'Metasploitable', dist: 'Cyber Range', deviceId: 'metasploitable' },
 ]
 
 /* ═══════════════════════════════════════════════════
@@ -389,6 +454,7 @@ function DataFlows() {
     { to: [6, 16, 4], color: '#00ff88' },
     { to: [-9, 7, 14], color: '#ffaa00' },
     { to: [14, 8, 14], color: '#00ff88' },
+    { to: [15, 5, 17], color: '#ff6b35' },
   ]
   return (
     <group>
@@ -406,7 +472,7 @@ function DataFlows() {
    WINDMILL 3D
    ═══════════════════════════════════════════════════ */
 
-function Windmill3D({ data, isSelected, onSelect, cityState: _cityState }: {
+function Windmill3D({ data, isSelected, onSelect }: {
   data: WindmillData; isSelected: boolean; onSelect: () => void; cityState: CityState
 }) {
   const bladeRef = useRef<THREE.Group>(null!)
@@ -496,7 +562,7 @@ function Windmill3D({ data, isSelected, onSelect, cityState: _cityState }: {
    TRAFFIC LIGHT 3D
    ═══════════════════════════════════════════════════ */
 
-function TrafficLight3D({ data, isSelected, onSelect, cityState: _cs }: {
+function TrafficLight3D({ data, isSelected, onSelect }: {
   data: TrafficLightData; isSelected: boolean; onSelect: () => void; cityState: CityState
 }) {
   const redMatRef = useRef<THREE.MeshStandardMaterial>(null!)
@@ -700,7 +766,7 @@ const DEFAULT_TARGET = new THREE.Vector3(0, 4, 0)
 
 function CameraController({ cameraTarget, controlsRef }: {
   cameraTarget: { pos: THREE.Vector3; look: THREE.Vector3 } | null
-  controlsRef: React.MutableRefObject<any>
+  controlsRef: React.MutableRefObject<React.ElementRef<typeof OrbitControls>>
 }) {
   const { camera } = useThree()
   const targetPos = useRef(DEFAULT_CAM_POS.clone())
@@ -732,7 +798,7 @@ function CameraController({ cameraTarget, controlsRef }: {
    SCENE
    ═══════════════════════════════════════════════════ */
 
-function Scene({ cityState, selectedObj, cameraTarget, onSelectBuilding, onSelectWindmill, onSelectTrafficLight, windmills, trafficLights }: {
+function Scene({ cityState, selectedObj, cameraTarget, onSelectBuilding, onSelectWindmill, onSelectTrafficLight, windmills, trafficLights, attackedDeviceId }: {
   cityState: CityState
   selectedObj: SelectedObject | null
   cameraTarget: { pos: THREE.Vector3; look: THREE.Vector3 } | null
@@ -741,8 +807,9 @@ function Scene({ cityState, selectedObj, cameraTarget, onSelectBuilding, onSelec
   onSelectTrafficLight: (id: string) => void
   windmills: WindmillData[]
   trafficLights: TrafficLightData[]
+  attackedDeviceId: string | null
 }) {
-  const controlsRef = useRef<any>(null!)
+  const controlsRef = useRef<React.ElementRef<typeof OrbitControls>>(null!)
 
   return (
     <>
@@ -770,7 +837,7 @@ function Scene({ cityState, selectedObj, cameraTarget, onSelectBuilding, onSelec
       <TrafficDots cityState={cityState} />
 
       {BUILDINGS.map((b, i) => (
-        <Building key={i} b={b} cityState={cityState}
+        <Building key={i} b={b} cityState={cityState} attackedDeviceId={attackedDeviceId}
           isSelected={selectedObj?.type === 'building' && selectedObj.building.deviceId === b.deviceId && !!b.deviceId}
           onSelect={onSelectBuilding} />
       ))}
@@ -1411,12 +1478,124 @@ function CityStateBar({ cityState, onChange }: { cityState: CityState; onChange:
 }
 
 /* ═══════════════════════════════════════════════════
+   ATTACK STAGE TYPES & PHASE DATA
+   ═══════════════════════════════════════════════════ */
+
+interface StageData {
+  name: string; description: string; status: string
+  started_at: string | null; completed_at: string | null; error: string | null
+}
+
+interface StageResponse {
+  run_id: string; status: string
+  target_device_id: string | null; target_component_id: string | null
+  stages: StageData[]
+}
+
+interface AttackPhase { name: string; description: string }
+
+const ATTACK_PHASES: Record<string, AttackPhase[]> = {
+  DDoS: [
+    { name: 'Botnet Activation', description: 'Coordinating distributed attack nodes across multiple regions' },
+    { name: 'Traffic Flood', description: 'Overwhelming target with SYN/UDP flood packets at high volume' },
+    { name: 'Service Degradation', description: 'Target services becoming unresponsive to legitimate requests' },
+    { name: 'Full Denial', description: 'Complete service disruption achieved - all endpoints unreachable' },
+  ],
+  'Brute Force': [
+    { name: 'Target Enumeration', description: 'Identifying active login endpoints and valid usernames' },
+    { name: 'Credential Spray', description: 'Testing common password combinations across discovered accounts' },
+    { name: 'Intensive Attack', description: 'Focused high-rate attempts on viable accounts detected' },
+    { name: 'Access Breach', description: 'Valid credentials discovered - unauthorized access gained' },
+  ],
+  'Port Scan': [
+    { name: 'Host Discovery', description: 'Sending ICMP and ARP probes to identify live hosts on the network' },
+    { name: 'Port Enumeration', description: 'Scanning TCP/UDP ports 1-65535 on discovered hosts' },
+    { name: 'Service Detection', description: 'Fingerprinting detected services and their versions' },
+    { name: 'Vulnerability Mapping', description: 'Mapping discovered services against known vulnerability databases' },
+  ],
+  Malware: [
+    { name: 'Initial Delivery', description: 'Malicious payload delivered via compromised firmware update channel' },
+    { name: 'Execution', description: 'Payload executing on target device, establishing persistence' },
+    { name: 'Lateral Movement', description: 'Spreading to adjacent IoT devices through network protocols' },
+    { name: 'Data Exfiltration', description: 'Collecting and transmitting sensitive data to external C2 server' },
+  ],
+  'Data Exfiltration': [
+    { name: 'Access Established', description: 'Attacker gains access to data stores through compromised credentials' },
+    { name: 'Data Collection', description: 'Aggregating sensitive data from multiple database tables' },
+    { name: 'Staging', description: 'Compressing and encrypting data for covert transmission' },
+    { name: 'Exfiltration', description: 'Transmitting data to external server via encrypted DNS tunneling' },
+  ],
+  'SQL Injection': [
+    { name: 'Reconnaissance', description: 'Probing input fields for injection vulnerabilities' },
+    { name: 'Exploitation', description: 'Crafting and injecting malicious SQL payloads' },
+    { name: 'Data Access', description: 'Extracting database schema and sensitive records' },
+    { name: 'Privilege Escalation', description: 'Leveraging DB access to escalate system privileges' },
+  ],
+}
+
+const DEFAULT_PHASES: AttackPhase[] = [
+  { name: 'Reconnaissance', description: 'Scanning target systems for vulnerabilities' },
+  { name: 'Initial Access', description: 'Attempting to gain entry into target systems' },
+  { name: 'Execution', description: 'Running attack payload on compromised systems' },
+  { name: 'Impact', description: 'Affecting target systems and data integrity' },
+]
+
+const ATTACK_ICONS: Record<string, string> = {
+  DDoS: '\u{1F30A}', 'Brute Force': '\u{1F528}', 'Port Scan': '\u{1F50D}',
+  Malware: '\u{1F9A0}', 'Data Exfiltration': '\u{1F4E4}', 'SQL Injection': '\u{1F489}',
+}
+
+const ATTACK_EXPLANATIONS: Record<string, { why: string; how: string }> = {
+  DDoS: {
+    why: 'Overwhelm network infrastructure to cause service disruption for city operations.',
+    how: 'A distributed botnet sends massive volumes of SYN/UDP packets to flood target servers.',
+  },
+  'Brute Force': {
+    why: 'Gain unauthorized access to traffic management control systems.',
+    how: 'Automated tools rapidly test thousands of username/password combinations.',
+  },
+  'Port Scan': {
+    why: 'Map the attack surface of network infrastructure to identify vulnerable services.',
+    how: 'Network scanning tools send TCP SYN packets to every port on target hosts.',
+  },
+  Malware: {
+    why: 'Compromise IoT sensor devices to manipulate city environmental data.',
+    how: 'Malicious firmware is deployed via a compromised update server.',
+  },
+  'Data Exfiltration': {
+    why: 'Steal sensitive city infrastructure data including security configurations.',
+    how: 'Data is collected, compressed, and secretly transmitted via DNS tunneling.',
+  },
+  'SQL Injection': {
+    why: 'Access and manipulate databases storing critical infrastructure configurations.',
+    how: 'Specially crafted SQL commands are injected through unvalidated input fields.',
+  },
+}
+
+/* ═══════════════════════════════════════════════════
    MAIN EXPORT
    ═══════════════════════════════════════════════════ */
 
-export default function SmartCityMap3D() {
+interface SmartCityMap3DProps {
+  activeAttack?: ActiveAttack | null
+  onAttackEnd?: () => void
+}
+
+export default function SmartCityMap3D({ activeAttack, onAttackEnd }: SmartCityMap3DProps) {
+  const navigate = useNavigate()
   const [cityState, setCityState] = useState<CityState>('normal')
   const [selected, setSelected] = useState<SelectedObject | null>(null)
+
+  // Attack state
+  const [attackProgress, setAttackProgress] = useState(0)
+  const [attackComplete, setAttackComplete] = useState(false)
+  const [stageData, setStageData] = useState<StageResponse | null>(null)
+
+  // Derive which building is under attack
+  const attackedDeviceId = useMemo(() => {
+    if (!activeAttack || attackComplete) return null
+    return TARGET_TO_DEVICE[activeAttack.targetComponent] || null
+  }, [activeAttack, attackComplete])
 
   const [windmills, setWindmills] = useState<WindmillData[]>([
     { id: 'wm1', x: -16, z: 18, name: 'Wind Turbine Alpha', running: true, speed: 60, stress: 25, status: 'normal' },
@@ -1478,6 +1657,65 @@ export default function SmartCityMap3D() {
     }
   }, [cityState])
 
+  // Auto-set city state when attack is active
+  useEffect(() => {
+    if (activeAttack && !attackComplete) {
+      setCityState('cyberattack')
+    }
+    if (!activeAttack) {
+      setAttackProgress(0)
+      setAttackComplete(false)
+      setStageData(null)
+      setCityState('normal')
+    }
+  }, [activeAttack, attackComplete])
+
+  // Poll stages endpoint during active attack
+  useEffect(() => {
+    if (!activeAttack) return
+    const fetchStages = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch(`/api/scenarios/runs/${activeAttack.runId}/stages`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data: StageResponse = await res.json()
+          setStageData(data)
+          const stages = data.stages || []
+          const total = stages.length || 1
+          const done = stages.filter(s => s.status === 'success' || s.status === 'failed').length
+          const runningBonus = stages.some(s => s.status === 'running') ? 0.5 / total : 0
+          setAttackProgress(Math.min((done / total) + runningBonus, 0.99))
+          if (data.status === 'completed' || data.status === 'failed') {
+            setAttackProgress(1)
+            setAttackComplete(true)
+          }
+        }
+      } catch { /* silently fail */ }
+    }
+    fetchStages()
+    const interval = setInterval(fetchStages, 2000)
+    return () => clearInterval(interval)
+  }, [activeAttack])
+
+  // Derive attack phases from real stage data or fallback
+  const hasRealStages = stageData && stageData.stages && stageData.stages.length > 0
+  const phases = activeAttack
+    ? (hasRealStages
+        ? stageData!.stages.map(s => ({ name: s.name, description: s.description }))
+        : ATTACK_PHASES[activeAttack.attackPattern] || DEFAULT_PHASES)
+    : []
+  const currentPhaseIndex = activeAttack
+    ? (hasRealStages
+        ? stageData!.stages.findIndex(s => s.status === 'running')
+        : Math.min(Math.floor(attackProgress * 4), 3))
+    : -1
+  const explanation = activeAttack
+    ? ATTACK_EXPLANATIONS[activeAttack.attackPattern] || { why: 'Attempting to compromise city infrastructure systems.', how: 'Using known attack techniques against target systems.' }
+    : null
+  const attackIcon = activeAttack ? ATTACK_ICONS[activeAttack.attackPattern] || '\u{26A0}\u{FE0F}' : ''
+
   // Camera target
   const cameraTarget = useMemo(() => {
     if (!selected) return null
@@ -1536,7 +1774,8 @@ export default function SmartCityMap3D() {
           <Scene cityState={cityState} selectedObj={selected} cameraTarget={cameraTarget}
             onSelectBuilding={handleSelectBuilding} onSelectWindmill={handleSelectWindmill}
             onSelectTrafficLight={handleSelectTrafficLight}
-            windmills={windmills} trafficLights={trafficLights} />
+            windmills={windmills} trafficLights={trafficLights}
+            attackedDeviceId={attackedDeviceId} />
         </Suspense>
       </Canvas>
 
@@ -1584,6 +1823,158 @@ export default function SmartCityMap3D() {
         {selectedDevice && <DeviceDetailPanel key="dp" device={selectedDevice} onClose={handleClose} />}
         {selectedWindmill && <WindmillPanel key="wp" windmill={selectedWindmill} onUpdate={updateWindmill} onClose={handleClose} />}
         {selectedTL && <TrafficLightPanel key="tp" light={selectedTL} onUpdate={updateTrafficLight} onClose={handleClose} />}
+      </AnimatePresence>
+
+      {/* Attack Visualization Overlay */}
+      <AnimatePresence>
+        {activeAttack && (
+          <motion.div
+            key="attack-panel"
+            initial={{ x: -40, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -40, opacity: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            style={{
+              position: 'absolute', top: 50, left: 12, width: 280, maxHeight: 'calc(100% - 62px)',
+              overflowY: 'auto', background: 'rgba(5,10,24,0.92)', backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,0,60,0.3)', borderRadius: 10, padding: 14, zIndex: 20,
+              fontFamily: 'Rajdhani, sans-serif',
+            }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 20 }}>{attackIcon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'Orbitron', fontWeight: 700, fontSize: 11, color: attackComplete ? '#00ff88' : '#ff003c', letterSpacing: '0.08em' }}>
+                  {attackComplete ? 'ATTACK COMPLETE' : 'ATTACK IN PROGRESS'}
+                </div>
+                <div style={{ fontSize: 13, color: '#7eb8c9' }}>{activeAttack.scenarioName}</div>
+              </div>
+              {attackComplete && (
+                <button onClick={onAttackEnd} style={{
+                  width: 24, height: 24, borderRadius: '50%', border: '1px solid rgba(0,240,255,0.2)',
+                  background: 'rgba(0,240,255,0.05)', color: '#7eb8c9', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontSize: 14,
+                }}>x</button>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: '#4a7a8a', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'Orbitron' }}>Progress</span>
+                <span style={{ fontSize: 11, color: '#e8f4f8', fontFamily: 'Orbitron', fontWeight: 600 }}>{Math.round(attackProgress * 100)}%</span>
+              </div>
+              <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,0,60,0.15)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', width: `${attackProgress * 100}%`, borderRadius: 2,
+                  background: attackComplete ? '#00ff88' : 'linear-gradient(90deg, #ff003c, #ff6b6b)',
+                  transition: 'width 0.3s ease', boxShadow: attackComplete ? '0 0 8px #00ff88' : '0 0 8px #ff003c',
+                }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                <span style={{ fontSize: 10, color: '#4a7a8a' }}>{activeAttack.attackPattern}</span>
+                <span style={{ fontSize: 10, color: '#4a7a8a' }}>
+                  {attackComplete ? 'Done' : `Stage ${Math.min(Math.floor(attackProgress * (stageData?.stages?.length || 4)) + 1, stageData?.stages?.length || 4)} / ${stageData?.stages?.length || 4}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Target */}
+            <div style={{
+              background: 'rgba(255,0,60,0.08)', border: '1px solid rgba(255,0,60,0.2)',
+              borderRadius: 8, padding: '8px 10px', marginBottom: 12,
+            }}>
+              <div style={{ fontSize: 10, color: '#4a7a8a', marginBottom: 2 }}>Target</div>
+              <div style={{ fontSize: 13, color: '#ff003c', fontWeight: 600 }}>
+                {activeAttack.targetComponent.replace(/_/g, ' ')}
+              </div>
+            </div>
+
+            {/* Attack Phases Timeline */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: '#4a7a8a', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'Orbitron', marginBottom: 8 }}>
+                Attack Phases
+              </div>
+              {phases.map((phase, i) => {
+                const realStage = hasRealStages ? stageData!.stages[i] : null
+                const stageStatus = realStage?.status
+                const isActive = hasRealStages ? stageStatus === 'running' : i === currentPhaseIndex
+                const isDone = hasRealStages ? stageStatus === 'success' : (i < currentPhaseIndex || attackComplete)
+                const isFailed = hasRealStages ? stageStatus === 'failed' : false
+
+                let indicatorContent = ''
+                let borderColor = 'rgba(0,240,255,0.2)'
+                let bgColor = 'transparent'
+                if (isDone) { indicatorContent = '\u2713'; borderColor = '#00ff88'; bgColor = '#00ff88' }
+                else if (isFailed) { indicatorContent = '\u2717'; borderColor = '#ff003c'; bgColor = '#ff003c' }
+                else if (isActive) { borderColor = '#ff003c'; bgColor = 'rgba(255,0,60,0.3)' }
+
+                return (
+                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: '50%', border: `2px solid ${borderColor}`,
+                      background: bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 8, color: 'white', flexShrink: 0, marginTop: 1,
+                      animation: isActive ? 'neon-pulse 1s ease-in-out infinite' : 'none',
+                      boxShadow: isActive ? '0 0 8px #ff003c' : isDone ? '0 0 6px #00ff88' : 'none',
+                    }}>
+                      {indicatorContent}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: 12, fontWeight: isActive ? 700 : 500,
+                        color: isDone ? '#00ff88' : isFailed ? '#ff003c' : isActive ? '#ff003c' : '#4a7a8a',
+                      }}>
+                        {phase.name}
+                      </div>
+                      {(isActive || isDone || isFailed) && (
+                        <div style={{ fontSize: 10, color: '#5a8a9a', marginTop: 1 }}>
+                          {isFailed && realStage?.error ? realStage.error : phase.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Why & How */}
+            {explanation && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{
+                  background: 'rgba(0,100,255,0.08)', border: '1px solid rgba(0,100,255,0.15)',
+                  borderRadius: 8, padding: '8px 10px', marginBottom: 6,
+                }}>
+                  <div style={{ fontSize: 10, color: '#00f0ff', fontWeight: 700, textTransform: 'uppercase', fontFamily: 'Orbitron', marginBottom: 3 }}>Why this attack</div>
+                  <div style={{ fontSize: 11, color: '#7eb8c9', lineHeight: 1.4 }}>{explanation.why}</div>
+                </div>
+                <div style={{
+                  background: 'rgba(180,0,255,0.08)', border: '1px solid rgba(180,0,255,0.15)',
+                  borderRadius: 8, padding: '8px 10px',
+                }}>
+                  <div style={{ fontSize: 10, color: '#bf00ff', fontWeight: 700, textTransform: 'uppercase', fontFamily: 'Orbitron', marginBottom: 3 }}>How it works</div>
+                  <div style={{ fontSize: 11, color: '#7eb8c9', lineHeight: 1.4 }}>{explanation.how}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Completion Actions */}
+            {attackComplete && (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => navigate('/alerts')} style={{
+                  flex: 1, padding: '8px 0', fontSize: 10, fontFamily: 'Orbitron', fontWeight: 600,
+                  background: '#ff003c15', border: '1px solid #ff003c40', borderRadius: 6,
+                  color: '#ff003c', cursor: 'pointer', letterSpacing: '0.06em', textTransform: 'uppercase',
+                }}>View Alerts</button>
+                <button onClick={onAttackEnd} style={{
+                  flex: 1, padding: '8px 0', fontSize: 10, fontFamily: 'Orbitron', fontWeight: 600,
+                  background: 'rgba(0,240,255,0.05)', border: '1px solid rgba(0,240,255,0.2)', borderRadius: 6,
+                  color: '#7eb8c9', cursor: 'pointer', letterSpacing: '0.06em', textTransform: 'uppercase',
+                }}>Dismiss</button>
+              </div>
+            )}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   )

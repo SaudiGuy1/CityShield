@@ -283,7 +283,8 @@ services:
       - NET_RAW
       - NET_ADMIN
     networks:
-      - cyber_range_net
+      cyber_range_net:
+        ipv4_address: 172.20.0.3
     restart: unless-stopped
     labels:
       - cityshield.role=training-attacker
@@ -292,8 +293,9 @@ services:
     build: ./services/range_logger
     container_name: cityshield_range_logger
     networks:
-      - cyber_range_net
-      - cityshield_network
+      cyber_range_net:
+        ipv4_address: 172.20.0.4
+      cityshield_network:
     volumes:
       - logs_volume:/data/logs
     depends_on:
@@ -320,8 +322,9 @@ services:
       - NET_RAW
       - NET_ADMIN
     networks:
-      - iot_range_net
-      - cityshield_network
+      iot_range_net:
+        ipv4_address: 172.21.0.3
+      cityshield_network:
     volumes:
       - logs_volume:/data/logs
     depends_on:

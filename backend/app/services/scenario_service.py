@@ -309,6 +309,9 @@ async def simulate_scenario_execution(run_id: str, scenario: Scenario):
             stages[i]["events_generated"] = tech_config.get('events_generated', 0)
             ScenarioService.update_run_stages(run_id, stages)
 
+            # Generate an alert for this stage so the UI shows it immediately
+            _generate_stage_alert(run_id, scenario, i, target_device)
+
         # Get final results from attack engine
         results = engine.results
 

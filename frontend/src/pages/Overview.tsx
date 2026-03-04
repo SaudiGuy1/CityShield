@@ -10,7 +10,7 @@ interface OverviewProps {
   onAttackEnd: () => void
 }
 
-export default function Overview({ user, activeAttack: _activeAttack, onAttackEnd: _onAttackEnd }: OverviewProps) {
+export default function Overview({ user, activeAttack, onAttackEnd }: OverviewProps) {
   const [stats, setStats] = useState({
     totalLogs: 0,
     activeAlerts: 0,
@@ -21,6 +21,7 @@ export default function Overview({ user, activeAttack: _activeAttack, onAttackEn
   const [pieData, setPieData] = useState<{ name: string; value: number; color: string }[]>([])
 
   const statsRef = useRef<HTMLDivElement>(null)
+  const isFirstFetch = useRef(true)
 
   const fetchData = useCallback(async () => {
     try {
@@ -38,11 +39,11 @@ export default function Overview({ user, activeAttack: _activeAttack, onAttackEn
       }
       const logsData = await logsRes.ok ? await logsRes.json() : { count: 0 }
 
-      // Fetch alerts
-      const alertsRes = await fetch('/api/alerts?status=open', {
+      // Fetch alert summary (uses OpenSearch aggregation — accurate count)
+      const alertSummaryRes = await fetch('/api/alerts/stats/summary', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
-      const alerts = await alertsRes.ok ? await alertsRes.json() : []
+      const alertSummary = await alertSummaryRes.ok ? await alertSummaryRes.json() : { total_alerts: 0, by_status: {} }
 
       // Fetch rules
       const rulesRes = await fetch('/api/rules', {
@@ -56,28 +57,35 @@ export default function Overview({ user, activeAttack: _activeAttack, onAttackEn
       })
       const events = await eventsRes.ok ? await eventsRes.json() : []
 
-      // Update stats with animation
+      // Update stats
+      const openAlerts = alertSummary.by_status?.open || 0
+      const totalAlerts = alertSummary.total_alerts || 0
       const newStats = {
         totalLogs: logsData.count || 0,
-        activeAlerts: alerts.filter((a: { status: string }) => a.status === 'open').length,
+        activeAlerts: openAlerts,
         activeRules: rules.filter((r: { enabled: boolean }) => r.enabled).length,
-        detectionRate: alerts.length > 0 ? Math.round((alerts.length / (logsData.count || 1)) * 100) : 0
+        detectionRate: totalAlerts > 0 ? Math.round((totalAlerts / (logsData.count || 1)) * 100) : 0
       }
 
-      // Animate stat values
-      Object.keys(newStats).forEach((key) => {
-        const target = { value: 0 }
-        anime({
-          targets: target,
-          value: newStats[key as keyof typeof newStats],
-          duration: 1000,
-          easing: 'easeOutQuad',
-          round: 1,
-          update: () => {
-            setStats(prev => ({ ...prev, [key]: target.value }))
-          }
+      // Animate stat values only on first load; update directly after
+      if (isFirstFetch.current) {
+        isFirstFetch.current = false
+        Object.keys(newStats).forEach((key) => {
+          const target = { value: 0 }
+          anime({
+            targets: target,
+            value: newStats[key as keyof typeof newStats],
+            duration: 1000,
+            easing: 'easeOutQuad',
+            round: 1,
+            update: () => {
+              setStats(prev => ({ ...prev, [key]: target.value }))
+            }
+          })
         })
-      })
+      } else {
+        setStats(newStats)
+      }
 
       // Process event data for charts
       const chartData = events.slice(0, 10).reverse().map((event: { severity: string }, i: number) => ({
@@ -164,7 +172,10 @@ export default function Overview({ user, activeAttack: _activeAttack, onAttackEn
       {/* 3D City Visualization */}
       <div className="chart-container">
         <h3>Smart City Components</h3>
-        <SmartCityMap3D />
+        <SmartCityMap3D
+          activeAttack={activeAttack}
+          onAttackEnd={onAttackEnd}
+        />
       </div>
 
       {/* Charts Row */}
