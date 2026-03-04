@@ -1,77 +1,121 @@
 import * as THREE from 'three'
 
-// Status colors matching the project's design system
+// ── Cyberpunk Status Colors ──────────────────────────────────────────────────
 export const STATUS_COLORS = {
-  ok: '#10b981',       // green
-  warning: '#f59e0b',  // amber
-  critical: '#ef4444', // red
-  offline: '#6b7280',  // gray
+  ok: '#00e5ff',       // cyan
+  warning: '#ffab00',  // amber-gold
+  critical: '#ff1867', // hot pink
+  offline: '#384258',  // dim slate
 } as const
 
-// Category accent colors for zone identification
+// ── Category Accent Colors (neon-themed) ─────────────────────────────────────
 export const CATEGORY_COLORS: Record<string, string> = {
-  traffic: '#ef4444',
-  iot: '#10b981',
-  network: '#3b82f6',
-  security: '#8b5cf6',
-  industrial: '#f97316',
-  training: '#06b6d4',
+  traffic: '#ff4060',    // hot coral
+  iot: '#00e5ff',        // cyan
+  network: '#7c4dff',    // electric violet
+  security: '#e040fb',   // neon magenta
+  industrial: '#ff6d00', // orange neon
+  training: '#00e676',   // neon green
 } as const
 
-// Shared ground material
-export const groundMaterial = new THREE.MeshStandardMaterial({
-  color: '#0d1117',
-  roughness: 0.95,
-  metalness: 0.05,
-})
+// ── Glass Material (MeshPhysicalMaterial for hero buildings) ─────────────────
+export function createGlassMaterial(tint: string): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color: tint,
+    metalness: 0.1,
+    roughness: 0.05,
+    transmission: 0.3,
+    transparent: true,
+    opacity: 0.85,
+    envMapIntensity: 1.0,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.1,
+  })
+}
 
-// Road material
-export const roadMaterial = new THREE.MeshStandardMaterial({
-  color: '#1a1f2e',
-  roughness: 0.8,
-  metalness: 0.1,
-})
+// ── Edge Glow Material (LineBasicMaterial — Bloom makes it glow) ─────────────
+export function createEdgeMaterial(color: string, opacity = 1.0): THREE.LineBasicMaterial {
+  return new THREE.LineBasicMaterial({
+    color,
+    transparent: opacity < 1,
+    opacity,
+    linewidth: 2,
+  })
+}
 
-// Sidewalk / zone border material
-export const zoneBorderMaterial = new THREE.MeshStandardMaterial({
-  color: '#2d3e5f',
-  roughness: 0.9,
-  metalness: 0.05,
-  transparent: true,
-  opacity: 0.6,
-})
-
-// Building material factory – creates a unique material per status to allow emissive glow
+// ── Building Material Factory ────────────────────────────────────────────────
 export function createBuildingMaterial(
   status: 'ok' | 'warning' | 'critical' | 'offline',
 ): THREE.MeshStandardMaterial {
   const baseColor = STATUS_COLORS[status]
-  const mat = new THREE.MeshStandardMaterial({
-    color: baseColor,
-    roughness: 0.4,
-    metalness: 0.6,
-    emissive: status === 'critical' ? baseColor : '#000000',
-    emissiveIntensity: status === 'critical' ? 0.4 : 0,
+  return new THREE.MeshStandardMaterial({
+    color: '#1a1e2e',
+    roughness: 0.3,
+    metalness: 0.8,
+    emissive: baseColor,
+    emissiveIntensity: status === 'critical' ? 0.4 : status === 'offline' ? 0 : 0.15,
     transparent: status === 'offline',
-    opacity: status === 'offline' ? 0.5 : 1.0,
+    opacity: status === 'offline' ? 0.4 : 1.0,
   })
-  return mat
 }
 
-// Highlight material for hovered buildings
+// ── Dark Metallic Material (shared base for most buildings) ──────────────────
+export function createDarkMetalMaterial(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: '#0e1220',
+    roughness: 0.25,
+    metalness: 0.9,
+  })
+}
+
+// ── Highlight Material (selection glow) ──────────────────────────────────────
 export function createHighlightMaterial(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
-    color: '#3b82f6',
-    roughness: 0.3,
-    metalness: 0.7,
-    emissive: '#3b82f6',
-    emissiveIntensity: 0.5,
+    color: '#00e5ff',
+    roughness: 0.2,
+    metalness: 0.8,
+    emissive: '#00e5ff',
+    emissiveIntensity: 0.6,
   })
 }
 
-// Grid overlay line material
-export const gridLineMaterial = new THREE.LineBasicMaterial({
-  color: '#1e2d4d',
+// ── Emissive Panel Material (device accents) ─────────────────────────────────
+export function createPanelMaterial(color: string, intensity = 0.8): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: intensity,
+    roughness: 0.1,
+    metalness: 0.9,
+  })
+}
+
+// ── Ground Material ──────────────────────────────────────────────────────────
+export const groundMaterial = new THREE.MeshStandardMaterial({
+  color: '#060a14',
+  roughness: 0.95,
+  metalness: 0.1,
+})
+
+// ── Road Material ────────────────────────────────────────────────────────────
+export const roadMaterial = new THREE.MeshStandardMaterial({
+  color: '#0c1018',
+  roughness: 0.7,
+  metalness: 0.2,
+})
+
+// ── Zone Border Material ─────────────────────────────────────────────────────
+export const zoneBorderMaterial = new THREE.MeshStandardMaterial({
+  color: '#1a2845',
+  roughness: 0.8,
+  metalness: 0.1,
   transparent: true,
-  opacity: 0.4,
+  opacity: 0.5,
+})
+
+// ── Grid Line Material ───────────────────────────────────────────────────────
+export const gridLineMaterial = new THREE.LineBasicMaterial({
+  color: '#0d1a33',
+  transparent: true,
+  opacity: 0.3,
 })

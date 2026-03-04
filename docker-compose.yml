@@ -1,6 +1,9 @@
 networks:
   cityshield_network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
   cyber_range_net:
     driver: bridge
     internal: true

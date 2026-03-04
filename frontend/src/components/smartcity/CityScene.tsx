@@ -1,33 +1,27 @@
 /**
- * CityScene: 3D Visualization Foundation
+ * CityScene: Cyberpunk 3D Visualization Foundation
  *
- * This component provides the 3D visualization foundation for the Dashboard/Overview page.
- *
- * Features (HighTopo-grade quality):
- * - Professional 6-light setup (directional, ambient, hemisphere, rim, fill, accents)
- * - 4096 shadow map resolution
- * - Environment mapping for reflections
- * - Post-processing (Bloom for emissives, SSAO for depth)
- * - Ground plane with subtle reflections
- * - Camera controls and smooth animations
- *
- * Renders Zones component with status-encoded buildings representing asset groups.
+ * Dark futuristic scene with neon-edged buildings, pulsing grid floor,
+ * colored district lighting, and bloom post-processing.
  */
 
 import { useRef, useCallback, useEffect } from 'react'
 import { Canvas, ThreeEvent } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, Stars, Environment } from '@react-three/drei'
-import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing'
+import { OrbitControls, PerspectiveCamera, Stars } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import Zones from './Zones'
-import Roads from './Roads'
+import CityLayout from './CityLayout'
+import CyberpunkRoads from './CyberpunkRoads'
+import CyberpunkGround from './CyberpunkGround'
+import DataParticles from './DataParticles'
+import TrainSystem from './TrainSystem'
 import AttackPathVisualizer from './AttackPathVisualizer'
 import type { CityAsset, AttackPath } from '../../types/assets'
 
 interface CitySceneProps {
   components?: CityAsset[]
-  assets?: CityAsset[]  // Accept both for backward compatibility
+  assets?: CityAsset[]
   selectedId: string | null
   attackedBuildingId?: string | null
   attackPaths?: AttackPath[]
@@ -47,11 +41,9 @@ function SceneContent({
   focusPosition,
 }: CitySceneProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null)
-
-  // Support both 'components' and 'assets' props for backward compatibility
   const components = componentsFromProps || assetsFromProps || []
 
-  // Smooth camera focus on selected building
+  // Smooth camera focus
   useEffect(() => {
     if (focusPosition && controlsRef.current) {
       const controls = controlsRef.current
@@ -78,7 +70,7 @@ function SceneContent({
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[18, 14, 18]} fov={45} />
+      <PerspectiveCamera makeDefault position={[25, 18, 25]} fov={45} />
       <OrbitControls
         ref={controlsRef}
         enableZoom
@@ -86,94 +78,56 @@ function SceneContent({
         enableRotate
         maxPolarAngle={Math.PI / 2.2}
         minDistance={5}
-        maxDistance={45}
-        target={[0, 0, 0]}
+        maxDistance={55}
+        target={[2, 0, 2]}
         dampingFactor={0.08}
         enableDamping
       />
 
-      {/* Professional HighTopo-grade lighting */}
+      {/* ── Cyberpunk Lighting ── */}
 
-      {/* Environment map for realistic reflections */}
-      <Environment preset="city" background={false} />
+      {/* Ambient — slightly brighter so buildings are visible */}
+      <ambientLight intensity={0.25} color="#1a1a3a" />
 
-      {/* Primary directional light (sunlight) - Enhanced quality */}
+      {/* Low directional for minimal shadows */}
       <directionalLight
-        position={[20, 30, 15]}
-        intensity={2.0}
-        color="#fff5e1"
+        position={[10, 20, 5]}
+        intensity={0.4}
+        color="#4466aa"
         castShadow
-        shadow-mapSize-width={4096}
-        shadow-mapSize-height={4096}
-        shadow-camera-far={100}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-far={80}
         shadow-camera-left={-30}
         shadow-camera-right={30}
         shadow-camera-top={30}
         shadow-camera-bottom={-30}
-        shadow-bias={-0.0001}
+        shadow-bias={-0.0002}
       />
 
-      {/* Ambient light (softer) */}
-      <ambientLight intensity={0.4} color="#e6f0ff" />
-
-      {/* Hemisphere light (sky/ground bounce) - Enhanced */}
-      <hemisphereLight
-        color="#87ceeb"
-        groundColor="#2d1810"
-        intensity={0.6}
-      />
-
-      {/* Rim light (edge highlighting) */}
-      <directionalLight
-        position={[-15, 10, -10]}
-        intensity={0.8}
-        color="#4a90e2"
-        castShadow={false}
-      />
-
-      {/* Fill light (shadow softening) */}
-      <pointLight
-        position={[0, 8, 0]}
-        intensity={1.2}
-        distance={40}
-        decay={2}
-        color="#fff8dc"
-      />
-
-      {/* Accent lights for atmosphere */}
-      <pointLight position={[-12, 6, -12]} intensity={0.4} color="#3b82f6" distance={25} decay={2} />
-      <pointLight position={[12, 5, 12]} intensity={0.3} color="#8b5cf6" distance={20} decay={2} />
+      {/* District accent lights — colored point lights */}
+      {/* Central HQ (Network+Security) — cool violet */}
+      <pointLight position={[0, 10, 4]} intensity={3.0} distance={25} decay={2} color="#7c4dff" />
+      {/* Traffic District — coral red */}
+      <pointLight position={[-12, 8, -10]} intensity={2.5} distance={22} decay={2} color="#ff4060" />
+      {/* IoT District — cyan */}
+      <pointLight position={[12, 8, -10]} intensity={2.5} distance={22} decay={2} color="#00e5ff" />
+      {/* Industrial District — orange */}
+      <pointLight position={[-4, 8, 14]} intensity={2.0} distance={20} decay={2} color="#ff6d00" />
+      {/* Cyber Range — green */}
+      <pointLight position={[18, 8, 8]} intensity={2.0} distance={20} decay={2} color="#00e676" />
 
       {/* Skybox stars */}
-      <Stars radius={80} depth={40} count={1500} factor={3} saturation={0.2} fade speed={0.5} />
+      <Stars radius={80} depth={50} count={2000} factor={3} saturation={0.1} fade speed={0.3} />
 
-      {/* Main ground plane with subtle reflections */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0, 0]}
-        receiveShadow
-        onClick={handleMissedClick}
-      >
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial
-          color="#0d1117"
-          roughness={0.8}
-          metalness={0.2}
-          envMapIntensity={0.5}
-        />
-      </mesh>
+      {/* ── Ground ── */}
+      <CyberpunkGround onClick={handleMissedClick} />
 
-      {/* Subtle grid */}
-      <gridHelper
-        args={[60, 60, '#1a2642', '#0f1525']}
-        position={[0, 0.003, 0]}
-      />
+      {/* ── Roads ── */}
+      <CyberpunkRoads />
 
-      {/* Roads */}
-      <Roads />
-
-      {/* City zones and buildings */}
-      <Zones
+      {/* ── City buildings + districts ── */}
+      <CityLayout
         components={components}
         selectedId={selectedId}
         attackedBuildingId={attackedBuildingId}
@@ -181,45 +135,40 @@ function SceneContent({
         onHover={onHover}
       />
 
-      {/* Attack path visualization (HighTopo-equivalent) */}
+      {/* ── Train (neon restyled) ── */}
+      <TrainSystem speed={0.012} />
+
+      {/* ── Data Particles ── */}
+      <DataParticles />
+
+      {/* ── Attack Paths ── */}
       {attackPaths && attackPaths.length > 0 && (
         <AttackPathVisualizer
           paths={attackPaths}
           assets={components}
           zonePositions={{
-            'zone-a': [-8, -8],
-            'zone-b': [8, -8],
-            'zone-c': [-8, 8],
-            'zone-d': [8, 8],
-            'zone-e': [0, 0],
-            'cyber-range': [20, 0],
+            'zone-a': [-12, -10],
+            'zone-b': [12, -10],
+            'zone-c': [-3, 4],
+            'zone-d': [3, 4],
+            'zone-e': [-4, 14],
+            'cyber-range': [18, 8],
           }}
         />
       )}
 
-      {/* Fog for depth (less aggressive) */}
-      <fog attach="fog" args={['#0a0e1a', 40, 80]} />
+      {/* ── Fog (tighter for cyberpunk depth) ── */}
+      <fog attach="fog" args={['#0a0e1a', 30, 65]} />
 
-      {/* Post-processing effects */}
+      {/* ── Post-processing ── */}
       <EffectComposer>
-        {/* Bloom for emissive materials (lights, screens) */}
         <Bloom
-          intensity={0.5}
-          luminanceThreshold={0.9}
-          luminanceSmoothing={0.9}
-          mipmapBlur={true}
+          intensity={1.5}
+          luminanceThreshold={0.2}
+          luminanceSmoothing={0.7}
+          mipmapBlur
         />
-
-        {/* Screen Space Ambient Occlusion (depth) */}
-        <SSAO
-          samples={16}
-          radius={0.2}
-          intensity={30}
-          worldDistanceThreshold={0.1}
-          worldDistanceFalloff={0.1}
-          worldProximityThreshold={0.1}
-          worldProximityFalloff={0.1}
-        />
+        <Vignette eskil={false} offset={0.3} darkness={0.85} />
       </EffectComposer>
     </>
   )
@@ -233,13 +182,13 @@ export default function CityScene(props: CitySceneProps) {
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.1,
+        toneMappingExposure: 0.9,
       }}
       style={{
         width: '100%',
         height: '100%',
         borderRadius: '0.75rem',
-        background: 'linear-gradient(180deg, #0a0e27 0%, #080c1a 100%)',
+        background: 'linear-gradient(180deg, #0a0e1a 0%, #050810 100%)',
       }}
     >
       <SceneContent {...props} />
