@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 
 export default function Login({ onLogin }: { onLogin: (user: { username?: string; role?: string }) => void }) {
   const [username, setUsername] = useState('')
@@ -37,22 +38,45 @@ export default function Login({ onLogin }: { onLogin: (user: { username?: string
   }
 
   return (
-    <div style={{ maxWidth: '400px', margin: '100px auto', padding: '20px' }}>
-      <h1>CityShield Platform</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label>Username:</label>
-          <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }} required />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label>Password:</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }} required />
-        </div>
-        {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-        <button type="submit" style={{ padding: '10px 20px', cursor: 'pointer' }}>Login</button>
-      </form>
+    <div className="login-container">
+      <motion.div
+        className="login-card"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+      >
+        <div className="login-brand">CITYSHIELD</div>
+        <div className="login-subtitle">Security Operations Platform</div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              placeholder="Enter username"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Enter password"
+              required
+            />
+          </div>
+          {error && (
+            <div className="alert alert-error" style={{ marginBottom: '1.25rem' }}>
+              {error}
+            </div>
+          )}
+          <button type="submit">Access System</button>
+        </form>
+      </motion.div>
     </div>
   )
 }

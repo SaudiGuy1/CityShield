@@ -32,14 +32,14 @@ import type { CityAsset } from '../types/assets'
 import { STATUS_COLORS, CATEGORY_COLORS } from './smartcity/materials'
 import type { ActiveAttack } from '../App'
 
-// Zone layout matching Zones.tsx layout
+// Zone layout matching CityLayout.tsx district positions
 const ZONE_CENTERS: Record<string, [number, number]> = {
-  'zone-a': [-8, -8],
-  'zone-b': [8, -8],
-  'zone-c': [-8, 8],
-  'zone-d': [8, 8],
-  'zone-e': [0, 0],
-  'cyber-range': [20, 0],
+  'zone-a': [-12, -10],
+  'zone-b': [12, -10],
+  'zone-c': [-3, 4],
+  'zone-d': [3, 4],
+  'zone-e': [-4, 14],
+  'cyber-range': [18, 8],
 }
 
 const COMPONENT_TO_ZONE: Record<string, string> = {
@@ -293,12 +293,12 @@ export default function SmartCity3D({ activeAttack, onAttackEnd, isAdmin }: Smar
   const focusPosition = useMemo<[number, number, number] | null>(() => {
     if (attackZone) {
       const center = ZONE_CENTERS[attackZone]
-      if (center) return [center[0], 1.5, center[1]]
+      if (center) return [center[0], 2, center[1]]
     }
     if (!selectedComponent) return null
     const zone = selectedComponent.zone || 'zone-a'
     const center = ZONE_CENTERS[zone] || [0, 0]
-    return [center[0], 1.5, center[1]]
+    return [center[0], 2, center[1]]
   }, [selectedComponent, attackZone])
 
   const handleSelect = useCallback((id: string | null) => {

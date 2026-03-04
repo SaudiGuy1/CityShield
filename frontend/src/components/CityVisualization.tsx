@@ -36,7 +36,7 @@ function Building({ position, height, color, active }: BuildingProps) {
     >
       <boxGeometry args={[1, height, 1]} />
       <meshStandardMaterial
-        color={hovered ? '#3b82f6' : color}
+        color={hovered ? '#00f0ff' : color}
         emissive={active ? color : '#000000'}
         emissiveIntensity={active ? 0.3 : 0}
       />
@@ -48,28 +48,28 @@ function City({ data }: { data: CityData }) {
   return (
     <group>
       {/* Traffic Zone */}
-      <Building position={[-3, 1.5, 0]} height={3} color="#ef4444" active={data.traffic > 0} />
-      <Building position={[-3, 1, 2]} height={2} color="#f59e0b" active={data.traffic > 0} />
-      <Building position={[-3, 2, -2]} height={4} color="#ef4444" active={data.traffic > 0} />
+      <Building position={[-3, 1.5, 0]} height={3} color="#ff003c" active={data.traffic > 0} />
+      <Building position={[-3, 1, 2]} height={2} color="#ffaa00" active={data.traffic > 0} />
+      <Building position={[-3, 2, -2]} height={4} color="#ff003c" active={data.traffic > 0} />
 
       {/* IoT Zone */}
-      <Building position={[0, 2.5, 0]} height={5} color="#10b981" active={data.iot > 0} />
+      <Building position={[0, 2.5, 0]} height={5} color="#00ff88" active={data.iot > 0} />
       <Building position={[0, 1.5, -2]} height={3} color="#34d399" active={data.iot > 0} />
-      <Building position={[0, 1, 2]} height={2} color="#10b981" active={data.iot > 0} />
+      <Building position={[0, 1, 2]} height={2} color="#00ff88" active={data.iot > 0} />
 
       {/* Network Zone */}
-      <Building position={[3, 2, 0]} height={4} color="#3b82f6" active={data.network > 0} />
+      <Building position={[3, 2, 0]} height={4} color="#00f0ff" active={data.network > 0} />
       <Building position={[3, 1.5, 2]} height={3} color="#60a5fa" active={data.network > 0} />
-      <Building position={[3, 1.75, -2]} height={3.5} color="#3b82f6" active={data.network > 0} />
+      <Building position={[3, 1.75, -2]} height={3.5} color="#00f0ff" active={data.network > 0} />
 
       {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial color="#1a2642" />
+        <meshStandardMaterial color="#0a1628" />
       </mesh>
 
       {/* Grid */}
-      <gridHelper args={[20, 20, '#2d3e5f', '#1e2d4d']} />
+      <gridHelper args={[20, 20, 'rgba(0,240,255,0.15)', '#0f1f3a']} />
     </group>
   )
 }
@@ -84,8 +84,8 @@ export default function CityVisualization({ data }: { data: CityData }) {
         {/* Lighting */}
         <ambientLight intensity={0.3} />
         <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-        <pointLight position={[-10, 10, -5]} intensity={0.5} color="#3b82f6" />
-        <pointLight position={[10, 5, 10]} intensity={0.5} color="#8b5cf6" />
+        <pointLight position={[-10, 10, -5]} intensity={0.5} color="#00f0ff" />
+        <pointLight position={[10, 5, 10]} intensity={0.5} color="#bf00ff" />
 
         <City data={data} />
       </Canvas>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import anime from 'animejs'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import SmartCity3D from '../components/SmartCity3D'
+import SmartCityMap3D from '../components/SmartCityMap3D'
 import type { ActiveAttack } from '../App'
 
 interface OverviewProps {
@@ -10,7 +10,7 @@ interface OverviewProps {
   onAttackEnd: () => void
 }
 
-export default function Overview({ user, activeAttack, onAttackEnd }: OverviewProps) {
+export default function Overview({ user, activeAttack: _activeAttack, onAttackEnd: _onAttackEnd }: OverviewProps) {
   const [stats, setStats] = useState({
     totalLogs: 0,
     activeAlerts: 0,
@@ -25,11 +25,17 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
   const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem('token')
+      if (!token) return
 
       // Fetch logs count
       const logsRes = await fetch('/api/logs/count', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
+      if (logsRes.status === 401 || logsRes.status === 403) {
+        localStorage.removeItem('token')
+        window.location.href = '/login'
+        return
+      }
       const logsData = await logsRes.ok ? await logsRes.json() : { count: 0 }
 
       // Fetch alerts
@@ -88,9 +94,9 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
 
       // Pie chart data
       setPieData([
-        { name: 'Traffic', value: trafficCount, color: '#ef4444' },
-        { name: 'IoT', value: iotCount, color: '#10b981' },
-        { name: 'Network', value: networkCount, color: '#3b82f6' }
+        { name: 'Traffic', value: trafficCount, color: '#ff003c' },
+        { name: 'IoT', value: iotCount, color: '#00ff88' },
+        { name: 'Network', value: networkCount, color: '#00f0ff' }
       ])
 
     } catch (error) {
@@ -158,7 +164,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
       {/* 3D City Visualization */}
       <div className="chart-container">
         <h3>Smart City Components</h3>
-        <SmartCity3D activeAttack={activeAttack} onAttackEnd={onAttackEnd} isAdmin={user?.role === 'Administrator'} />
+        <SmartCityMap3D />
       </div>
 
       {/* Charts Row */}
@@ -170,8 +176,8 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
             <AreaChart data={eventData}>
               <defs>
                 <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#00f0ff" stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -185,7 +191,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
                   color: 'var(--text-primary)'
                 }}
               />
-              <Area type="monotone" dataKey="events" stroke="#3b82f6" fillOpacity={1} fill="url(#colorEvents)" />
+              <Area type="monotone" dataKey="events" stroke="#00f0ff" fillOpacity={1} fill="url(#colorEvents)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
