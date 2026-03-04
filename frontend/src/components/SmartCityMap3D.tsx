@@ -473,7 +473,7 @@ function DataFlows() {
    ═══════════════════════════════════════════════════ */
 
 function Windmill3D({ data, isSelected, onSelect }: {
-  data: WindmillData; isSelected: boolean; onSelect: () => void; cityState: CityState
+  data: WindmillData; isSelected: boolean; onSelect: () => void
 }) {
   const bladeRef = useRef<THREE.Group>(null!)
   const nacelleMatRef = useRef<THREE.MeshStandardMaterial>(null!)
@@ -563,7 +563,7 @@ function Windmill3D({ data, isSelected, onSelect }: {
    ═══════════════════════════════════════════════════ */
 
 function TrafficLight3D({ data, isSelected, onSelect }: {
-  data: TrafficLightData; isSelected: boolean; onSelect: () => void; cityState: CityState
+  data: TrafficLightData; isSelected: boolean; onSelect: () => void
 }) {
   const redMatRef = useRef<THREE.MeshStandardMaterial>(null!)
   const yellowMatRef = useRef<THREE.MeshStandardMaterial>(null!)
@@ -843,13 +843,13 @@ function Scene({ cityState, selectedObj, cameraTarget, onSelectBuilding, onSelec
       ))}
 
       {windmills.map(wm => (
-        <Windmill3D key={wm.id} data={wm} cityState={cityState}
+        <Windmill3D key={wm.id} data={wm}
           isSelected={selectedObj?.type === 'windmill' && selectedObj.id === wm.id}
           onSelect={() => onSelectWindmill(wm.id)} />
       ))}
 
       {trafficLights.map(tl => (
-        <TrafficLight3D key={tl.id} data={tl} cityState={cityState}
+        <TrafficLight3D key={tl.id} data={tl}
           isSelected={selectedObj?.type === 'trafficlight' && selectedObj.id === tl.id}
           onSelect={() => onSelectTrafficLight(tl.id)} />
       ))}

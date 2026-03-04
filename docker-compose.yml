@@ -292,6 +292,9 @@ services:
   range_logger:
     build: ./services/range_logger
     container_name: cityshield_range_logger
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
     networks:
       cyber_range_net:
         ipv4_address: 172.20.0.4

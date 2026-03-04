@@ -14,7 +14,9 @@ CityShield is a secure, scalable, interactive smart city cyber range for trainin
 - **MITRE ATT&CK Techniques**: 31 techniques with tactic mapping, available as configurable attack techniques in the Custom Scenario Builder
 - **OWASP Top 10 Scenarios**: 10 built-in OWASP-aligned training scenarios (A01-A10:2021) that generate simulated attack traffic
 - **Automated Response**: Python-based response manager executes Ansible playbooks for containment actions
-- **Interactive 3D City Visualization**: Real-time 3D smart city powered by Three.js / React Three Fiber with 6 zones (Traffic, IoT, Network, Security, Industrial, Cyber Range), orbit controls, hover/click interactions, and live data-driven building states
+- **Interactive 3D City Visualization**: Real-time 3D smart city powered by Three.js / React Three Fiber with 6 zones (Traffic, IoT, Network, Security, Industrial, Cyber Range), orbit controls, hover/click interactions, and live data-driven building states. Includes Metasploitable VM as a dedicated building in the Cyber Range zone
+- **Live Attack Visualization**: When a scenario runs, the 3D map shows real-time attack progress with selective building flash — only the targeted district's buildings pulse red with dramatic effects (scale pulsing, red point light, rotating ground ring). Non-targeted buildings remain normal
+- **Real-Time Alert Pipeline**: Alerts are generated in real-time as attack stages complete, with accelerated polling (2s) during active attacks and an "Attack in Progress" banner on the Alerts page
 - **Attack Scenario Engine**: 21+ built-in scenarios (including 10 OWASP) with real-time stage progression, 4-stage execution per scenario, and live progress tracking in the UI
 - **Attack Proposals**: Researchers submit attack proposals for admin approval before they become executable scenarios
 - **Interactive Web UI**: React-based dashboard for monitoring, alert investigation, scenario management, and MITRE technique reference
@@ -188,8 +190,11 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
 | Wind Farm Controller Takeover | Malware | Industrial Systems | Critical |
 | **Cyber Range: Port Scan** | Port Scan | **Metasploitable** | High |
 
-4. Click **Run Scenario** — the 3D city map shows real-time stage progression (4 stages per scenario)
-5. Navigate to **Alerts** to see detected threats
+4. Click **Run Scenario** — the 3D city map automatically shows the attack in progress:
+   - The targeted district's buildings flash red with dramatic pulsing effects
+   - An attack panel overlay displays real-time stage progression, phase timeline, and explanations
+   - Alerts are generated in real-time as each stage completes
+5. Navigate to **Alerts** to see detected threats (polls every 2s during active attacks, with an "Attack in Progress" banner)
 6. Navigate to **OpenSearch Dashboards** (http://localhost:5601) to query logs
 
 ## User Roles
@@ -319,11 +324,17 @@ The Overview dashboard features an interactive 3D city where each building repre
 | Network Infrastructure | Blue | Firewalls, switches, DNS, VPN |
 | Security Operations | Purple | SIEM, EDR, scanners, auth servers |
 | Industrial Systems | Orange | SCADA, PLCs, turbines, grid controllers |
-| **Cyber Range** | **Cyan** | **Metasploitable training target** |
+| **Cyber Range** | **Orange-Red** | **Metasploitable VM (172.20.0.2)** |
 
 - **Building height** reflects risk score (derived from alert count)
 - **Building color** reflects status: green (ok), amber (warning), red+glow (critical), gray (offline)
-- **Attack visualization**: Red pulse on targeted building, real-time stage progress bar
+- **Attack visualization**: Only the targeted district's buildings flash red during an attack, with dramatic visual effects:
+  - Bright pulsing red emissive glow (intensity 1.5–5.0)
+  - Scale pulsing (throb effect) on attacked buildings
+  - Red point light hovering above attacked buildings (intensity 8–20)
+  - Rotating, pulsing red ground ring at the base
+  - Red edge outlines and roof accent
+- **Attack panel overlay**: Shows real-time stage progression, phase timeline, target info, and attack explanations
 - **Interactions**: Orbit/pan/zoom camera, hover for tooltips, click for asset inspector panel
 - **Data source**: Live WebSocket stream from `city-assets` index (2s refresh) + REST fallback
 
@@ -380,6 +391,7 @@ See [docs/device-inventory.md](docs/device-inventory.md) for the complete 25-ass
 | `@react-three/drei` | ^9.93.0 | Camera controls, helpers |
 | `@react-three/postprocessing` | ^2.16.2 | Optional bloom/glow effects |
 | `animejs` | ^3.2.1 | UI panel animations |
+| `framer-motion` | ^11.x | Page transitions and attack panel animations |
 
 ## Documentation
 
@@ -527,11 +539,11 @@ The Cyber Range provides an isolated attack/defense lab within CityShield. It us
 
 ### Components
 
-| Container | Image | Network | Role |
-|---|---|---|---|
-| `metasploitable` | `tleemcjr/metasploitable2` | `cyber_range_net` (internal) | Vulnerable target |
-| `attacker` | Custom Kali (nmap, netcat, curl, etc.) | `cyber_range_net` | Attack tools |
-| `range_logger` | Python + tcpdump | Both networks | Packet capture → JSON → Filebeat |
+| Container | Image | Network | IP | Role |
+|---|---|---|---|---|
+| `metasploitable` | `tleemcjr/metasploitable2` | `cyber_range_net` | 172.20.0.2 | Vulnerable target |
+| `attacker` | Custom Kali (nmap, netcat, curl, etc.) | `cyber_range_net` | 172.20.0.3 | Attack tools |
+| `range_logger` | Python + tcpdump | Both networks | 172.20.0.4 | Packet capture → JSON → Filebeat |
 
 ### How to Use
 
