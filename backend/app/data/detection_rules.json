@@ -1,0 +1,2951 @@
+[
+  {
+    "rule_id": "abuse_elevation_001",
+    "name": "Abuse Elevation Control Mechanism",
+    "description": "Detects abuse of elevation control mechanisms for privilege escalation:\n- UAC bypass techniques on Windows\n- Sudo abuse or sudoers file modification on Linux\n- SetUID/SetGID binary manipulation\n- Exploitation of elevated COM objects\n- Token manipulation to gain elevated privileges\n- Bypass of macOS authorization mechanisms\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "uac_bypass",
+          "sudo_abuse",
+          "setuid_modification",
+          "privilege_escalation",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "uac_bypass_technique",
+          "sudoers_modification",
+          "suid_bit_change",
+          "elevated_com_object",
+          "token_elevation"
+        ],
+        "process_filters": [
+          "fodhelper.exe",
+          "eventvwr.exe",
+          "sdclt.exe",
+          "powershell.exe",
+          "sudo"
+        ]
+      }
+    },
+    "technique_id": "T1548",
+    "technique_name": "Abuse Elevation Control Mechanism",
+    "response_actions": [
+      "isolate_service",
+      "kill_process",
+      "revoke_token",
+      "snapshot_forensics",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate elevation requests are common in administrative workflows.\n\nCommon false positives:\n- Administrators using UAC prompts for legitimate tasks\n- Software installers requiring elevated permissions\n- Developers using sudo for build or deployment tasks\n\nReduce false positives by:\n- Monitoring for known UAC bypass binaries (fodhelper, eventvwr, sdclt)\n- Flagging sudoers file modifications outside of change management\n- Detecting SetUID changes on non-standard binaries\n- Correlating with suspicious parent process chains\n"
+  },
+  {
+    "rule_id": "account_manipulation_001",
+    "name": "Account Manipulation Detection",
+    "description": "Detects unauthorized account manipulation including permission escalation, group membership changes, credential policy modifications, and unauthorized role assignments in smart city management systems",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 3,
+        "field": "user_id",
+        "group_by": "user_id",
+        "event_types": [
+          "account_modify",
+          "permission_change"
+        ]
+      }
+    },
+    "technique_id": "T1098",
+    "technique_name": "Account Manipulation",
+    "response_actions": [
+      "disable_account",
+      "revoke_token",
+      "notify_soc",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Routine HR onboarding, role changes, and IT administration tasks involve\nlegitimate account modifications. Correlate with HR workflows, ticketing\nsystems, and change management records to filter authorized changes.\n"
+  },
+  {
+    "rule_id": "active_scan_001",
+    "name": "Active Scanning Detection",
+    "description": "Detects active scanning and probing activity against smart city infrastructure:\n- Port scanning across multiple hosts or services\n- Vulnerability scanning signatures (Nmap, Nessus, Masscan)\n- Service version enumeration\n- Rapid connection attempts to non-existent services\n- ICMP sweep and ARP scanning activity\n",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "net_scan",
+      "parameters": {
+        "threshold": 10,
+        "field": "dst_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "port_scan",
+          "vulnerability_scan",
+          "service_probe",
+          "icmp_sweep",
+          "network_probe"
+        ],
+        "suspicious_indicators": [
+          "multi_host_scan",
+          "version_enumeration",
+          "banner_grabbing",
+          "syn_scan",
+          "udp_scan"
+        ]
+      }
+    },
+    "technique_id": "T1595",
+    "technique_name": "Active Scanning",
+    "response_actions": [
+      "block_ip",
+      "notify_soc",
+      "rate_limit"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Network monitoring and asset discovery tools may trigger this rule.\n\nCommon false positives:\n- Authorized vulnerability scanners (Nessus, Qualys)\n- Network monitoring tools performing health checks\n- Load balancers probing backend services\n\nReduce false positives by:\n- Whitelisting known scanner IPs and scheduled scan windows\n- Excluding authorized vulnerability assessment tools\n- Establishing baselines for normal network discovery patterns\n"
+  },
+  {
+    "rule_id": "archive_data_001",
+    "name": "Archive Collected Data Detection",
+    "description": "Detects archiving and compression of collected data indicating preparation\nfor exfiltration from smart city systems:\n- Creation of compressed archives in staging directories\n- Password-protected or encrypted archive creation\n- Archiving of sensitive configuration, credential, or telemetry data\n- Use of built-in compression utilities (tar, zip, gzip, rar, 7z)\n- Split archive creation for easier exfiltration\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "data_archiving",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "process_creation",
+          "file_creation",
+          "data_staging"
+        ],
+        "suspicious_indicators": [
+          "password_protected_archive",
+          "encrypted_archive",
+          "large_archive",
+          "sensitive_data_archived",
+          "staging_directory",
+          "split_archive"
+        ],
+        "archive_tools": [
+          "rar.exe",
+          "winrar.exe",
+          "7z.exe",
+          "7za.exe",
+          "tar",
+          "gzip",
+          "zip",
+          "powershell.exe",
+          "makecab.exe"
+        ],
+        "sensitive_paths": [
+          "/etc",
+          "/var/log",
+          "\\Windows\\System32\\config",
+          "\\ProgramData"
+        ],
+        "size_threshold_mb": 50
+      }
+    },
+    "technique_id": "T1560",
+    "technique_name": "Archive Collected Data",
+    "response_actions": [
+      "isolate_service",
+      "snapshot_forensics",
+      "block_ip",
+      "notify_soc",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic",
+      "logs-iot"
+    ],
+    "false_positive_notes": "Data archiving is common for backups and file transfers.\n\nCommon false positives:\n- Backup software creating scheduled archives\n- Developers packaging project files for deployment\n- Log rotation compressing old log files\n\nReduce false positives by:\n- Monitoring for archives created in temp or staging directories\n- Flagging password-protected archives (uncommon for legitimate backups)\n- Detecting archive creation followed by network upload\n- Correlating with prior data collection or discovery activity\n- Alerting on archives containing system configuration or credential files\n"
+  },
+  {
+    "rule_id": "automated_collection_001",
+    "name": "Automated Data Collection Detection",
+    "description": "Detects automated data collection and scraping activities including bulk database queries, mass file access, and systematic data harvesting from smart city information systems",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 10,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "automated_scraping",
+          "bulk_data_access"
+        ]
+      }
+    },
+    "technique_id": "T1119",
+    "technique_name": "Automated Collection",
+    "response_actions": [
+      "rate_limit",
+      "block_ip",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate data analytics pipelines, backup processes, and reporting tools\nmay trigger this rule. Whitelist authorized ETL processes, backup agents,\nand business intelligence tools by their service accounts and source IPs.\n"
+  },
+  {
+    "rule_id": "boot_autostart_001",
+    "name": "Boot or Logon Autostart Execution",
+    "description": "Detects persistence mechanisms via boot or logon autostart locations:\n- Registry Run/RunOnce key modifications\n- Startup folder additions\n- Login items or launch agents on macOS/Linux\n- Winlogon helper DLL modifications\n- Boot configuration changes (BCD, GRUB)\n- Authentication package registration\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "registry_persistence",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "registry_modification",
+          "file_creation",
+          "process_creation",
+          "startup_modification"
+        ],
+        "suspicious_indicators": [
+          "run_key_modification",
+          "startup_folder_addition",
+          "winlogon_helper_change",
+          "boot_config_change",
+          "login_item_creation"
+        ],
+        "registry_paths": [
+          "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+          "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+          "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
+          "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"
+        ],
+        "process_filters": [
+          "reg.exe",
+          "powershell.exe",
+          "regedit.exe"
+        ]
+      }
+    },
+    "technique_id": "T1547",
+    "technique_name": "Boot or Logon Autostart Execution",
+    "response_actions": [
+      "isolate_service",
+      "snapshot_forensics",
+      "kill_process",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Software installations commonly add autostart entries.\n\nCommon false positives:\n- Legitimate software adding itself to startup (browsers, chat clients)\n- Group Policy applying startup scripts\n- System updates modifying boot configuration\n\nReduce false positives by:\n- Whitelisting known software vendors and signed binaries\n- Monitoring for unsigned or obfuscated binaries in autostart locations\n- Flagging autostart entries pointing to temp or user directories\n- Correlating with recent malware download or exploitation events\n"
+  },
+  {
+    "rule_id": "brute_force_001",
+    "name": "Brute Force Authentication Detection",
+    "description": "Detects multiple failed authentication attempts from a single source IP, indicating credential brute force attack",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "brute_force",
+      "parameters": {
+        "threshold": 5,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "auth_failure",
+          "auth_success"
+        ]
+      }
+    },
+    "technique_id": "T1110",
+    "technique_name": "Brute Force",
+    "response_actions": [
+      "block_ip",
+      "revoke_token"
+    ]
+  },
+  {
+    "rule_id": "c2_beacon_001",
+    "name": "Command and Control Beaconing Detection",
+    "description": "Detects periodic outbound connections to external IPs indicating C2 beaconing activity",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "c2_beacon",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "c2_beacon"
+        ]
+      }
+    },
+    "technique_id": "T1071",
+    "technique_name": "Application Layer Protocol",
+    "response_actions": [
+      "block_ip",
+      "isolate_service"
+    ]
+  },
+  {
+    "rule_id": "log_clear_001",
+    "name": "Windows Event Logs Cleared",
+    "description": "Detects clearing of Windows event logs, a common post-compromise activity\nto remove evidence of malicious actions. Monitors wevtutil, PowerShell\nClear-EventLog, and WMI-based log clearing methods.\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "log_clearing",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "asset_id",
+        "event_types": [
+          "log_clearing",
+          "event_log_cleared",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "security_log_cleared",
+          "multiple_logs_cleared",
+          "all_logs_cleared",
+          "automated_clearing"
+        ],
+        "critical_logs": [
+          "Security",
+          "System",
+          "Windows PowerShell",
+          "Microsoft-Windows-Sysmon/Operational"
+        ],
+        "process_filters": [
+          "wevtutil.exe",
+          "powershell.exe",
+          "wmic.exe"
+        ]
+      }
+    },
+    "technique_id": "T1070.001",
+    "technique_name": "Indicator Removal: Clear Windows Event Logs",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Event log clearing has limited legitimate use cases.\n\nPossible false positives:\n- Scheduled maintenance scripts clearing old logs\n- System troubleshooting by IT administrators\n- Disk space management on log servers\n- Application-specific log rotation\n\nReduce false positives by:\n- Requiring justification for Security log clearing\n- Whitelisting approved log management tools\n- Monitoring for clearing outside maintenance windows\n- Flagging clearing of Security log (almost always suspicious)\n- Detecting rapid clearing of multiple logs\n- Correlating with recent authentication or privilege escalation events\n- Alerting on clearing immediately after suspicious activity\n\nNOTE: Clearing of Security event log should almost always generate an alert\nunless performed by authorized log management systems.\n"
+  },
+  {
+    "rule_id": "clipboard_data_001",
+    "name": "Clipboard Data Collection Detection",
+    "description": "Detects clipboard monitoring and data collection activities indicating credential theft, sensitive data harvesting, or information gathering from smart city operator workstations",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 5,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "clipboard_access",
+          "clipboard_monitor"
+        ]
+      }
+    },
+    "technique_id": "T1115",
+    "technique_name": "Clipboard Data",
+    "response_actions": [
+      "quarantine_host",
+      "kill_process",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Clipboard managers, password managers, and remote desktop clipboard\nredirection are legitimate uses of clipboard APIs. Maintain an approved\napplication list and monitor for unexpected processes accessing clipboard data.\n"
+  },
+  {
+    "rule_id": "cloud_api_abuse_001",
+    "name": "Cloud API Abuse Detection",
+    "description": "Detects cloud API abuse including unauthorized API key usage, excessive API calls from unknown sources, cloud resource manipulation, and suspicious cloud management actions targeting smart city cloud infrastructure",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 10,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "cloud_api_abuse",
+          "api_key_misuse"
+        ]
+      }
+    },
+    "technique_id": "T1059.009",
+    "technique_name": "Cloud API",
+    "response_actions": [
+      "revoke_token",
+      "rate_limit",
+      "disable_account",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Legitimate cloud automation, CI/CD pipelines, and infrastructure-as-code\ndeployments may generate high API call volumes. Whitelist authorized service\naccounts, CI/CD runner IPs, and correlate with deployment schedules.\n"
+  },
+  {
+    "rule_id": "cmd_exec_001",
+    "name": "Suspicious CMD Execution for Reconnaissance",
+    "description": "Detects suspicious cmd.exe execution patterns commonly used for system\nreconnaissance, credential access preparation, and data staging.\nMonitors for net.exe, reg.exe, systeminfo, whoami, and other discovery commands.\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "cmd_execution",
+      "parameters": {
+        "threshold": 5,
+        "group_by": "src_ip",
+        "event_types": [
+          "process_creation",
+          "cmd_execution"
+        ],
+        "suspicious_commands": [
+          "net user",
+          "net group",
+          "net localgroup",
+          "systeminfo",
+          "whoami",
+          "reg save",
+          "reg export",
+          "tasklist",
+          "netstat",
+          "ipconfig /all",
+          "net share",
+          "net view"
+        ]
+      }
+    },
+    "technique_id": "T1059.003",
+    "technique_name": "Command and Scripting Interpreter: Windows Command Shell",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "System administrators and automated scripts may legitimately use these commands.\n\nReduce false positives by:\n- Whitelisting known admin accounts and service accounts\n- Excluding scheduled tasks that run system inventory scripts\n- Monitoring for rapid succession (5+ commands in 5 minutes)\n- Correlating with unusual login times or source IPs\n"
+  },
+  {
+    "rule_id": "cmd_script_interp_001",
+    "name": "Command and Scripting Interpreter Abuse",
+    "description": "Detects suspicious use of command and scripting interpreters on smart city systems:\n- PowerShell with encoded commands or download cradles\n- Python, Bash, or JavaScript executing from unusual paths\n- Script interpreters spawned by unexpected parent processes\n- Obfuscated script content or base64-encoded payloads\n- Interpreter execution with network activity or credential access\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "cmd_execution",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "process_creation",
+          "cmd_execution",
+          "script_execution"
+        ],
+        "suspicious_commands": [
+          "powershell -enc",
+          "powershell -e",
+          "python -c",
+          "bash -c",
+          "wscript",
+          "cscript",
+          "mshta"
+        ],
+        "suspicious_indicators": [
+          "encoded_command",
+          "download_cradle",
+          "unusual_parent_process",
+          "obfuscated_content",
+          "network_callback"
+        ],
+        "process_filters": [
+          "powershell.exe",
+          "cmd.exe",
+          "python.exe",
+          "bash",
+          "wscript.exe",
+          "cscript.exe",
+          "mshta.exe"
+        ]
+      }
+    },
+    "technique_id": "T1059",
+    "technique_name": "Command and Scripting Interpreter",
+    "response_actions": [
+      "isolate_service",
+      "kill_process",
+      "snapshot_forensics",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Scripting interpreters are widely used for legitimate automation.\n\nCommon false positives:\n- DevOps automation scripts using PowerShell or Python\n- Scheduled tasks executing batch or shell scripts\n- Developers running scripts during development\n\nReduce false positives by:\n- Whitelisting known automation service accounts\n- Focusing on encoded commands and download cradles\n- Monitoring for interpreters spawned by unusual parents (e.g., Word, Excel)\n- Correlating with network connections to external IPs\n"
+  },
+  {
+    "rule_id": "create_acct_gen_001",
+    "name": "Suspicious Account Creation",
+    "description": "Detects creation of user accounts across smart city systems for persistence:\n- Local, domain, and cloud account creation\n- Accounts created with elevated privileges\n- Accounts created outside of normal provisioning workflows\n- Hidden or service accounts created by unauthorized processes\n- Rapid account creation followed by immediate login\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "account_creation",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "user_account_creation",
+          "user_group_modification",
+          "cloud_account_creation",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "admin_group_membership",
+          "hidden_account",
+          "password_never_expires",
+          "immediate_login",
+          "non_provisioning_source"
+        ],
+        "process_filters": [
+          "net.exe",
+          "net1.exe",
+          "powershell.exe",
+          "useradd",
+          "adduser"
+        ]
+      }
+    },
+    "technique_id": "T1136",
+    "technique_name": "Create Account",
+    "response_actions": [
+      "disable_account",
+      "isolate_service",
+      "notify_soc",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Account creation is routine for onboarding and service deployment.\n\nCommon false positives:\n- IT provisioning systems creating employee accounts\n- Automated service account creation during deployments\n- Lab environments spinning up test accounts\n\nReduce false positives by:\n- Whitelisting known provisioning systems and their source IPs\n- Flagging accounts created with administrative privileges\n- Monitoring for account creation outside business hours\n- Detecting accounts created by interactive sessions on servers\n"
+  },
+  {
+    "rule_id": "account_create_001",
+    "name": "Suspicious Local Account Creation",
+    "description": "Detects creation of local user accounts with suspicious characteristics:\n- Accounts added to privileged groups (Administrators, Remote Desktop Users)\n- Hidden accounts (username ending with $)\n- Accounts with passwords set to never expire\n- Rapid account creation followed by privilege escalation\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "account_creation",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "user_account_creation",
+          "user_group_modification",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "admin_group_membership",
+          "rdp_access_granted",
+          "password_never_expires",
+          "hidden_account",
+          "rapid_privilege_escalation"
+        ],
+        "process_filters": [
+          "net.exe",
+          "net1.exe",
+          "powershell.exe"
+        ]
+      }
+    },
+    "technique_id": "T1136.001",
+    "technique_name": "Create Account: Local Account",
+    "response_actions": [
+      "revoke_token",
+      "isolate_service"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate account creation occurs during:\n- IT onboarding processes\n- Automated provisioning systems\n- Service account creation\n\nReduce false positives by:\n- Whitelisting known IT administrator workstations\n- Excluding accounts created by trusted provisioning tools\n- Monitoring for accounts immediately added to Administrators group\n- Flagging accounts created outside business hours\n- Detecting unusual naming patterns (short names, numeric suffixes)\n- Correlating with unauthorized login sources\n- Alert on hidden accounts (ending with $) unless from domain controller\n"
+  },
+  {
+    "rule_id": "credential_dump_001",
+    "name": "Credential Dumping Detection",
+    "description": "Detects credential dumping attempts by identifying suspicious access to credential stores, authentication databases, and memory dumps",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "credential_dump",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "credential_access",
+          "password_dump",
+          "hash_extraction",
+          "credential_theft",
+          "memory_dump"
+        ]
+      }
+    },
+    "technique_id": "T1003",
+    "technique_name": "OS Credential Dumping",
+    "response_actions": [
+      "block_ip",
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate credential management tools (password managers, identity providers,\nauthentication services) may generate false positives. Whitelist known credential\nmanagement systems and monitor for deviations from normal access patterns.\n"
+  },
+  {
+    "rule_id": "data_archive_001",
+    "name": "Suspicious Data Archiving Activity",
+    "description": "Detects archiving of data that may indicate preparation for exfiltration:\n- Large archive creation in unusual locations\n- Password-protected or encrypted archives\n- Archives containing sensitive directories (Documents, Desktop, AppData)\n- Split archives (volume spanning)\n- Archiving during off-hours or by unauthorized users\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "data_archiving",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "process_creation",
+          "file_creation",
+          "data_staging"
+        ],
+        "suspicious_indicators": [
+          "password_protected_archive",
+          "encrypted_archive",
+          "large_archive",
+          "sensitive_data_archived",
+          "unusual_archive_location",
+          "split_archive"
+        ],
+        "archive_tools": [
+          "rar.exe",
+          "winrar.exe",
+          "7z.exe",
+          "7za.exe",
+          "powershell.exe",
+          "makecab.exe",
+          "expand.exe"
+        ],
+        "sensitive_paths": [
+          "\\Documents",
+          "\\Desktop",
+          "\\Downloads",
+          "\\AppData",
+          "\\Program Files"
+        ],
+        "suspicious_locations": [
+          "\\Temp",
+          "\\Public",
+          "\\ProgramData"
+        ],
+        "size_threshold_mb": 50
+      }
+    },
+    "technique_id": "T1560.001",
+    "technique_name": "Archive Collected Data: Archive via Utility",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token",
+      "block_ip"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Data archiving is common for legitimate purposes.\n\nCommon false positives:\n- Users creating personal backups\n- File transfers for legitimate business purposes\n- Software installations using compressed archives\n- Automated backup solutions\n- Developers archiving project files\n\nReduce false positives by:\n- Threshold for archive size (> 50 MB more suspicious)\n- Whitelisting known backup software\n- Monitoring for archives in temporary directories\n- Flagging password-protected archives (less common for personal use)\n- Detecting archives followed by network upload\n- Correlating with data exfiltration indicators\n- Excluding archives to network shares or known backup locations\n- Monitoring for archiving of system directories (Program Files, Windows)\n\nRisk scoring:\n- Small archive to user directory: Low\n- Large archive to Temp: Medium\n- Password-protected archive to Temp: High\n- Encrypted archive + network upload: Critical\n"
+  },
+  {
+    "rule_id": "data_destruction_001",
+    "name": "Data Destruction Detection",
+    "description": "Detects data destruction activities including mass file deletion, disk wiping, database truncation, and deliberate data corruption targeting smart city operational data and configuration stores",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "data_wipe",
+          "mass_deletion"
+        ]
+      }
+    },
+    "technique_id": "T1485",
+    "technique_name": "Data Destruction",
+    "response_actions": [
+      "isolate_service",
+      "quarantine_host",
+      "snapshot_forensics",
+      "escalate_incident",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-iot"
+    ],
+    "false_positive_notes": "Scheduled data retention cleanup, log rotation, and database maintenance\noperations may trigger this rule. Coordinate with database administrators\nand implement change management approval for bulk deletion operations.\n"
+  },
+  {
+    "rule_id": "data_exfil_001",
+    "name": "Data Exfiltration Detection",
+    "description": "Detects large outbound data transfers indicating data exfiltration activity",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "data_exfiltration",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "data_exfiltration",
+          "data_staging"
+        ]
+      }
+    },
+    "technique_id": "T1041",
+    "technique_name": "Exfiltration Over C2 Channel",
+    "response_actions": [
+      "block_ip",
+      "isolate_service"
+    ]
+  },
+  {
+    "rule_id": "ddos_attack_001",
+    "name": "Distributed Denial of Service (DDoS) Detection",
+    "description": "Detects DDoS attacks by identifying high-volume traffic from multiple source IPs targeting a single destination IP or service within a short time window",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "ddos_attack",
+      "parameters": {
+        "threshold": 100,
+        "min_sources": 5,
+        "group_by": "dst_ip",
+        "event_types": [
+          "network_connection",
+          "traffic_spike",
+          "ddos",
+          "syn_flood",
+          "udp_flood"
+        ]
+      }
+    },
+    "technique_id": "T1498",
+    "technique_name": "Network Denial of Service",
+    "response_actions": [
+      "block_ip",
+      "isolate_service"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate traffic spikes during peak hours or special events may trigger this rule.\nConsider adjusting thresholds for high-traffic services or implementing rate limiting\nto reduce false positives from legitimate distributed access patterns.\n"
+  },
+  {
+    "rule_id": "defacement_001",
+    "name": "Defacement Detection",
+    "description": "Detects web defacement and content manipulation attacks targeting smart city public-facing portals, dashboards, and citizen information systems",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "dst_ip",
+        "group_by": "dst_ip",
+        "event_types": [
+          "web_defacement",
+          "content_manipulation"
+        ]
+      }
+    },
+    "technique_id": "T1491",
+    "technique_name": "Defacement",
+    "response_actions": [
+      "isolate_service",
+      "snapshot_forensics",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate content updates, CMS deployments, and authorized website\nmaintenance may trigger this rule. Implement file integrity monitoring\non web roots and coordinate with web development teams for change windows.\n"
+  },
+  {
+    "rule_id": "defense_evasion_001",
+    "name": "Security Tools Disabled or Modified",
+    "description": "Detects attempts to disable or modify security tools and defensive mechanisms:\n- Windows Defender real-time protection disabled\n- Security services stopped or disabled\n- Firewall disabled via netsh or PowerShell\n- Event logging disabled\n- UAC settings weakened\n- Security product exclusions added\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "defense_evasion",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "asset_id",
+        "event_types": [
+          "service_stop",
+          "service_disabled",
+          "registry_modification",
+          "process_creation",
+          "firewall_modification"
+        ],
+        "suspicious_indicators": [
+          "av_disabled",
+          "firewall_disabled",
+          "logging_disabled",
+          "security_service_stopped",
+          "exclusion_added",
+          "uac_disabled"
+        ],
+        "target_services": [
+          "WinDefend",
+          "MpsSvc",
+          "EventLog",
+          "wuauserv",
+          "wscsvc"
+        ],
+        "process_filters": [
+          "powershell.exe",
+          "net.exe",
+          "sc.exe",
+          "netsh.exe",
+          "reg.exe",
+          "wevtutil.exe"
+        ]
+      }
+    },
+    "technique_id": "T1562.001",
+    "technique_name": "Impair Defenses: Disable or Modify Tools",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token",
+      "block_ip"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate administrative activities may trigger this rule.\n\nCommon false positives:\n- IT administrators troubleshooting security software\n- Software installations temporarily disabling AV\n- Maintenance scripts managing services\n- Group Policy changes affecting security settings\n\nReduce false positives by:\n- Whitelisting known maintenance windows\n- Excluding IT admin workstations during approved changes\n- Monitoring for MULTIPLE security impairments (threshold \u2265 2)\n- Flagging defense evasion outside business hours\n- Detecting rapid succession of security disablement\n- Correlating with other attack indicators (process injection, lateral movement)\n- Requiring re-enablement verification for legitimate changes\n"
+  },
+  {
+    "rule_id": "dll_side_loading_001",
+    "name": "DLL Side-Loading Detection",
+    "description": "Detects DLL side-loading attacks where adversaries place malicious DLLs alongside legitimate applications to achieve code execution within smart city control systems",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "dll_side_load",
+          "suspicious_dll"
+        ]
+      }
+    },
+    "technique_id": "T1574.002",
+    "technique_name": "DLL Side-Loading",
+    "response_actions": [
+      "quarantine_host",
+      "kill_process",
+      "snapshot_forensics",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Software updates and legitimate application installations may load DLLs\nfrom non-standard paths. Maintain an approved software baseline and hash\nwhitelist for known legitimate DLL files in the environment.\n"
+  },
+  {
+    "rule_id": "dns_tunneling_001",
+    "name": "DNS Tunneling Detection",
+    "description": "Detects DNS tunneling activity by identifying anomalous DNS query patterns, high-entropy domain names, and excessive DNS traffic from a single host indicative of covert C2 communication channels",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "c2_beacon",
+      "parameters": {
+        "threshold": 5,
+        "group_by": "src_ip",
+        "event_types": [
+          "dns_tunnel",
+          "dns_anomaly"
+        ]
+      }
+    },
+    "technique_id": "T1572",
+    "technique_name": "Protocol Tunneling",
+    "response_actions": [
+      "block_ip",
+      "isolate_service",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate DNS-based services (e.g., DNS-over-HTTPS clients, dynamic DNS updates)\nmay trigger this rule. Review query frequency and payload sizes to differentiate\nbetween legitimate traffic and exfiltration attempts.\n"
+  },
+  {
+    "rule_id": "dos_endpoint_001",
+    "name": "Endpoint Denial of Service Detection",
+    "description": "Detects DoS attacks targeting specific endpoints or services by monitoring resource exhaustion patterns and high-volume requests to single assets",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "dos_endpoint",
+      "parameters": {
+        "threshold": 50,
+        "group_by": "asset_id",
+        "event_types": [
+          "resource_exhaustion",
+          "service_overload",
+          "endpoint_dos",
+          "cpu_spike",
+          "memory_exhaustion"
+        ]
+      }
+    },
+    "technique_id": "T1499",
+    "technique_name": "Endpoint Denial of Service",
+    "response_actions": [
+      "isolate_service",
+      "block_ip"
+    ],
+    "log_sources": [
+      "logs-traffic",
+      "logs-iot",
+      "logs-network"
+    ],
+    "false_positive_notes": "Resource-intensive legitimate operations (batch processing, backups, system updates)\nmay trigger this rule. Monitor for repeated patterns and correlate with scheduled\nmaintenance windows to reduce false positives.\n"
+  },
+  {
+    "rule_id": "drive_by_compromise_001",
+    "name": "Drive-by Compromise Detection",
+    "description": "Detects drive-by compromise attempts by identifying malicious redirects, exploit kit landing pages, and suspicious browser-initiated downloads targeting smart city operator workstations",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "web_exploit",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "drive_by",
+          "malicious_redirect"
+        ]
+      }
+    },
+    "technique_id": "T1189",
+    "technique_name": "Drive-by Compromise",
+    "response_actions": [
+      "block_ip",
+      "quarantine_host",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Ad networks and legitimate redirects may cause false positives. Maintain\na reputation database for known advertising domains and coordinate with\nweb proxy teams for URL categorization accuracy.\n"
+  },
+  {
+    "rule_id": "external_remote_services_001",
+    "name": "External Remote Services Brute Force Detection",
+    "description": "Detects brute force attacks against externally exposed remote services including RDP, VPN gateways, and SSH endpoints providing access to smart city management networks",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "brute_force",
+      "parameters": {
+        "threshold": 8,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "rdp_attempt",
+          "vpn_brute_force"
+        ]
+      }
+    },
+    "technique_id": "T1133",
+    "technique_name": "External Remote Services",
+    "response_actions": [
+      "block_ip",
+      "rate_limit",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Legitimate users with forgotten passwords and automated monitoring systems\nchecking service availability may trigger this rule. Implement account\nlockout policies and correlate with help desk ticket submissions.\n"
+  },
+  {
+    "rule_id": "file_dir_disc_001",
+    "name": "File and Directory Discovery",
+    "description": "Detects enumeration of files and directories on smart city systems:\n- Directory listing commands (dir, ls, find, tree)\n- Recursive file searches for sensitive file types\n- Searching for configuration files, credentials, or keys\n- Excessive file system traversal from a single source\n- Targeted searches for backup files, database dumps, or scripts\n",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 5,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "process_creation",
+          "cmd_execution",
+          "file_discovery",
+          "directory_listing"
+        ],
+        "suspicious_commands": [
+          "dir /s",
+          "find / -name",
+          "tree",
+          "ls -laR",
+          "Get-ChildItem -Recurse"
+        ],
+        "sensitive_file_patterns": [
+          "*.conf",
+          "*.key",
+          "*.pem",
+          "*.bak",
+          "*.sql",
+          "*.env"
+        ]
+      }
+    },
+    "technique_id": "T1083",
+    "technique_name": "File and Directory Discovery",
+    "response_actions": [
+      "notify_soc",
+      "snapshot_forensics",
+      "isolate_service"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "File browsing and search operations are common in normal system use.\n\nCommon false positives:\n- Backup software scanning directories for changed files\n- Antivirus performing file system scans\n- Developers searching codebases or log directories\n\nReduce false positives by:\n- Focusing on recursive searches for credential or configuration files\n- Monitoring for discovery commands on critical infrastructure hosts\n- Correlating with prior unauthorized access or privilege escalation events\n"
+  },
+  {
+    "rule_id": "firmware_corruption_001",
+    "name": "Firmware Corruption Detection",
+    "description": "Detects firmware tampering and corruption attempts targeting IoT devices, SCADA controllers, PLCs, and embedded systems within the smart city infrastructure",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "device_id",
+        "group_by": "device_id",
+        "event_types": [
+          "firmware_tamper",
+          "firmware_corruption"
+        ]
+      }
+    },
+    "technique_id": "T1495",
+    "technique_name": "Firmware Corruption",
+    "response_actions": [
+      "isolate_service",
+      "snapshot_forensics",
+      "escalate_incident",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-iot",
+      "logs-network"
+    ],
+    "false_positive_notes": "Authorized firmware updates, OTA update processes, and scheduled device\nmaintenance may trigger this rule. Coordinate with IoT device management\nteams and maintain a firmware version registry for validation.\n"
+  },
+  {
+    "rule_id": "gather_host_info_001",
+    "name": "Gather Victim Host Information",
+    "description": "Detects attempts to gather information about smart city host systems:\n- OS fingerprinting through network probes\n- Banner grabbing from exposed services\n- SNMP enumeration of host configurations\n- Excessive DNS queries for host resolution\n- Targeted probing of known management interfaces\n",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 8,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "os_fingerprint",
+          "banner_grab",
+          "snmp_query",
+          "host_enumeration",
+          "dns_query_burst"
+        ],
+        "suspicious_indicators": [
+          "os_detection_probe",
+          "service_version_query",
+          "snmp_community_scan",
+          "management_interface_probe"
+        ]
+      }
+    },
+    "technique_id": "T1592",
+    "technique_name": "Gather Victim Host Information",
+    "response_actions": [
+      "block_ip",
+      "notify_soc",
+      "rate_limit"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-iot"
+    ],
+    "false_positive_notes": "Asset management and monitoring systems routinely gather host information.\n\nCommon false positives:\n- SNMP-based monitoring tools (Nagios, Zabbix)\n- Inventory management software querying host details\n- Authorized penetration testing activities\n\nReduce false positives by:\n- Whitelisting known monitoring and management IPs\n- Correlating with unauthorized source IPs\n- Flagging queries from external networks targeting internal hosts\n"
+  },
+  {
+    "rule_id": "gather_identity_001",
+    "name": "Gather Victim Identity Information",
+    "description": "Detects attempts to harvest identity information from smart city systems:\n- LDAP enumeration of user accounts and groups\n- Repeated authentication probes with different usernames\n- Directory service queries for employee data\n- Email address harvesting through SMTP VRFY/EXPN\n- Social media scraping targeting city personnel\n",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 10,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "ldap_enumeration",
+          "username_enumeration",
+          "directory_query",
+          "email_harvest",
+          "identity_probe"
+        ],
+        "suspicious_indicators": [
+          "bulk_user_lookup",
+          "sequential_username_probe",
+          "directory_traversal",
+          "smtp_enumeration"
+        ]
+      }
+    },
+    "technique_id": "T1589",
+    "technique_name": "Gather Victim Identity Information",
+    "response_actions": [
+      "block_ip",
+      "rate_limit",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate directory services and HR systems query identity information.\n\nCommon false positives:\n- Active Directory synchronization tools\n- HR and provisioning systems querying user directories\n- Email distribution list management\n\nReduce false positives by:\n- Whitelisting known directory service consumers\n- Monitoring for queries from external or unauthorized sources\n- Flagging bulk enumeration outside of normal business workflows\n"
+  },
+  {
+    "rule_id": "gather_network_001",
+    "name": "Gather Victim Network Information",
+    "description": "Detects reconnaissance activity aimed at mapping smart city network topology:\n- Traceroute and path enumeration\n- DNS zone transfer attempts\n- Network topology probing via SNMP\n- BGP and routing table enumeration\n- Excessive ARP requests to discover live hosts\n",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 8,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "traceroute",
+          "dns_zone_transfer",
+          "network_mapping",
+          "arp_sweep",
+          "routing_enumeration"
+        ],
+        "suspicious_indicators": [
+          "zone_transfer_attempt",
+          "topology_probe",
+          "subnet_sweep",
+          "gateway_enumeration"
+        ]
+      }
+    },
+    "technique_id": "T1590",
+    "technique_name": "Gather Victim Network Information",
+    "response_actions": [
+      "block_ip",
+      "rate_limit",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Network management tools routinely perform topology discovery.\n\nCommon false positives:\n- Network monitoring systems using SNMP for topology maps\n- DNS servers performing legitimate zone transfers\n- Traceroute utilities used by network engineers\n\nReduce false positives by:\n- Whitelisting authorized network management subnets\n- Restricting DNS zone transfers to known secondary DNS servers\n- Alerting on topology discovery from non-management VLANs\n"
+  },
+  {
+    "rule_id": "impair_defenses_001",
+    "name": "Impair Defenses Detection",
+    "description": "Detects attempts to disable or impair security defenses on smart city systems:\n- Disabling antivirus, EDR, or firewall services\n- Stopping security-related Windows services\n- Modifying security tool configurations\n- Unloading Sysmon or audit drivers\n- Disabling logging or auditing policies\n- Tampering with security agent processes\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "defense_evasion",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "service_stop",
+          "process_termination",
+          "registry_modification",
+          "security_config_change",
+          "audit_policy_change"
+        ],
+        "suspicious_indicators": [
+          "security_service_disabled",
+          "firewall_rule_modification",
+          "audit_policy_disabled",
+          "sysmon_unloaded",
+          "tamper_protection_disabled"
+        ],
+        "security_services": [
+          "WinDefend",
+          "MsMpSvc",
+          "Sysmon",
+          "CrowdStrike",
+          "CarbonBlack",
+          "wuauserv"
+        ],
+        "process_filters": [
+          "sc.exe",
+          "net.exe",
+          "powershell.exe",
+          "wmic.exe",
+          "fltMC.exe"
+        ]
+      }
+    },
+    "technique_id": "T1562",
+    "technique_name": "Impair Defenses",
+    "response_actions": [
+      "isolate_service",
+      "snapshot_forensics",
+      "escalate_incident",
+      "notify_soc",
+      "kill_process"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Security tool management may involve stopping and restarting services.\n\nCommon false positives:\n- Security software updates requiring service restart\n- IT administrators reconfiguring firewall rules\n- Patch management temporarily disabling services\n\nReduce false positives by:\n- Whitelisting known security management consoles\n- Monitoring for defense impairment outside of maintenance windows\n- Flagging multiple security services stopped in rapid succession\n- Correlating with other suspicious activity on the same host\n"
+  },
+  {
+    "rule_id": "indicator_removal_001",
+    "name": "Indicator Removal Detection",
+    "description": "Detects attempts to remove indicators of compromise from smart city systems:\n- Event log clearing or selective deletion\n- File deletion of malware artifacts or tools\n- Timestamp modification (timestomping)\n- History file clearing (bash_history, PowerShell history)\n- Network artifact cleanup\n- USN journal deletion\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "log_clearing",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "log_clearing",
+          "event_log_cleared",
+          "file_deletion",
+          "timestamp_modification",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "security_log_cleared",
+          "multiple_logs_cleared",
+          "history_file_cleared",
+          "timestomping_detected",
+          "usn_journal_deleted"
+        ],
+        "process_filters": [
+          "wevtutil.exe",
+          "powershell.exe",
+          "fsutil.exe",
+          "rm",
+          "del"
+        ]
+      }
+    },
+    "technique_id": "T1070",
+    "technique_name": "Indicator Removal",
+    "response_actions": [
+      "isolate_service",
+      "snapshot_forensics",
+      "escalate_incident",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Log management and cleanup are part of normal operations.\n\nCommon false positives:\n- Scheduled log rotation and archival processes\n- Disk space management clearing old log files\n- Developers clearing shell history for convenience\n\nReduce false positives by:\n- Flagging Security event log clearing (almost always suspicious)\n- Monitoring for timestomping (file modification time set before creation time)\n- Detecting rapid deletion of multiple log sources\n- Correlating with prior suspicious activity on the same host\n- Alerting on indicator removal immediately following exploitation events\n"
+  },
+  {
+    "rule_id": "ingress_tool_transfer_001",
+    "name": "Ingress Tool Transfer Detection",
+    "description": "Detects transfer of attacker tools and utilities into the environment including wget/curl downloads of suspicious binaries, PowerShell download cradles, and unauthorized file transfers to city infrastructure hosts",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 3,
+        "field": "dst_ip",
+        "group_by": "dst_ip",
+        "event_types": [
+          "tool_download",
+          "suspicious_transfer"
+        ]
+      }
+    },
+    "technique_id": "T1105",
+    "technique_name": "Ingress Tool Transfer",
+    "response_actions": [
+      "block_ip",
+      "quarantine_host",
+      "snapshot_forensics",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate software downloads, package manager updates, and automated\ndeployment tools may trigger this rule. Whitelist approved download sources\nand software distribution endpoints used by the organization.\n"
+  },
+  {
+    "rule_id": "input_capture_001",
+    "name": "Input Capture and Keylogging Detection",
+    "description": "Detects keylogging and input capture activities including keyboard hooking, API-based keystroke logging, and credential interception on smart city operator workstations",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "keylogger",
+          "input_capture"
+        ]
+      }
+    },
+    "technique_id": "T1056",
+    "technique_name": "Input Capture",
+    "response_actions": [
+      "quarantine_host",
+      "kill_process",
+      "reset_credentials",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Accessibility software, remote desktop tools, and input automation scripts\nmay exhibit similar behavior. Maintain an approved software inventory and\nvalidate processes against known legitimate input handling applications.\n"
+  },
+  {
+    "rule_id": "iot_anomaly_001",
+    "name": "IoT Sensor Anomaly Detection",
+    "description": "Detects anomalous IoT sensor behavior such as excessive event bursts or out-of-range values",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "iot_anomaly",
+      "parameters": {
+        "threshold": 5,
+        "field": "actor_id",
+        "event_types": [
+          "sensor_anomaly",
+          "data_tampering"
+        ]
+      }
+    },
+    "technique_id": "T1565",
+    "technique_name": "Data Manipulation",
+    "response_actions": [
+      "isolate_service"
+    ]
+  },
+  {
+    "rule_id": "kerberoasting_001",
+    "name": "Kerberoasting Detection",
+    "description": "Detects Kerberoasting attacks where adversaries request service tickets for service accounts to crack offline, targeting Active Directory integrated smart city management systems",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "credential_dump",
+      "parameters": {
+        "threshold": 5,
+        "group_by": "src_ip",
+        "event_types": [
+          "kerberoast",
+          "spn_request"
+        ]
+      }
+    },
+    "technique_id": "T1558.003",
+    "technique_name": "Kerberoasting",
+    "response_actions": [
+      "disable_account",
+      "reset_credentials",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Legitimate service ticket requests during normal authentication workflows\nmay trigger this rule. Focus on anomalous volumes of TGS requests from\nsingle accounts and correlate with known service account usage patterns.\n"
+  },
+  {
+    "rule_id": "lateral_movement_001",
+    "name": "Lateral Movement Detection",
+    "description": "Detects lateral movement attempts by identifying unusual service-to-service communication, lateral tool transfers, and unauthorized network traversal",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "lateral_movement",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "lateral_tool_transfer",
+          "service_propagation",
+          "unauthorized_access",
+          "smb_transfer",
+          "remote_execution"
+        ]
+      }
+    },
+    "technique_id": "T1570",
+    "technique_name": "Lateral Tool Transfer",
+    "response_actions": [
+      "block_ip",
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate system administration activities (software deployment, patch management,\nconfiguration updates) may trigger this rule. Establish baselines for normal\nadministrative traffic patterns and whitelist known management systems.\n"
+  },
+  {
+    "rule_id": "man_in_the_middle_001",
+    "name": "Adversary-in-the-Middle Detection",
+    "description": "Detects man-in-the-middle attacks including ARP spoofing, DNS poisoning, and LLMNR/NBT-NS poisoning targeting smart city network communications and SCADA protocols",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 3,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "mitm_attack",
+          "arp_spoof"
+        ]
+      }
+    },
+    "technique_id": "T1557",
+    "technique_name": "Adversary-in-the-Middle",
+    "response_actions": [
+      "block_ip",
+      "isolate_service",
+      "network_segmentation",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Network reconfigurations, DHCP renewals, and legitimate ARP updates may\ntrigger false positives. Implement static ARP entries for critical\ninfrastructure and use 802.1X port-based authentication where possible.\n"
+  },
+  {
+    "rule_id": "mod_sys_proc_001",
+    "name": "Create or Modify System Process",
+    "description": "Detects creation or modification of system-level processes for persistence:\n- Windows service creation with auto-start configuration\n- Systemd unit file creation or modification\n- Launch daemon installation on macOS\n- Modification of existing system service binaries\n- Service recovery options changed to execute malicious payloads\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "service_persistence",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "service_creation",
+          "service_modification",
+          "file_creation",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "auto_start_service",
+          "systemd_unit_creation",
+          "launch_daemon_install",
+          "service_binary_replacement",
+          "recovery_option_change"
+        ],
+        "process_filters": [
+          "sc.exe",
+          "powershell.exe",
+          "systemctl",
+          "launchctl"
+        ]
+      }
+    },
+    "technique_id": "T1543",
+    "technique_name": "Create or Modify System Process",
+    "response_actions": [
+      "isolate_service",
+      "snapshot_forensics",
+      "kill_process",
+      "notify_soc",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "System process creation is common during software deployment.\n\nCommon false positives:\n- Application installers creating new services\n- Package managers installing daemon processes\n- Configuration management tools deploying service definitions\n\nReduce false positives by:\n- Whitelisting known software deployment pipelines\n- Monitoring for service modifications outside of change windows\n- Flagging services with binaries in non-standard locations\n- Detecting service recovery actions pointing to script interpreters\n"
+  },
+  {
+    "rule_id": "multi_factor_auth_bypass_001",
+    "name": "Multi-Factor Authentication Bypass Detection",
+    "description": "Detects MFA bypass attempts including MFA fatigue attacks, push notification bombing, SIM swapping indicators, and token replay attacks targeting smart city administrative accounts",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 5,
+        "field": "user_id",
+        "group_by": "user_id",
+        "event_types": [
+          "mfa_bypass",
+          "mfa_fatigue"
+        ]
+      }
+    },
+    "technique_id": "T1556.006",
+    "technique_name": "Multi-Factor Authentication",
+    "response_actions": [
+      "disable_account",
+      "revoke_token",
+      "reset_credentials",
+      "escalate_incident",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Users with connectivity issues, new device enrollments, and MFA provider\noutages may generate multiple authentication attempts. Correlate with\nMFA provider status and implement number-matching instead of push approval.\n"
+  },
+  {
+    "rule_id": "net_scan_001",
+    "name": "Network Port Scan Detection",
+    "description": "Detects network port scanning activity by monitoring for connections to multiple distinct destination ports from a single source IP within a time window",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "net_scan",
+      "parameters": {
+        "threshold": 5,
+        "field": "dst_port",
+        "group_by": "src_ip",
+        "event_types": [
+          "port_scan",
+          "network_probe",
+          "network_connection",
+          "scan_complete"
+        ]
+      }
+    },
+    "technique_id": "T1046",
+    "technique_name": "Network Service Scanning",
+    "response_actions": [
+      "block_ip"
+    ]
+  },
+  {
+    "rule_id": "net_share_disc_001",
+    "name": "Network Share Discovery",
+    "description": "Detects enumeration of network shares on smart city infrastructure:\n- net share and net view commands\n- SMB share enumeration\n- NFS export listing\n- Mounting of discovered shares from unauthorized sources\n- Rapid traversal of multiple network shares\n",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 5,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "smb_enumeration",
+          "share_discovery",
+          "process_creation",
+          "network_connection"
+        ],
+        "suspicious_commands": [
+          "net share",
+          "net view",
+          "smbclient -L",
+          "showmount -e",
+          "Get-SmbShare"
+        ],
+        "suspicious_indicators": [
+          "multi_share_access",
+          "admin_share_enumeration",
+          "ipc_share_connection"
+        ]
+      }
+    },
+    "technique_id": "T1135",
+    "technique_name": "Network Share Discovery",
+    "response_actions": [
+      "notify_soc",
+      "snapshot_forensics",
+      "network_segmentation"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Network share access is routine for file sharing and collaboration.\n\nCommon false positives:\n- File servers responding to legitimate share discovery\n- IT administrators auditing share permissions\n- Backup software enumerating shares for scheduled backups\n\nReduce false positives by:\n- Whitelisting known file server management accounts\n- Monitoring for enumeration of admin shares (C$, ADMIN$, IPC$)\n- Flagging share discovery from non-management workstations\n- Correlating with subsequent lateral movement or data staging\n"
+  },
+  {
+    "rule_id": "network_sniffing_001",
+    "name": "Network Sniffing Detection",
+    "description": "Detects network sniffing and packet capture activities including promiscuous mode activation and unauthorized traffic interception on smart city network segments",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 3,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "packet_capture",
+          "promiscuous_mode"
+        ]
+      }
+    },
+    "technique_id": "T1040",
+    "technique_name": "Network Sniffing",
+    "response_actions": [
+      "notify_soc",
+      "snapshot_forensics"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Network monitoring tools, legitimate traffic analysis, and IDS/IPS sensors\nmay trigger this rule. Whitelist authorized network monitoring infrastructure\nand security appliance interfaces configured for traffic inspection.\n"
+  },
+  {
+    "rule_id": "obfuscation_001",
+    "name": "Obfuscated Command or Script Execution",
+    "description": "Detects execution of obfuscated commands and scripts using various techniques:\n- Base64 encoded PowerShell commands\n- String concatenation and character substitution\n- Compression (Gzip, Deflate)\n- XOR or other encoding schemes\n- Environment variable abuse\n- High entropy command lines\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "obfuscation_detection",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "process_creation",
+          "obfuscated_execution",
+          "powershell_execution"
+        ],
+        "obfuscation_indicators": [
+          "base64_encoded",
+          "high_entropy",
+          "string_concatenation",
+          "character_substitution",
+          "compression_detected",
+          "xor_encoding",
+          "environment_var_abuse"
+        ],
+        "entropy_threshold": 6.5,
+        "suspicious_patterns": [
+          "-EncodedCommand",
+          "-enc",
+          "FromBase64String",
+          "IO.Compression",
+          "GZipStream",
+          "[char]",
+          "-bxor",
+          "IEX",
+          "Invoke-Expression"
+        ],
+        "process_filters": [
+          "powershell.exe",
+          "cmd.exe",
+          "wscript.exe",
+          "cscript.exe"
+        ]
+      }
+    },
+    "technique_id": "T1027",
+    "technique_name": "Obfuscated Files or Information",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token",
+      "block_ip"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Some legitimate software uses obfuscation for various purposes.\n\nCommon false positives:\n- Software deployment tools using encoded parameters\n- Legitimate automation scripts with Base64-encoded configurations\n- Application installers with compressed payloads\n- Administrative scripts protecting sensitive data\n\nReduce false positives by:\n- Whitelisting signed scripts from trusted vendors\n- Excluding known deployment tools (SCCM, Intune)\n- Monitoring entropy score (very high entropy = likely malicious)\n- Detecting multiple obfuscation techniques in single command\n- Correlating with network connections to unknown IPs\n- Flagging obfuscation combined with DownloadString/IEX\n- Requiring code signing for encoded PowerShell execution\n\nEntropy scoring guide:\n- < 4.0: Plain text (normal)\n- 4.0-6.0: Moderate complexity (may be normal)\n- 6.0-7.5: High entropy (suspicious)\n- > 7.5: Very high entropy (likely obfuscated/encrypted)\n"
+  },
+  {
+    "rule_id": "pass_the_hash_001",
+    "name": "Pass the Hash Detection",
+    "description": "Detects pass-the-hash attacks where adversaries use stolen NTLM password hashes to authenticate without knowing the plaintext password, enabling lateral movement across city network infrastructure",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "credential_dump",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "pth_attempt",
+          "ntlm_relay"
+        ]
+      }
+    },
+    "technique_id": "T1550.002",
+    "technique_name": "Pass the Hash",
+    "response_actions": [
+      "block_ip",
+      "disable_account",
+      "reset_credentials",
+      "isolate_service",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "NTLM authentication in legacy systems and cross-domain trust relationships\nmay generate similar patterns. Identify systems still requiring NTLM and\nwork toward Kerberos migration to reduce both risk and false positives.\n"
+  },
+  {
+    "rule_id": "phishing_gen_001",
+    "name": "Phishing Activity Detection",
+    "description": "Detects general phishing activity targeting smart city personnel:\n- Suspicious email attachments with macro-enabled or executable content\n- Connections to known phishing infrastructure\n- Credential submission to non-corporate domains\n- Suspicious OAuth consent flows\n- Multiple users accessing the same malicious URL in a short window\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 3,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "phishing_email",
+          "suspicious_attachment",
+          "credential_submission",
+          "malicious_url_access",
+          "phishing_link_click"
+        ],
+        "suspicious_indicators": [
+          "macro_enabled_attachment",
+          "executable_attachment",
+          "lookalike_domain",
+          "credential_harvesting_page",
+          "oauth_phishing"
+        ]
+      }
+    },
+    "technique_id": "T1566",
+    "technique_name": "Phishing",
+    "response_actions": [
+      "block_ip",
+      "quarantine_host",
+      "reset_credentials",
+      "notify_soc",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate email with attachments and external links is common.\n\nCommon false positives:\n- Marketing emails with tracking links\n- Legitimate file-sharing services sending notification emails\n- Internal phishing simulation exercises\n\nReduce false positives by:\n- Maintaining URL reputation databases and whitelists\n- Excluding known phishing simulation platforms\n- Correlating with threat intelligence feeds for known phishing domains\n- Monitoring for credential entry on non-corporate login pages\n"
+  },
+  {
+    "rule_id": "phishing_link_001",
+    "name": "Spearphishing Link Detection",
+    "description": "Detects spearphishing link clicks and suspicious URL access patterns indicating social engineering attacks targeting smart city operators through crafted URLs and credential harvesting pages",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 3,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "phishing_link_click",
+          "suspicious_url"
+        ]
+      }
+    },
+    "technique_id": "T1566.002",
+    "technique_name": "Spearphishing Link",
+    "response_actions": [
+      "block_ip",
+      "quarantine_host",
+      "reset_credentials",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "URL shorteners, marketing email links, and legitimate SaaS login pages may\ntrigger this rule. Implement URL reputation scoring and maintain a whitelist\nof known safe domains used by the organization.\n"
+  },
+  {
+    "rule_id": "powershell_exec_001",
+    "name": "Suspicious PowerShell Execution",
+    "description": "Detects suspicious PowerShell execution patterns including encoded commands,\nexecution policy bypasses, hidden windows, and network download attempts.\nCommon in initial access, execution, and defense evasion phases.\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "powershell_execution",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "process_creation",
+          "powershell_execution"
+        ],
+        "suspicious_flags": [
+          "EncodedCommand",
+          "ExecutionPolicy Bypass",
+          "NoProfile",
+          "WindowStyle Hidden",
+          "DownloadString",
+          "DownloadFile",
+          "Invoke-Expression",
+          "IEX",
+          "NonInteractive"
+        ]
+      }
+    },
+    "technique_id": "T1059.001",
+    "technique_name": "Command and Scripting Interpreter: PowerShell",
+    "response_actions": [
+      "isolate_service",
+      "block_ip",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate administrative scripts may trigger this rule if they use:\n- Execution policy bypass for automation\n- Encoded commands for complex parameter passing\n- Remote script execution from trusted internal repositories\n\nWhitelist known admin workstations and scheduled task hosts.\nConsider adding exceptions for scripts signed with trusted certificates.\n"
+  },
+  {
+    "rule_id": "privilege_escalation_exploit_001",
+    "name": "Privilege Escalation Exploit Detection",
+    "description": "Detects exploitation attempts for privilege escalation including kernel exploits, SUID/SGID abuse, and vulnerability exploitation targeting elevated access on smart city control systems",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "priv_escalation",
+          "exploit_attempt"
+        ]
+      }
+    },
+    "technique_id": "T1068",
+    "technique_name": "Exploitation for Privilege Escalation",
+    "response_actions": [
+      "quarantine_host",
+      "kill_process",
+      "snapshot_forensics",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Legitimate system administration tasks involving sudo, privilege elevation\ntools, and automated configuration management may trigger this rule.\nWhitelist known administrative accounts and scheduled maintenance processes.\n"
+  },
+  {
+    "rule_id": "proc_inject_001",
+    "name": "Process Injection Detected",
+    "description": "Detects process injection techniques including:\n- DLL injection using Windows API calls\n- Reflective PE injection\n- Process hollowing\n- Cross-process memory manipulation\n- Suspicious rundll32 usage\n- PowerShell with memory manipulation\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "process_injection",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "process_injection",
+          "process_access",
+          "dll_load",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "cross_process_memory_write",
+          "reflective_injection",
+          "process_hollowing",
+          "suspicious_dll_load",
+          "api_hooking"
+        ],
+        "api_patterns": [
+          "OpenProcess",
+          "VirtualAllocEx",
+          "WriteProcessMemory",
+          "CreateRemoteThread",
+          "NtCreateThreadEx",
+          "QueueUserAPC"
+        ],
+        "process_filters": [
+          "powershell.exe",
+          "rundll32.exe",
+          "wmic.exe"
+        ]
+      }
+    },
+    "technique_id": "T1055.001",
+    "technique_name": "Process Injection: Dynamic-link Library Injection",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token",
+      "block_ip"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Some legitimate software uses process injection for valid purposes.\n\nCommon false positives:\n- Antivirus/EDR software injecting into processes for monitoring\n- Debugging tools (Visual Studio, WinDbg) during development\n- Application compatibility shims\n- Legitimate DLL hooking by accessibility tools\n\nReduce false positives by:\n- Whitelisting signed security software\n- Excluding developer workstations during debug sessions\n- Monitoring for injections into critical processes (lsass, svchost)\n- Flagging injections from temporary directories\n- Detecting unusual parent-child process relationships\n- Correlating with other suspicious activities (credential access, lateral movement)\n"
+  },
+  {
+    "rule_id": "proc_inject_gen_001",
+    "name": "Process Injection Detection (General)",
+    "description": "Detects general process injection techniques used for privilege escalation\nand defense evasion on smart city systems:\n- DLL injection and reflective loading\n- Process hollowing and process doppelganging\n- Thread execution hijacking\n- APC injection and atom bombing\n- VDSO hijacking on Linux\n- Cross-process memory writes from untrusted sources\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "process_injection",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "process_injection",
+          "process_access",
+          "dll_load",
+          "process_creation",
+          "memory_allocation"
+        ],
+        "suspicious_indicators": [
+          "cross_process_memory_write",
+          "reflective_injection",
+          "process_hollowing",
+          "thread_hijacking",
+          "apc_injection",
+          "atom_bombing"
+        ],
+        "api_patterns": [
+          "OpenProcess",
+          "VirtualAllocEx",
+          "WriteProcessMemory",
+          "CreateRemoteThread",
+          "NtCreateThreadEx",
+          "QueueUserAPC",
+          "NtMapViewOfSection"
+        ],
+        "process_filters": [
+          "powershell.exe",
+          "rundll32.exe",
+          "wmic.exe",
+          "regsvr32.exe"
+        ]
+      }
+    },
+    "technique_id": "T1055",
+    "technique_name": "Process Injection",
+    "response_actions": [
+      "isolate_service",
+      "kill_process",
+      "snapshot_forensics",
+      "revoke_token",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Some legitimate software uses process injection for valid purposes.\n\nCommon false positives:\n- Antivirus and EDR agents injecting into processes for monitoring\n- Debugging tools during development sessions\n- Application compatibility shims and accessibility tools\n\nReduce false positives by:\n- Whitelisting signed security software\n- Monitoring injections into critical processes (lsass, svchost, csrss)\n- Flagging injections originating from temp directories\n- Correlating with other indicators of compromise\n"
+  },
+  {
+    "rule_id": "ransomware_001",
+    "name": "Ransomware Activity Detection",
+    "description": "Detects ransomware encryption activity by identifying mass file encryption events, encryption-related processes, and ransom note indicators",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "ransomware",
+      "parameters": {
+        "threshold": 1,
+        "event_types": [
+          "file_encryption",
+          "ransomware_indicator",
+          "mass_file_modification",
+          "ransom_note_detected",
+          "crypto_operation"
+        ]
+      }
+    },
+    "technique_id": "T1486",
+    "technique_name": "Data Encrypted for Impact",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-iot",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate encryption operations (data archival, secure file transfers, backup encryption)\nmay trigger this rule. Establish baseline for normal encryption activity and whitelist\nknown legitimate encryption processes to minimize false positives.\n"
+  },
+  {
+    "rule_id": "registry_persist_001",
+    "name": "Suspicious Registry Run Key Persistence",
+    "description": "Detects additions or modifications to Windows registry run keys commonly\nused for persistence. Monitors Run, RunOnce, and other autostart locations\nfor suspicious entries pointing to temporary directories, PowerShell execution,\nor masquerading executables.\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "registry_persistence",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "registry_modification",
+          "registry_add"
+        ],
+        "persistence_keys": [
+          "\\CurrentVersion\\Run",
+          "\\CurrentVersion\\RunOnce",
+          "\\CurrentVersion\\RunServices",
+          "\\CurrentVersion\\RunServicesOnce",
+          "\\CurrentVersion\\Explorer\\User Shell Folders",
+          "\\CurrentVersion\\Explorer\\Shell Folders",
+          "\\Windows\\CurrentVersion\\Policies\\Explorer\\Run"
+        ],
+        "suspicious_indicators": [
+          "temp_directory_execution",
+          "powershell_execution",
+          "script_execution",
+          "name_masquerading",
+          "external_download",
+          "hidden_window"
+        ]
+      }
+    },
+    "technique_id": "T1547.001",
+    "technique_name": "Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate software frequently uses run keys for autostart functionality.\n\nCommon false positives:\n- Software installations adding legitimate autostart entries\n- User applications (Dropbox, OneDrive, Slack) adding run keys\n- Corporate software (VPN clients, endpoint agents) using run keys\n\nReduce false positives by:\n- Whitelisting known application paths (C:\\Program Files\\*)\n- Excluding signed executables from trusted vendors\n- Flagging entries with:\n  * Executables in \\Temp, \\AppData\\Local\\Temp, or Public directories\n  * PowerShell or script interpreter execution\n  * Command-line parameters with encoding or obfuscation\n  * Names similar to system processes (svchost, lsass, explorer variants)\n- Monitoring for rapid creation/deletion patterns\n"
+  },
+  {
+    "rule_id": "remote_services_001",
+    "name": "Remote Services Lateral Movement",
+    "description": "Detects abuse of remote services for lateral movement across smart city networks:\n- RDP connections from unusual sources\n- SSH sessions to critical infrastructure from non-management hosts\n- WinRM and PSRemoting from unexpected origins\n- VNC connections to IoT management interfaces\n- SMB/Windows Admin Shares access from non-admin workstations\n- Remote service access outside business hours\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "lateral_movement",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "rdp_connection",
+          "ssh_session",
+          "winrm_connection",
+          "vnc_connection",
+          "smb_access",
+          "remote_execution"
+        ],
+        "suspicious_indicators": [
+          "unusual_source_ip",
+          "non_management_host",
+          "admin_share_access",
+          "off_hours_access",
+          "multi_host_lateral"
+        ]
+      }
+    },
+    "technique_id": "T1021",
+    "technique_name": "Remote Services",
+    "response_actions": [
+      "block_ip",
+      "isolate_service",
+      "revoke_token",
+      "network_segmentation",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic",
+      "logs-iot"
+    ],
+    "false_positive_notes": "Remote administration is essential for managing distributed smart city systems.\n\nCommon false positives:\n- IT administrators using RDP or SSH for routine management\n- Automated deployment tools connecting via SSH or WinRM\n- Remote support sessions for IoT device troubleshooting\n\nReduce false positives by:\n- Whitelisting known management jump boxes and bastion hosts\n- Monitoring for remote service access from non-management network segments\n- Flagging connections to multiple hosts in rapid succession\n- Correlating with failed authentication attempts preceding successful access\n"
+  },
+  {
+    "rule_id": "remote_services_exploit_001",
+    "name": "Remote Services Exploitation Detection",
+    "description": "Detects exploitation of remote services including RDP, SSH, SMB, and other exposed services used for lateral movement within the smart city network infrastructure",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "lateral_movement",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "remote_exploit",
+          "service_exploitation"
+        ]
+      }
+    },
+    "technique_id": "T1210",
+    "technique_name": "Exploitation of Remote Services",
+    "response_actions": [
+      "block_ip",
+      "isolate_service",
+      "network_segmentation",
+      "snapshot_forensics"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Legitimate remote administration, automated deployment tools, and IT\nmanagement platforms may trigger this rule. Whitelist authorized management\nIPs and coordinate with operations teams for scheduled maintenance windows.\n"
+  },
+  {
+    "rule_id": "resource_hijacking_001",
+    "name": "Resource Hijacking and Cryptojacking Detection",
+    "description": "Detects resource hijacking including cryptocurrency mining, unauthorized compute usage, and CPU/GPU resource abuse on smart city servers and IoT devices",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 3,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "crypto_mining",
+          "resource_hijack"
+        ]
+      }
+    },
+    "technique_id": "T1496",
+    "technique_name": "Resource Hijacking",
+    "response_actions": [
+      "kill_process",
+      "quarantine_host",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-iot"
+    ],
+    "false_positive_notes": "High CPU usage from legitimate workloads, batch processing, and data\nanalytics jobs may trigger this rule. Establish baseline resource usage\nprofiles and correlate with known mining pool domain/IP blocklists.\n"
+  },
+  {
+    "rule_id": "rootkit_001",
+    "name": "Rootkit Detection",
+    "description": "Detects rootkit installation and kernel-level persistence including suspicious kernel module loading, hidden process indicators, and system call table modifications on smart city servers and embedded devices",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "rootkit_detected",
+          "kernel_module_load"
+        ]
+      }
+    },
+    "technique_id": "T1014",
+    "technique_name": "Rootkit",
+    "response_actions": [
+      "isolate_service",
+      "quarantine_host",
+      "snapshot_forensics",
+      "escalate_incident",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-iot"
+    ],
+    "false_positive_notes": "Legitimate kernel module loading during driver installation, system updates,\nand hardware provisioning may trigger this rule. Maintain an approved kernel\nmodule whitelist and monitor for unsigned or unexpected module insertions.\n"
+  },
+  {
+    "rule_id": "sched_task_001",
+    "name": "Suspicious Scheduled Task Creation",
+    "description": "Detects creation of scheduled tasks with suspicious characteristics:\n- SYSTEM privileges\n- PowerShell or script execution\n- Masquerading as legitimate Windows update tasks\n- Tasks running from temporary directories\n- Tasks with encoded commands or network activity\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "scheduled_task_creation",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "scheduled_task_creation",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "task_name_masquerading",
+          "system_privilege",
+          "powershell_action",
+          "temp_directory",
+          "encoded_command",
+          "network_download"
+        ],
+        "process_filters": [
+          "schtasks.exe"
+        ]
+      }
+    },
+    "technique_id": "T1053.005",
+    "technique_name": "Scheduled Task/Job: Scheduled Task",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token",
+      "block_ip"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate software installations and updates may create scheduled tasks.\n\nCommon false positives:\n- Windows Update creating update tasks\n- Software installers (Adobe, Google Chrome) creating update tasks\n- Antivirus software creating scan tasks\n- Backup software creating scheduled backup tasks\n\nReduce false positives by:\n- Whitelisting signed executables from trusted vendors\n- Excluding tasks created during known maintenance windows\n- Monitoring for tasks with suspicious names mimicking system tasks\n- Correlating with recent software installation events\n- Flagging tasks that execute from \\Temp, \\AppData, or user directories\n"
+  },
+  {
+    "rule_id": "sched_task_job_001",
+    "name": "Scheduled Task/Job Creation or Modification",
+    "description": "Detects creation or modification of scheduled tasks and jobs for persistence\nor execution on smart city systems:\n- Windows Task Scheduler (schtasks) and Linux cron job manipulation\n- AT command scheduling\n- Systemd timer creation\n- Tasks executing from suspicious paths or with elevated privileges\n- Modification of existing legitimate scheduled tasks\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "scheduled_task_creation",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "scheduled_task_creation",
+          "scheduled_task_modification",
+          "cron_job_creation",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "system_privilege",
+          "temp_directory",
+          "encoded_command",
+          "unusual_schedule",
+          "cron_persistence"
+        ],
+        "process_filters": [
+          "schtasks.exe",
+          "at.exe",
+          "crontab",
+          "systemctl"
+        ]
+      }
+    },
+    "technique_id": "T1053",
+    "technique_name": "Scheduled Task/Job",
+    "response_actions": [
+      "isolate_service",
+      "kill_process",
+      "snapshot_forensics",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Scheduled tasks are commonly used for legitimate system maintenance.\n\nCommon false positives:\n- Software updates creating scheduled update checks\n- Backup software scheduling periodic backup jobs\n- System administrators creating maintenance tasks\n\nReduce false positives by:\n- Whitelisting signed executables from trusted vendors\n- Monitoring for tasks created outside change management windows\n- Flagging tasks that execute scripts from temp or user directories\n- Correlating with recent unauthorized access events\n"
+  },
+  {
+    "rule_id": "screen_capture_001",
+    "name": "Screen Capture Activity Detected",
+    "description": "Detects attempts to capture screenshots using various methods:\n- PowerShell with System.Drawing and System.Windows.Forms\n- Graphics.CopyFromScreen API usage\n- Automated screenshot loops\n- Screenshot capture with network upload\n- Third-party screenshot tools (nircmd, etc.)\n",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "screen_capture",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "asset_id",
+        "event_types": [
+          "process_creation",
+          "assembly_load",
+          "file_creation",
+          "network_connection"
+        ],
+        "suspicious_indicators": [
+          "screen_capture_api",
+          "graphics_assembly_load",
+          "automated_capture_loop",
+          "screenshot_upload",
+          "hidden_execution"
+        ],
+        "api_patterns": [
+          "CopyFromScreen",
+          "System.Drawing.Bitmap",
+          "System.Windows.Forms.Screen",
+          "GetDesktopWindow",
+          "BitBlt"
+        ],
+        "assembly_loads": [
+          "System.Windows.Forms",
+          "System.Drawing"
+        ],
+        "process_filters": [
+          "powershell.exe",
+          "nircmd.exe",
+          "python.exe"
+        ]
+      }
+    },
+    "technique_id": "T1113",
+    "technique_name": "Screen Capture",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Screen capture has many legitimate uses.\n\nCommon false positives:\n- Remote desktop and support tools (TeamViewer, AnyDesk)\n- Screen recording software (OBS, Camtasia)\n- Screenshot utilities (Snagit, Greenshot)\n- Monitoring and collaboration tools (Zoom, Teams recording)\n- Automated testing frameworks\n- Documentation tools\n\nReduce false positives by:\n- Whitelisting known screenshot and remote access tools\n- Threshold: Requiring 3+ captures in 5 minutes\n- Monitoring for captures combined with network upload\n- Flagging hidden window execution (WindowStyle Hidden)\n- Detecting screenshots saved to temporary directories\n- Correlating with other collection activities (keylogging, file staging)\n- Excluding captures during known screen sharing sessions\n\nSeverity considerations:\n- Single screenshot: Low severity (may be legitimate)\n- Automated loop (3+ captures): Medium severity\n- Capture + network upload: High severity\n- Capture + encryption + upload: Critical severity\n"
+  },
+  {
+    "rule_id": "service_exec_001",
+    "name": "Suspicious Windows Service Creation or Modification",
+    "description": "Detects creation or modification of Windows services with suspicious characteristics:\n- Service binaries in temporary or user directories\n- Services masquerading as legitimate Windows services\n- Services executing PowerShell or scripts\n- Services with SYSTEM privileges created by non-admin tools\n- Modifications to critical Windows services\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "service_execution",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "service_creation",
+          "service_modification",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "temp_directory_binary",
+          "name_masquerading",
+          "powershell_service",
+          "script_execution",
+          "critical_service_modification"
+        ],
+        "process_filters": [
+          "sc.exe",
+          "powershell.exe"
+        ]
+      }
+    },
+    "technique_id": "T1569.002",
+    "technique_name": "System Services: Service Execution",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Legitimate software may create services during installation or updates.\n\nCommon false positives:\n- Software installers creating legitimate services\n- System administrators creating services for monitoring or automation\n- Update processes modifying service configurations\n\nReduce false positives by:\n- Whitelisting known software installation processes\n- Excluding services created by signed installers\n- Monitoring for services with binaries in non-standard locations:\n  * C:\\Windows\\Temp\n  * C:\\Users\\*\\AppData\n  * C:\\ProgramData (unless from trusted vendor)\n- Flagging services that mimic system service names with slight variations\n- Correlating with privilege escalation or lateral movement activities\n"
+  },
+  {
+    "rule_id": "service_persist_001",
+    "name": "Windows Service Persistence Mechanism",
+    "description": "Detects creation or modification of Windows services for persistence:\n- Services with binaries in suspicious locations (ProgramData, Public, Temp)\n- Services masquerading as legitimate Windows services\n- Services running PowerShell or scripts\n- Modifications to critical Windows services\n- Services with auto-start configured\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "service_persistence",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "asset_id",
+        "event_types": [
+          "service_creation",
+          "service_modification",
+          "service_start"
+        ],
+        "suspicious_indicators": [
+          "suspicious_binary_location",
+          "service_name_masquerading",
+          "powershell_or_script",
+          "critical_service_modification",
+          "auto_start_enabled"
+        ],
+        "binary_path_patterns": [
+          "\\ProgramData\\",
+          "\\Users\\Public\\",
+          "\\Temp\\",
+          "\\AppData\\",
+          "\\Windows\\Tasks\\"
+        ]
+      }
+    },
+    "technique_id": "T1543.003",
+    "technique_name": "Create or Modify System Process: Windows Service",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Some legitimate software creates services in non-standard locations.\n\nCommon false positives:\n- Third-party software using ProgramData for service binaries\n- Update services for browsers and applications\n- Monitoring or security software creating services\n\nReduce false positives by:\n- Whitelisting services from signed executables\n- Excluding known software vendor service names\n- Monitoring for services with:\n  * Names similar to Windows services (slight misspellings)\n  * Binaries in user-writable directories\n  * PowerShell or cmd.exe as service binary\n  * SYSTEM privileges combined with suspicious paths\n- Correlating with recent compromise indicators\n- Flagging services created outside maintenance windows\n"
+  },
+  {
+    "rule_id": "spearphishing_001",
+    "name": "Spearphishing Attachment Detection",
+    "description": "Detects spearphishing attempts with malicious attachments by monitoring for suspicious email payloads, known malicious file types, and macro-enabled documents targeting city infrastructure personnel",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 3,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "phishing_email",
+          "malicious_attachment"
+        ]
+      }
+    },
+    "technique_id": "T1566.001",
+    "technique_name": "Spearphishing Attachment",
+    "response_actions": [
+      "quarantine_host",
+      "notify_soc",
+      "disable_account"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Legitimate bulk email with attachments from known vendors or internal\nnewsletters may trigger alerts. Maintain a whitelist of known safe senders\nand attachment hashes to reduce false positives.\n"
+  },
+  {
+    "rule_id": "ssh_hijacking_001",
+    "name": "SSH Hijacking Detection",
+    "description": "Detects SSH session hijacking attempts including SSH agent forwarding abuse, session multiplexing exploitation, and unauthorized session takeover on smart city management servers",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "lateral_movement",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "ssh_hijack",
+          "session_takeover"
+        ]
+      }
+    },
+    "technique_id": "T1563.001",
+    "technique_name": "SSH Hijacking",
+    "response_actions": [
+      "block_ip",
+      "kill_process",
+      "revoke_token",
+      "snapshot_forensics"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Legitimate SSH agent forwarding for infrastructure management and automated\ndeployment pipelines may trigger this rule. Whitelist authorized jump hosts\nand review SSH configuration policies for agent forwarding restrictions.\n"
+  },
+  {
+    "rule_id": "supply_chain_001",
+    "name": "Supply Chain Compromise Detection",
+    "description": "Detects supply chain compromise indicators including unauthorized package installations, tampered software updates, and unexpected dependency changes in smart city infrastructure components",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "asset_id",
+        "group_by": "asset_id",
+        "event_types": [
+          "supply_chain_compromise",
+          "unauthorized_package"
+        ]
+      }
+    },
+    "technique_id": "T1195",
+    "technique_name": "Supply Chain Compromise",
+    "response_actions": [
+      "isolate_service",
+      "snapshot_forensics",
+      "escalate_incident",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-iot"
+    ],
+    "false_positive_notes": "Scheduled software updates and authorized package deployments may trigger\nthis rule. Coordinate with change management to whitelist planned maintenance\nwindows and approved software repositories.\n"
+  },
+  {
+    "rule_id": "sys_info_disc_001",
+    "name": "System Information Discovery",
+    "description": "Detects execution of commands and tools used to enumerate system information\non smart city infrastructure hosts:\n- systeminfo, uname, hostname, and OS identification commands\n- Hardware and software inventory enumeration\n- Environment variable harvesting\n- Installed software and patch level enumeration\n- Rapid succession of discovery commands from a single host\n",
+    "enabled": true,
+    "severity": "medium",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 5,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "process_creation",
+          "cmd_execution",
+          "system_discovery",
+          "host_enumeration"
+        ],
+        "suspicious_commands": [
+          "systeminfo",
+          "hostname",
+          "uname",
+          "ver",
+          "wmic os",
+          "cat /etc/os-release",
+          "sw_vers"
+        ]
+      }
+    },
+    "technique_id": "T1082",
+    "technique_name": "System Information Discovery",
+    "response_actions": [
+      "notify_soc",
+      "snapshot_forensics",
+      "isolate_service"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "System administrators and automation scripts routinely query system information.\n\nCommon false positives:\n- Configuration management tools (Ansible, Puppet, Chef)\n- Monitoring agents collecting host metrics\n- IT inventory and asset management systems\n\nReduce false positives by:\n- Whitelisting known management and monitoring accounts\n- Excluding scheduled inventory collection scripts\n- Monitoring for discovery commands from interactive sessions on critical systems\n- Correlating with other reconnaissance or lateral movement activity\n"
+  },
+  {
+    "rule_id": "sys_services_001",
+    "name": "System Services Abuse Detection",
+    "description": "Detects abuse of system services for execution on smart city infrastructure:\n- Creation of new services with suspicious binaries\n- Modification of existing service configurations\n- Service execution from non-standard paths\n- Services configured to run with SYSTEM or root privileges\n- Launchd, systemd, or Windows service manipulation\n",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "service_execution",
+      "parameters": {
+        "threshold": 2,
+        "group_by": "src_ip",
+        "event_types": [
+          "service_creation",
+          "service_modification",
+          "service_start",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "temp_directory_binary",
+          "system_privilege_service",
+          "script_based_service",
+          "service_path_manipulation",
+          "unsigned_service_binary"
+        ],
+        "process_filters": [
+          "sc.exe",
+          "systemctl",
+          "launchctl",
+          "powershell.exe"
+        ]
+      }
+    },
+    "technique_id": "T1569",
+    "technique_name": "System Services",
+    "response_actions": [
+      "isolate_service",
+      "kill_process",
+      "snapshot_forensics",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Service management is routine for system administration.\n\nCommon false positives:\n- Software installers creating services during installation\n- System administrators deploying new monitoring agents\n- Update processes modifying service configurations\n\nReduce false positives by:\n- Whitelisting known installer and management tools\n- Monitoring for services created from temp or user directories\n- Flagging unsigned service binaries\n- Correlating with recent privilege escalation or lateral movement\n"
+  },
+  {
+    "rule_id": "system_shutdown_001",
+    "name": "System Shutdown and Reboot Detection",
+    "description": "Detects unauthorized system shutdown and forced reboot commands targeting smart city critical infrastructure including traffic controllers, power grid systems, and water treatment SCADA hosts",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "host_id",
+        "group_by": "host_id",
+        "event_types": [
+          "forced_shutdown",
+          "forced_reboot"
+        ]
+      }
+    },
+    "technique_id": "T1529",
+    "technique_name": "System Shutdown/Reboot",
+    "response_actions": [
+      "isolate_service",
+      "notify_soc",
+      "escalate_incident"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-iot"
+    ],
+    "false_positive_notes": "Scheduled maintenance reboots, patching cycles, and power management\npolicies may trigger this rule. Coordinate with operations teams and\ncorrelate with approved change management windows.\n"
+  },
+  {
+    "rule_id": "token_manip_001",
+    "name": "Access Token Manipulation Detected",
+    "description": "Detects attempts to manipulate Windows access tokens for privilege escalation:\n- Token impersonation from high-privilege processes\n- Token duplication and theft\n- SeDebugPrivilege abuse\n- Creation of processes with stolen tokens\n- Suspicious runas or psexec usage\n",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "token_manipulation",
+      "parameters": {
+        "threshold": 1,
+        "group_by": "src_ip",
+        "event_types": [
+          "token_manipulation",
+          "process_access",
+          "privilege_escalation",
+          "process_creation"
+        ],
+        "suspicious_indicators": [
+          "token_theft",
+          "privilege_escalation",
+          "lsass_access",
+          "token_impersonation",
+          "sedebug_privilege_use"
+        ],
+        "api_patterns": [
+          "OpenProcessToken",
+          "DuplicateToken",
+          "DuplicateTokenEx",
+          "ImpersonateLoggedOnUser",
+          "SetThreadToken",
+          "AdjustTokenPrivileges"
+        ],
+        "target_processes": [
+          "lsass.exe",
+          "winlogon.exe",
+          "services.exe"
+        ]
+      }
+    },
+    "technique_id": "T1134",
+    "technique_name": "Access Token Manipulation",
+    "response_actions": [
+      "isolate_service",
+      "revoke_token",
+      "block_ip"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Token manipulation is used by legitimate software for specific purposes.\n\nCommon false positives:\n- Task Scheduler running tasks as different users\n- Windows services impersonating users\n- Administrative tools using RunAs\n- Security software accessing process tokens\n- Backup software running with SYSTEM privileges\n\nReduce false positives by:\n- Whitelisting known administrative tools (Task Scheduler, services.exe)\n- Excluding system processes performing legitimate token operations\n- Monitoring for token theft from critical processes (lsass, winlogon)\n- Flagging unexpected privilege escalations (user \u2192 SYSTEM)\n- Detecting access to lsass.exe from non-security software\n- Correlating with unauthorized process creation as SYSTEM\n"
+  },
+  {
+    "rule_id": "traffic_signaling_001",
+    "name": "Traffic Signaling and Port Knocking Detection",
+    "description": "Detects traffic signaling techniques including port knocking sequences, magic packet triggers, and covert channel activation used to open backdoor access to smart city network services",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 5,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "port_knocking",
+          "magic_packet"
+        ]
+      }
+    },
+    "technique_id": "T1205",
+    "technique_name": "Traffic Signaling",
+    "response_actions": [
+      "block_ip",
+      "notify_soc",
+      "snapshot_forensics"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Wake-on-LAN packets and legitimate port knocking configurations for\nauthorized remote access may trigger this rule. Document all authorized\nport knocking sequences and WoL-enabled devices in the asset inventory.\n"
+  },
+  {
+    "rule_id": "trusted_relationship_001",
+    "name": "Trusted Relationship Abuse Detection",
+    "description": "Detects compromise through trusted third-party relationships including vendor access abuse, managed service provider exploitation, and unauthorized third-party connections to city infrastructure",
+    "enabled": true,
+    "severity": "critical",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "event_threshold",
+      "parameters": {
+        "threshold": 2,
+        "field": "src_ip",
+        "group_by": "src_ip",
+        "event_types": [
+          "third_party_access",
+          "vendor_compromise"
+        ]
+      }
+    },
+    "technique_id": "T1199",
+    "technique_name": "Trusted Relationship",
+    "response_actions": [
+      "isolate_service",
+      "network_segmentation",
+      "escalate_incident",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "Scheduled vendor maintenance, authorized MSP access, and trusted partner\nAPI integrations may trigger alerts. Maintain a registry of authorized\nthird-party access windows and correlate with change management records.\n"
+  },
+  {
+    "rule_id": "valid_accounts_001",
+    "name": "Valid Accounts Abuse Detection",
+    "description": "Detects abuse of valid credentials through impossible travel logins, suspicious authentication patterns, and use of compromised accounts across smart city management systems",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 600,
+    "match_logic": {
+      "type": "brute_force",
+      "parameters": {
+        "threshold": 3,
+        "field": "user_id",
+        "group_by": "user_id",
+        "event_types": [
+          "suspicious_login",
+          "impossible_travel"
+        ]
+      }
+    },
+    "technique_id": "T1078",
+    "technique_name": "Valid Accounts",
+    "response_actions": [
+      "disable_account",
+      "revoke_token",
+      "reset_credentials",
+      "notify_soc"
+    ],
+    "log_sources": [
+      "logs-network"
+    ],
+    "false_positive_notes": "VPN usage, legitimate travel, and shared accounts may generate false positives.\nCorrelate with HR travel schedules and VPN connection logs. Implement adaptive\nrisk scoring based on historical user behavior baselines.\n"
+  },
+  {
+    "rule_id": "web_exploit_001",
+    "name": "Web Application Exploitation Detection",
+    "description": "Detects web application exploitation attempts including SQL injection, XSS, command injection, and path traversal attacks by analyzing HTTP request patterns",
+    "enabled": true,
+    "severity": "high",
+    "query_window_seconds": 300,
+    "match_logic": {
+      "type": "web_exploit",
+      "parameters": {
+        "threshold": 3,
+        "group_by": "src_ip",
+        "event_types": [
+          "sql_injection",
+          "xss_attempt",
+          "command_injection",
+          "path_traversal",
+          "web_attack",
+          "exploit_attempt"
+        ]
+      }
+    },
+    "technique_id": "T1190",
+    "technique_name": "Exploit Public-Facing Application",
+    "response_actions": [
+      "block_ip"
+    ],
+    "log_sources": [
+      "logs-network",
+      "logs-traffic"
+    ],
+    "false_positive_notes": "Security scanners, penetration testing tools, and web application firewalls may\ngenerate false positives. Whitelist authorized security testing sources and\ncoordinate with security teams to reduce noise from legitimate security assessments.\n"
+  }
+]

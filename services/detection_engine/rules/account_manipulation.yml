@@ -1,0 +1,28 @@
+rule_id: account_manipulation_001
+name: Account Manipulation Detection
+description: Detects unauthorized account manipulation including permission escalation, group membership changes, credential policy modifications, and unauthorized role assignments in smart city management systems
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 3
+    field: user_id
+    group_by: user_id
+    event_types:
+      - account_modify
+      - permission_change
+technique_id: T1098
+technique_name: "Account Manipulation"
+response_actions:
+  - disable_account
+  - revoke_token
+  - notify_soc
+  - escalate_incident
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Routine HR onboarding, role changes, and IT administration tasks involve
+  legitimate account modifications. Correlate with HR workflows, ticketing
+  systems, and change management records to filter authorized changes.

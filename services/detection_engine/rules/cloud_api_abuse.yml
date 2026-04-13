@@ -1,0 +1,28 @@
+rule_id: cloud_api_abuse_001
+name: Cloud API Abuse Detection
+description: Detects cloud API abuse including unauthorized API key usage, excessive API calls from unknown sources, cloud resource manipulation, and suspicious cloud management actions targeting smart city cloud infrastructure
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 10
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - cloud_api_abuse
+      - api_key_misuse
+technique_id: T1059.009
+technique_name: "Cloud API"
+response_actions:
+  - revoke_token
+  - rate_limit
+  - disable_account
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Legitimate cloud automation, CI/CD pipelines, and infrastructure-as-code
+  deployments may generate high API call volumes. Whitelist authorized service
+  accounts, CI/CD runner IPs, and correlate with deployment schedules.

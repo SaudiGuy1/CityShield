@@ -1,0 +1,69 @@
+rule_id: proc_inject_gen_001
+name: Process Injection Detection (General)
+description: |
+  Detects general process injection techniques used for privilege escalation
+  and defense evasion on smart city systems:
+  - DLL injection and reflective loading
+  - Process hollowing and process doppelganging
+  - Thread execution hijacking
+  - APC injection and atom bombing
+  - VDSO hijacking on Linux
+  - Cross-process memory writes from untrusted sources
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: process_injection
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - process_injection
+      - process_access
+      - dll_load
+      - process_creation
+      - memory_allocation
+    suspicious_indicators:
+      - cross_process_memory_write
+      - reflective_injection
+      - process_hollowing
+      - thread_hijacking
+      - apc_injection
+      - atom_bombing
+    api_patterns:
+      - OpenProcess
+      - VirtualAllocEx
+      - WriteProcessMemory
+      - CreateRemoteThread
+      - NtCreateThreadEx
+      - QueueUserAPC
+      - NtMapViewOfSection
+    process_filters:
+      - powershell.exe
+      - rundll32.exe
+      - wmic.exe
+      - regsvr32.exe
+technique_id: T1055
+technique_name: "Process Injection"
+response_actions:
+  - isolate_service
+  - kill_process
+  - snapshot_forensics
+  - revoke_token
+  - escalate_incident
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Some legitimate software uses process injection for valid purposes.
+
+  Common false positives:
+  - Antivirus and EDR agents injecting into processes for monitoring
+  - Debugging tools during development sessions
+  - Application compatibility shims and accessibility tools
+
+  Reduce false positives by:
+  - Whitelisting signed security software
+  - Monitoring injections into critical processes (lsass, svchost, csrss)
+  - Flagging injections originating from temp directories
+  - Correlating with other indicators of compromise

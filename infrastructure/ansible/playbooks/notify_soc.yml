@@ -1,0 +1,25 @@
+---
+- name: Notify SOC Team
+  hosts: localhost
+  gather_facts: no
+  vars:
+    alert_severity: "{{ severity }}"
+    alert_message: "{{ message }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log SOC notification action
+      debug:
+        msg: "Sending SOC notification (severity={{ alert_severity }}) for alert {{ alert_id }}"
+
+    - name: Simulate SOC notification via multiple channels
+      shell: |
+        echo "SIMULATED: Sending Slack notification to #soc-alerts"
+        echo "SIMULATED: Sending email to soc-team@cityshield.example.com"
+        echo "SIMULATED: Creating PagerDuty incident (severity={{ alert_severity }})"
+        echo "[{{ alert_severity }}] Alert {{ alert_id }}: {{ alert_message }} at $(date)" >> /tmp/soc_notifications.txt
+      register: notify_result
+
+    - name: Record SOC notification
+      debug:
+        msg: "SOC team notified. Result: {{ notify_result.stdout }}"

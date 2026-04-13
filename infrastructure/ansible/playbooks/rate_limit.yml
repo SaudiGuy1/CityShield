@@ -1,0 +1,24 @@
+---
+- name: Apply Rate Limiting
+  hosts: localhost
+  gather_facts: no
+  vars:
+    target_ip: "{{ ip_address }}"
+    rpm: "{{ requests_per_minute }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log rate limiting action
+      debug:
+        msg: "Applying rate limit of {{ rpm }} req/min to {{ target_ip }} for alert {{ alert_id }}"
+
+    - name: Simulate rate limit rule
+      shell: |
+        echo "SIMULATED: iptables -A INPUT -s {{ target_ip }} -m limit --limit {{ rpm }}/min -j ACCEPT"
+        echo "SIMULATED: iptables -A INPUT -s {{ target_ip }} -j DROP"
+        echo "Rate limit {{ rpm }} req/min applied to {{ target_ip }} at $(date)" >> /tmp/rate_limits.txt
+      register: ratelimit_result
+
+    - name: Record rate limit action
+      debug:
+        msg: "Rate limiting applied to {{ target_ip }}. Result: {{ ratelimit_result.stdout }}"

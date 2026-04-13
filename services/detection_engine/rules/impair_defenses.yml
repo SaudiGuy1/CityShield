@@ -1,0 +1,67 @@
+rule_id: impair_defenses_001
+name: Impair Defenses Detection
+description: |
+  Detects attempts to disable or impair security defenses on smart city systems:
+  - Disabling antivirus, EDR, or firewall services
+  - Stopping security-related Windows services
+  - Modifying security tool configurations
+  - Unloading Sysmon or audit drivers
+  - Disabling logging or auditing policies
+  - Tampering with security agent processes
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: defense_evasion
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - service_stop
+      - process_termination
+      - registry_modification
+      - security_config_change
+      - audit_policy_change
+    suspicious_indicators:
+      - security_service_disabled
+      - firewall_rule_modification
+      - audit_policy_disabled
+      - sysmon_unloaded
+      - tamper_protection_disabled
+    security_services:
+      - WinDefend
+      - MsMpSvc
+      - Sysmon
+      - CrowdStrike
+      - CarbonBlack
+      - wuauserv
+    process_filters:
+      - sc.exe
+      - net.exe
+      - powershell.exe
+      - wmic.exe
+      - fltMC.exe
+technique_id: T1562
+technique_name: "Impair Defenses"
+response_actions:
+  - isolate_service
+  - snapshot_forensics
+  - escalate_incident
+  - notify_soc
+  - kill_process
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Security tool management may involve stopping and restarting services.
+
+  Common false positives:
+  - Security software updates requiring service restart
+  - IT administrators reconfiguring firewall rules
+  - Patch management temporarily disabling services
+
+  Reduce false positives by:
+  - Whitelisting known security management consoles
+  - Monitoring for defense impairment outside of maintenance windows
+  - Flagging multiple security services stopped in rapid succession
+  - Correlating with other suspicious activity on the same host

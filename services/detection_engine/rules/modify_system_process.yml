@@ -1,0 +1,57 @@
+rule_id: mod_sys_proc_001
+name: Create or Modify System Process
+description: |
+  Detects creation or modification of system-level processes for persistence:
+  - Windows service creation with auto-start configuration
+  - Systemd unit file creation or modification
+  - Launch daemon installation on macOS
+  - Modification of existing system service binaries
+  - Service recovery options changed to execute malicious payloads
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: service_persistence
+  parameters:
+    threshold: 2
+    group_by: src_ip
+    event_types:
+      - service_creation
+      - service_modification
+      - file_creation
+      - process_creation
+    suspicious_indicators:
+      - auto_start_service
+      - systemd_unit_creation
+      - launch_daemon_install
+      - service_binary_replacement
+      - recovery_option_change
+    process_filters:
+      - sc.exe
+      - powershell.exe
+      - systemctl
+      - launchctl
+technique_id: T1543
+technique_name: "Create or Modify System Process"
+response_actions:
+  - isolate_service
+  - snapshot_forensics
+  - kill_process
+  - notify_soc
+  - escalate_incident
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  System process creation is common during software deployment.
+
+  Common false positives:
+  - Application installers creating new services
+  - Package managers installing daemon processes
+  - Configuration management tools deploying service definitions
+
+  Reduce false positives by:
+  - Whitelisting known software deployment pipelines
+  - Monitoring for service modifications outside of change windows
+  - Flagging services with binaries in non-standard locations
+  - Detecting service recovery actions pointing to script interpreters

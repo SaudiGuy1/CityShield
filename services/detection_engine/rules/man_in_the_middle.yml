@@ -1,0 +1,29 @@
+rule_id: man_in_the_middle_001
+name: Adversary-in-the-Middle Detection
+description: Detects man-in-the-middle attacks including ARP spoofing, DNS poisoning, and LLMNR/NBT-NS poisoning targeting smart city network communications and SCADA protocols
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 3
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - mitm_attack
+      - arp_spoof
+technique_id: T1557
+technique_name: "Adversary-in-the-Middle"
+response_actions:
+  - block_ip
+  - isolate_service
+  - network_segmentation
+  - escalate_incident
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Network reconfigurations, DHCP renewals, and legitimate ARP updates may
+  trigger false positives. Implement static ARP entries for critical
+  infrastructure and use 802.1X port-based authentication where possible.

@@ -1,0 +1,27 @@
+rule_id: external_remote_services_001
+name: External Remote Services Brute Force Detection
+description: Detects brute force attacks against externally exposed remote services including RDP, VPN gateways, and SSH endpoints providing access to smart city management networks
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: brute_force
+  parameters:
+    threshold: 8
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - rdp_attempt
+      - vpn_brute_force
+technique_id: T1133
+technique_name: "External Remote Services"
+response_actions:
+  - block_ip
+  - rate_limit
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Legitimate users with forgotten passwords and automated monitoring systems
+  checking service availability may trigger this rule. Implement account
+  lockout policies and correlate with help desk ticket submissions.

@@ -78,7 +78,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main` and `devel
 - **`core/`** — `config.py` (Pydantic BaseSettings), `security.py` (JWT + bcrypt), `rbac.py` (role decorators)
 - **`models/`** — Pydantic models: `alert`, `device`, `rule`, `scenario`, `user`, `action`, `proposal`
 - **`services/`** — Business logic: `attack_engine`, `device_service`, `lab_service`, `metrics_service`, `rule_service`, `scenario_service`, `action_service`, `proposal_service`
-- **`data/`** — Static data files: `mitre_techniques.json` (curated MITRE ATT&CK technique list)
+- **`data/`** — Static data files: `mitre_techniques.json` (75 curated MITRE ATT&CK techniques), `detection_rules.json` (75 rules exported from YAML, seeded into OpenSearch on startup)
 - **`db/`** — `opensearch_client.py` (client wrapper + index creation with full mappings)
 
 ### Microservices (`services/`)
@@ -154,15 +154,15 @@ Copy `.env.example` to `.env` before running (bootstrap.sh does this automatical
 
 ## Detection Rules
 
-25 YAML rules in `services/detection_engine/rules/`. Each rule specifies `match_logic`, severity, query window, MITRE technique mapping, response actions, log sources, and false positive notes. Restart `detection_engine` container after adding/modifying rules.
+75 YAML rules in `services/detection_engine/rules/`. Each rule specifies `match_logic`, severity, query window, MITRE technique mapping, response actions, log sources, and false positive notes. Restart `detection_engine` container after adding/modifying rules.
 
 The rule engine (`services/detection_engine/rule_runtime.py`) uses `.keyword` suffix for text field aggregations in OpenSearch queries. Match logic types include: `net_scan`, `iot_anomaly`, `brute_force`, `c2_beacon`, `data_exfiltration`, `ddos_attack`, `dos_endpoint`, `ransomware`, `web_exploit`, `lateral_movement`, `credential_dump`, `log_clearing`, `cmd_execution`, `account_creation`, `data_archiving`, `defense_evasion`, `obfuscation_detection`, `powershell_execution`, `process_injection`, `registry_persistence`, `scheduled_task_creation`, `screen_capture`, `service_execution`, `service_persistence`, `token_manipulation`.
 
-Response actions map to Ansible playbooks via `services/response_manager/playbooks_map.yml`: `block_ip`, `isolate_service`, `revoke_token`.
+Response actions map to Ansible playbooks via `services/response_manager/playbooks_map.yml`: `block_ip`, `isolate_service`, `revoke_token`, `quarantine_host`, `disable_account`, `rate_limit`, `snapshot_forensics`, `kill_process`, `reset_credentials`, `notify_soc`, `escalate_incident`, `network_segmentation`. All 12 playbooks exist in `infrastructure/ansible/playbooks/`.
 
 ## Auto-Response System
 
-Each detection rule can have auto-response configured (enable/disable, minimum severity, require enrichment, max executions/hour). The response manager validates conditions and executes Ansible playbooks, logging to `action-audit-log` index with `execution_type: automated`. Manual actions are also supported from the Alerts UI for Analyst/Admin roles.
+Each detection rule can have auto-response configured (enable/disable, minimum severity, require enrichment, max executions/hour, cooldown period, rate limit window, human confirmation, allowed actions, whitelisted subnets). The detection engine checks whitelisted subnets before creating alerts (suppresses whitelisted sources). The response manager validates remaining conditions and executes Ansible playbooks, logging to `action-audit-log` index with `execution_type: automated`. Whitelisted alerts are auto-resolved with `status: resolved`. Manual actions are also supported from the Alerts UI for Analyst/Admin roles.
 
 RBAC: manual actions require Analyst/Admin; auto-response config requires Researcher/Admin; audit log viewing is available to all authenticated users.
 

@@ -1,0 +1,50 @@
+rule_id: gather_identity_001
+name: Gather Victim Identity Information
+description: |
+  Detects attempts to harvest identity information from smart city systems:
+  - LDAP enumeration of user accounts and groups
+  - Repeated authentication probes with different usernames
+  - Directory service queries for employee data
+  - Email address harvesting through SMTP VRFY/EXPN
+  - Social media scraping targeting city personnel
+enabled: true
+severity: medium
+query_window_seconds: 600
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 10
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - ldap_enumeration
+      - username_enumeration
+      - directory_query
+      - email_harvest
+      - identity_probe
+    suspicious_indicators:
+      - bulk_user_lookup
+      - sequential_username_probe
+      - directory_traversal
+      - smtp_enumeration
+technique_id: T1589
+technique_name: "Gather Victim Identity Information"
+response_actions:
+  - block_ip
+  - rate_limit
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate directory services and HR systems query identity information.
+
+  Common false positives:
+  - Active Directory synchronization tools
+  - HR and provisioning systems querying user directories
+  - Email distribution list management
+
+  Reduce false positives by:
+  - Whitelisting known directory service consumers
+  - Monitoring for queries from external or unauthorized sources
+  - Flagging bulk enumeration outside of normal business workflows

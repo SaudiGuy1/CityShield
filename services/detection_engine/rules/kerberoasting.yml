@@ -1,0 +1,26 @@
+rule_id: kerberoasting_001
+name: Kerberoasting Detection
+description: Detects Kerberoasting attacks where adversaries request service tickets for service accounts to crack offline, targeting Active Directory integrated smart city management systems
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: credential_dump
+  parameters:
+    threshold: 5
+    group_by: src_ip
+    event_types:
+      - kerberoast
+      - spn_request
+technique_id: T1558.003
+technique_name: "Kerberoasting"
+response_actions:
+  - disable_account
+  - reset_credentials
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Legitimate service ticket requests during normal authentication workflows
+  may trigger this rule. Focus on anomalous volumes of TGS requests from
+  single accounts and correlate with known service account usage patterns.

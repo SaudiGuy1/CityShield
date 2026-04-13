@@ -1,0 +1,24 @@
+---
+- name: Quarantine Host
+  hosts: localhost
+  gather_facts: no
+  vars:
+    target_host: "{{ host_ip }}"
+    target_vlan: "{{ vlan_id }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log host quarantine action
+      debug:
+        msg: "Quarantining host {{ target_host }} to VLAN {{ target_vlan }} for alert {{ alert_id }}"
+
+    - name: Simulate host quarantine via network isolation
+      shell: |
+        echo "SIMULATED: Moving host {{ target_host }} to quarantine VLAN {{ target_vlan }}"
+        echo "SIMULATED: iptables -I FORWARD -s {{ target_host }} -j DROP"
+        echo "Host {{ target_host }} quarantined to VLAN {{ target_vlan }} at $(date)" >> /tmp/quarantined_hosts.txt
+      register: quarantine_result
+
+    - name: Record quarantine action
+      debug:
+        msg: "Host {{ target_host }} has been quarantined. Result: {{ quarantine_result.stdout }}"

@@ -6,20 +6,20 @@
 
 ```
                                  ┌───────────────────┐
-                                 │      LOGIN         │
-                                 │   /login           │
+                                 │      LOGIN        │
+                                 │   /login          │
                                  └─────────┬─────────┘
                                            │
                                            ▼
                                  ┌───────────────────┐
-                                 │    DASHBOARD       │
-                                 │  Review stats,     │
-                                 │  system status     │
+                                 │    DASHBOARD      │
+                                 │  Review stats,    │
+                                 │  system status    │
                                  └─────────┬─────────┘
                                            │
                                            ▼
-                  ┌────────────────────────────────────────────────────┐
-                  │              CHOOSE RESEARCH PATH                  │
+                  ┌──────────────────────────────────────────────────┐
+                  │              CHOOSE RESEARCH PATH                │
                   └──┬─────────┬─────────┬──────────┬────────────┬───┘
                      │         │         │          │            │
                      ▼         ▼         ▼          ▼            ▼
@@ -35,15 +35,15 @@
   ── PATH A: Built-in Scenario ─────────────────────────────────────
 
   ┌───────────────────┐
-  │  /scenarios        │
-  │  Attack Scenarios  │
+  │  /scenarios       │
+  │  Attack Scenarios │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐     ┌───────────────────┐
-  │  Quick Launch      │     │  Browse Scenario  │
-  │  DDoS / Scan /     │ OR  │  Cards            │
-  │  Brute / Malware   │     │  Click Run&Watch  │
+  │  Quick Launch     │     │  Browse Scenario  │
+  │  DDoS / Scan /    │ OR  │  Cards            │
+  │  Brute / Malware  │     │  Click Run&Watch  │
   └─────────┬─────────┘     └─────────┬─────────┘
             │                         │
             └────────────┬────────────┘
@@ -75,50 +75,50 @@
   ── PATH B: Custom Scenario Builder ───────────────────────────────
 
   ┌───────────────────┐
-  │ /scenarios/custom  │
-  │ Fill name, target, │
-  │ description        │
+  │ /scenarios/custom │
+  │ Fill name, target,│
+  │ description       │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Select MITRE       │
+  │ Select MITRE      │
   │ ATT&CK Techniques │
-  │ Search + select    │
+  │ Search + select   │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Configure Params   │
-  │ threshold,         │
-  │ intensity, types   │
+  │ Configure Params  │
+  │ threshold,        │
+  │ intensity, types  │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Add to Attack      │
-  │ Chain              │
-  │ Reorder phases     │
+  │ Add to Attack     │
+  │ Chain             │
+  │ Reorder phases    │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Execute Attack     │
-  │ Scenario           │
-  │ Real traffic       │
+  │ Execute Attack    │
+  │ Scenario          │
+  │ Real traffic      │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Results Banner     │
-  │ Run ID shown       │
+  │ Results Banner    │
+  │ Run ID shown      │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ View Attack        │
-  │ Effectiveness      │
-  │ Analysis           │
+  │ View Attack       │
+  │ Effectiveness     │
+  │ Analysis          │
   └───────────────────┘
 
 
@@ -126,22 +126,22 @@
   ── PATH C: Research Lab ──────────────────────────────────────────
 
   ┌───────────────────┐
-  │ /scenarios         │
-  │ Tab: Research Lab  │
+  │ /scenarios        │
+  │ Tab: Research Lab │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Click Launch Lab   │
-  │ Ubuntu container   │
-  │ provisioned        │
+  │ Click Launch Lab  │
+  │ Ubuntu container  │
+  │ provisioned       │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Web Terminal       │
-  │ nmap, hydra,       │
-  │ nikto, curl, nc    │
+  │ Web Terminal      │
+  │ nmap, hydra,      │
+  │ nikto, curl, nc   │
   └─────────┬─────────┘
             │
        ┌────┴────┐
@@ -158,15 +158,15 @@
              │
              ▼
   ┌───────────────────┐
-  │ Switch to /alerts  │
-  │ Observe generated  │
-  │ detection alerts   │
+  │ Switch to /alerts │
+  │ Observe generated │
+  │ detection alerts  │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Destroy Lab        │
-  │ when finished      │
+  │ Destroy Lab       │
+  │ when finished     │
   └───────────────────┘
 
 
@@ -174,21 +174,21 @@
   ── PATH D: Attack Proposal ───────────────────────────────────────
 
   ┌───────────────────┐
-  │ /proposals         │
-  │ + Submit Proposal  │
+  │ /proposals        │
+  │ + Submit Proposal │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Fill Form          │
-  │ Title, techniques, │
-  │ target, duration   │
+  │ Fill Form         │
+  │ Title, techniques,│
+  │ target, duration  │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Status: Pending    │
-  │ Wait for Admin     │
+  │ Status: Pending   │
+  │ Wait for Admin    │
   └─────────┬─────────┘
             │
        ┌────┴────┐
@@ -206,37 +206,37 @@
   ── PATH E: Rule Management ───────────────────────────────────────
 
   ┌───────────────────┐
-  │ /rules             │
-  │ Filter by severity │
-  │ and status         │
+  │ /rules            │
+  │ Filter by severity│
+  │ and status        │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Click Details      │
-  │ View MITRE map,    │
-  │ actions, sources   │
+  │ Click Details     │
+  │ View MITRE map,   │
+  │ actions, sources  │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Configure Auto-    │
-  │ Response           │
-  │ Enable, severity,  │
-  │ rate limit         │
+  │ Configure Auto-   │
+  │ Response          │
+  │ Enable, severity, │
+  │ rate limit        │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Save Settings      │
+  │ Save Settings     │
   └─────────┬─────────┘
             │
             ▼
   ┌───────────────────┐
-  │ Run Scenario →     │
-  │ Check Alerts →     │
-  │ Verify Auto-       │
-  │ Response Fired     │
+  │ Run Scenario →    │
+  │ Check Alerts →    │
+  │ Verify Auto-      │
+  │ Response Fired    │
   └───────────────────┘
 ```
 
@@ -248,29 +248,29 @@
 
 ```
                ┌───────────────────┐
-               │      LOGIN         │
-               │   /login           │
+               │      LOGIN        │
+               │   /login          │
                └─────────┬─────────┘
                          │
                          ▼
                ┌───────────────────┐
-               │    DASHBOARD       │
-               │  Check events,     │
-               │  alerts, status    │
+               │    DASHBOARD      │
+               │  Check events,    │
+               │  alerts, status   │
                └─────────┬─────────┘
                          │
                          ▼
                ┌───────────────────┐
                │  3D SMART CITY    │
-               │  /city             │
+               │  /city            │
                │  Scan for red     │
-               │  buildings         │
+               │  buildings        │
                └─────────┬─────────┘
                          │
                          ▼
                ┌───────────────────┐
                │  ALERTS PAGE      │
-               │  /alerts           │
+               │  /alerts          │
                └─────────┬─────────┘
                          │
                          ▼
@@ -366,8 +366,8 @@
              ▼
    ┌───────────────────┐
    │  Next Alert       │
-   │  Continue triage   │
-   │  cycle             │
+   │  Continue triage  │
+   │  cycle            │
    └───────────────────┘
 ```
 
@@ -379,21 +379,21 @@
 
 ```
                                 ┌───────────────────┐
-                                │      LOGIN         │
-                                │   /login           │
+                                │      LOGIN        │
+                                │   /login          │
                                 └─────────┬─────────┘
                                           │
                                           ▼
                                 ┌───────────────────┐
-                                │    DASHBOARD       │
-                                │  Full health check │
-                                │  Stats + 3D Map    │
-                                │  System status     │
+                                │    DASHBOARD      │
+                                │ Full health check │
+                                │  Stats + 3D Map   │
+                                │  System status    │
                                 └─────────┬─────────┘
                                           │
                                           ▼
-                    ┌─────────────────────────────────────────┐
-                    │            ADMIN TASKS                   │
+                    ┌────────────────────────────────────────┐
+                    │            ADMIN TASKS                 │
                     └──┬──────┬──────┬──────┬──────┬──────┬──┘
                        │      │      │      │      │      │
                        ▼      ▼      ▼      ▼      ▼      ▼
@@ -403,7 +403,7 @@
   ── TASK 1: User Management ───────────────────────────────────────
 
                ┌───────────────────┐
-               │  /admin/users      │
+               │  /admin/users     │
                └─────────┬─────────┘
                          │
           ┌──────────────┼──────────────┐
@@ -423,9 +423,9 @@
   ── TASK 2: Device Management ─────────────────────────────────────
 
                ┌───────────────────┐
-               │  /devices          │
-               │  Filter by zone,   │
-               │  type, status      │
+               │  /devices         │
+               │  Filter by zone,  │
+               │  type, status     │
                └─────────┬─────────┘
                          │
                          ▼
@@ -452,8 +452,8 @@
   ── TASK 3: Proposal Review ───────────────────────────────────────
 
                ┌───────────────────┐
-               │  /proposals        │
-               │  Filter: Pending   │
+               │  /proposals       │
+               │  Filter: Pending  │
                └─────────┬─────────┘
                          │
                          ▼
@@ -484,7 +484,7 @@
   ── TASK 4: Rule Oversight ────────────────────────────────────────
 
                ┌───────────────────┐
-               │  /rules            │
+               │  /rules           │
                │  Browse 25 rules  │
                └─────────┬─────────┘
                          │
@@ -518,7 +518,7 @@
   ── TASK 5: Monitoring & Metrics ──────────────────────────────────
 
                ┌───────────────────┐
-               │  Dashboard /       │
+               │  Dashboard /      │
                │  System Status    │
                │  ● All services   │
                └─────────┬─────────┘
@@ -528,12 +528,12 @@
           ▼              ▼              ▼
    ┌─────────────┐┌─────────────┐┌─────────────┐
    │ OpenSearch  ││ Metrics     ││ Audit Log   │
-   │ Dashboards ││             ││             │
-   │ :5601      ││ MTTD        ││ All actions │
-   │ Custom     ││ MTTR        ││ manual +    │
-   │ queries    ││ Accuracy    ││ automated   │
-   │            ││ Success %   ││ Filter by   │
-   │            ││             ││ date, rule  │
+   │ Dashboards  ││             ││             │
+   │ :5601       ││ MTTD        ││ All actions │
+   │ Custom      ││ MTTR        ││ manual +    │
+   │ queries     ││ Accuracy    ││ automated   │
+   │             ││ Success %   ││ Filter by   │
+   │             ││             ││ date, rule  │
    └─────────────┘└─────────────┘└─────────────┘
 
 
@@ -541,7 +541,7 @@
   ── TASK 6: Security Awareness ────────────────────────────────────
 
                ┌───────────────────┐
-               │  /awareness        │
+               │  /awareness       │
                └─────────┬─────────┘
                          │
           ┌──────────────┼──────────────┐
@@ -565,32 +565,32 @@
 
 ```
                ┌───────────────────┐
-               │      LOGIN         │
-               │   /login           │
-               │                    │
-               │  Enter credentials │
-               │  (Viewer account)  │
+               │      LOGIN        │
+               │   /login          │
+               │                   │
+               │  Enter credentials│
+               │  (Viewer account) │
                └─────────┬─────────┘
                          │
                          ▼
                ┌───────────────────┐
-               │   AUTO-REDIRECT    │
-               │                    │
-               │  Viewer role has   │
-               │  no dashboard      │
-               │  access — sent     │
-               │  straight to       │
-               │  /awareness        │
+               │   AUTO-REDIRECT   │
+               │                   │
+               │  Viewer role has  │
+               │  no dashboard     │
+               │  access — sent    │
+               │  straight to      │
+               │  /awareness       │
                └─────────┬─────────┘
                          │
                          ▼
                ┌───────────────────┐
-               │  SECURITY          │
-               │  AWARENESS PAGE    │
-               │  /awareness        │
-               │                    │
-               │  Only page visible │
-               │  in sidebar        │
+               │  SECURITY         │
+               │  AWARENESS PAGE   │
+               │  /awareness       │
+               │                   │
+               │  Only page visible│
+               │  in sidebar       │
                └─────────┬─────────┘
                          │
                          ▼
@@ -638,45 +638,17 @@
                          │
                          ▼
                ┌───────────────────┐
-               │  COMPLETION        │
-               │                    │
-               │  Review results,   │
-               │  retake if needed  │
+               │  COMPLETION       │
+               │                   │
+               │  Review results,  │
+               │  retake if needed │
                └─────────┬─────────┘
                          │
                          ▼
                ┌───────────────────┐
-               │  LOGOUT            │
-               │                    │
-               │  Sidebar logout    │
-               │  button            │
+               │  LOGOUT           │
+               │                   │
+               │  Sidebar logout   │
+               │  button           │
                └───────────────────┘
-
-
-  ── ACCESS RESTRICTIONS ──────────────────────────────────────────
-
-   ┌─────────────────────────────────────────────────────────┐
-   │                   VIEWER CANNOT ACCESS                   │
-   ├─────────────────────────────────────────────────────────┤
-   │                                                         │
-   │  ✗  /          Dashboard         → redirects            │
-   │  ✗  /city       Smart City 3D    → redirects            │
-   │  ✗  /alerts     Alerts           → redirects            │
-   │  ✗  /devices    Devices          → redirects            │
-   │  ✗  /scenarios  Scenarios        → redirects            │
-   │  ✗  /rules      Rules            → redirects            │
-   │  ✗  /proposals  Proposals        → redirects            │
-   │  ✗  /admin/*    Admin Pages      → redirects            │
-   │                                                         │
-   │  All paths redirect to /awareness automatically         │
-   │                                                         │
-   └─────────────────────────────────────────────────────────┘
 ```
-
-**Outcome:** Viewer completes security awareness training programs across three tracks (Employee, Executive, IT/Security) without access to any operational platform features.
-
----
-
-*CityShield — Smart City Cyber Range Platform*
-*Role Workflow Diagrams*
-*April 2026*

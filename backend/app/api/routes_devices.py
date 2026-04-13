@@ -489,7 +489,7 @@ async def get_device_alerts(
         }
     ]
     if status:
-        must_clauses.append({"term": {"status.keyword": status}})
+        must_clauses.append({"term": {"status": status}})
 
     query = {
         "query": {"bool": {"must": must_clauses}},

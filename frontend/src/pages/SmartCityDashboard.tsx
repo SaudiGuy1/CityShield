@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, Suspense, Component, type ReactNode } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, Suspense, Component, type ReactNode } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
@@ -15,9 +15,24 @@ import HolographicRing from '../components/smartcity/HolographicRing'
 import FloatingMarkers from '../components/smartcity/FloatingMarkers'
 import NeonPillars from '../components/smartcity/NeonPillars'
 
-import { TrafficPanel, EnergyPanel, PopulationPanel, AirQualityPanel, NetworkPanel } from '../components/smartcity/panels'
+import { EventsPanel, AlertsPanel, AssetsPanel, DetectionPanel, SystemPanel } from '../components/smartcity/panels'
 
+import { useAssetStream } from '../hooks/useAssetStream'
 import type { CityAsset } from '../types/assets'
+
+/* ─── Types for real backend data ─── */
+interface OverviewStats {
+  total_assets: number
+  events_last_hour: number
+  open_alerts: number
+  critical_alerts: number
+}
+
+interface AlertSummary {
+  total_alerts: number
+  by_severity: Record<string, number>
+  by_status: Record<string, number>
+}
 
 /* ─── Error Boundary for 3D Canvas ─── */
 class Canvas3DErrorBoundary extends Component<
@@ -62,23 +77,32 @@ class Canvas3DErrorBoundary extends Component<
   }
 }
 
-/* ─── Mock city assets for standalone mode ─── */
-const MOCK_ASSETS: CityAsset[] = [
-  { asset_id: 'traf-001', name: 'Traffic Controller A', asset_type: 'controller', asset_class: 'iot_device', zone: 'zone-a', category: 'traffic', criticality: 'high', status: 'ok', metrics: { events_1h: 42, alerts_open: 0, risk_score: 12, last_seen: new Date().toISOString() } },
-  { asset_id: 'traf-002', name: 'Signal Hub B', asset_type: 'hub', asset_class: 'iot_device', zone: 'zone-a', category: 'traffic', criticality: 'medium', status: 'ok', metrics: { events_1h: 28, alerts_open: 1, risk_score: 35, last_seen: new Date().toISOString() } },
-  { asset_id: 'traf-003', name: 'Camera Feed C', asset_type: 'camera', asset_class: 'iot_device', zone: 'zone-a', category: 'traffic', criticality: 'low', status: 'warning', metrics: { events_1h: 8, alerts_open: 2, risk_score: 58, last_seen: new Date().toISOString() } },
-  { asset_id: 'iot-001', name: 'Sensor Array Alpha', asset_type: 'sensor', asset_class: 'iot_device', zone: 'zone-b', category: 'iot', criticality: 'high', status: 'ok', metrics: { events_1h: 120, alerts_open: 0, risk_score: 8, last_seen: new Date().toISOString() } },
-  { asset_id: 'iot-002', name: 'Smart Meter Grid', asset_type: 'meter', asset_class: 'iot_device', zone: 'zone-b', category: 'iot', criticality: 'medium', status: 'ok', metrics: { events_1h: 84, alerts_open: 0, risk_score: 15, last_seen: new Date().toISOString() } },
-  { asset_id: 'iot-003', name: 'Environmental Node', asset_type: 'sensor', asset_class: 'iot_device', zone: 'zone-b', category: 'iot', criticality: 'low', status: 'ok', metrics: { events_1h: 52, alerts_open: 0, risk_score: 5, last_seen: new Date().toISOString() } },
-  { asset_id: 'net-001', name: 'Core Router', asset_type: 'router', asset_class: 'network_device', zone: 'zone-c', category: 'network', criticality: 'critical', status: 'ok', metrics: { events_1h: 210, alerts_open: 0, risk_score: 10, last_seen: new Date().toISOString() } },
-  { asset_id: 'net-002', name: 'Edge Switch N1', asset_type: 'switch', asset_class: 'network_device', zone: 'zone-c', category: 'network', criticality: 'high', status: 'ok', metrics: { events_1h: 95, alerts_open: 1, risk_score: 22, last_seen: new Date().toISOString() } },
-  { asset_id: 'sec-001', name: 'Firewall Main', asset_type: 'firewall', asset_class: 'security_device', zone: 'zone-d', category: 'security', criticality: 'critical', status: 'ok', metrics: { events_1h: 340, alerts_open: 0, risk_score: 5, last_seen: new Date().toISOString() } },
-  { asset_id: 'sec-002', name: 'IDS Cluster', asset_type: 'ids', asset_class: 'security_device', zone: 'zone-d', category: 'security', criticality: 'high', status: 'ok', metrics: { events_1h: 187, alerts_open: 2, risk_score: 30, last_seen: new Date().toISOString() } },
-  { asset_id: 'ind-001', name: 'Power Plant', asset_type: 'scada', asset_class: 'industrial_control', zone: 'zone-e', category: 'industrial', criticality: 'critical', status: 'ok', metrics: { events_1h: 67, alerts_open: 0, risk_score: 18, last_seen: new Date().toISOString() } },
-  { asset_id: 'ind-002', name: 'Water Treatment', asset_type: 'plc', asset_class: 'industrial_control', zone: 'zone-e', category: 'industrial', criticality: 'high', status: 'warning', metrics: { events_1h: 34, alerts_open: 3, risk_score: 65, last_seen: new Date().toISOString() } },
-  { asset_id: 'trn-001', name: 'Training Server', asset_type: 'server', asset_class: 'network_device', zone: 'cyber-range', category: 'training', criticality: 'low', status: 'ok', metrics: { events_1h: 15, alerts_open: 0, risk_score: 2, last_seen: new Date().toISOString() } },
-  { asset_id: 'trn-002', name: 'Sandbox VM', asset_type: 'vm', asset_class: 'network_device', zone: 'cyber-range', category: 'training', criticality: 'low', status: 'ok', metrics: { events_1h: 8, alerts_open: 0, risk_score: 0, last_seen: new Date().toISOString() } },
-]
+/* ─── Map backend component to CityAsset ─── */
+function mapToCityAsset(comp: Record<string, unknown>): CityAsset {
+  const category = (comp.category as string) || 'network'
+  const validCategories = ['traffic', 'iot', 'network', 'security', 'industrial', 'training']
+  const zoneMap: Record<string, string> = {
+    traffic: 'zone-a', iot: 'zone-b', network: 'zone-c',
+    security: 'zone-d', industrial: 'zone-e', training: 'cyber-range',
+  }
+
+  return {
+    asset_id: (comp.id as string) || (comp.asset_id as string) || '',
+    name: (comp.name as string) || '',
+    asset_type: (comp.asset_type as string) || 'device',
+    asset_class: 'network_device',
+    zone: (comp.zone as string) || zoneMap[category] || 'zone-c',
+    category: (validCategories.includes(category) ? category : 'network') as CityAsset['category'],
+    criticality: ((comp.criticality as string) || 'medium') as CityAsset['criticality'],
+    status: ((comp.status as string) || 'ok') as CityAsset['status'],
+    metrics: {
+      events_1h: (comp.eventsCount as number) || 0,
+      alerts_open: (comp.alertsCount as number) || 0,
+      risk_score: Math.min(100, ((comp.alertsCount as number) || 0) * 15),
+      last_seen: (comp.lastUpdated as string) || new Date().toISOString(),
+    },
+  }
+}
 
 /* ─── 3D Scene Content ─── */
 function CitySceneContent({
@@ -110,7 +134,7 @@ function CitySceneContent({
         autoRotateSpeed={0.3}
       />
 
-      {/* Lighting — brighter for visibility */}
+      {/* Lighting */}
       <ambientLight intensity={0.5} color="#2a2a5a" />
       <directionalLight position={[10, 20, 5]} intensity={0.6} color="#6688cc" castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-camera-far={80} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
       <pointLight position={[0, 12, 4]} intensity={4.0} distance={40} decay={2} color="#7c4dff" />
@@ -134,7 +158,6 @@ function CitySceneContent({
       <TrainSystem speed={0.012} />
       <DataParticles />
 
-      {/* NEW: Enhanced 3D elements */}
       <HolographicRing position={[2, 10, 2]} radius={20} color="#00f0ff" speed={0.12} opacity={0.18} />
       <HolographicRing position={[2, 12, 2]} radius={15} color="#bf00ff" speed={-0.08} opacity={0.1} />
       <FloatingMarkers />
@@ -175,6 +198,71 @@ export default function SmartCityDashboard() {
   const [autoRotate, setAutoRotate] = useState(true)
   const [showPanels, setShowPanels] = useState(true)
   const controlsRef = useRef<OrbitControlsImpl>(null!)
+
+  // Real data state
+  const [restAssets, setRestAssets] = useState<CityAsset[]>([])
+  const [stats, setStats] = useState<OverviewStats>({ total_assets: 0, events_last_hour: 0, open_alerts: 0, critical_alerts: 0 })
+  const [alertSummary, setAlertSummary] = useState<AlertSummary>({ total_alerts: 0, by_severity: {}, by_status: {} })
+  const [rules, setRules] = useState<{ name: string; severity: string; enabled: boolean }[]>([])
+
+  // WebSocket real-time stream
+  const { assets: wsAssets, connected: wsConnected } = useAssetStream()
+
+  // Use WebSocket assets if available, otherwise REST
+  const assets = useMemo(() => {
+    if (wsAssets.length > 0) return wsAssets
+    return restAssets
+  }, [wsAssets, restAssets])
+
+  // Derived stats from real asset data
+  const assetStats = useMemo(() => {
+    const online = assets.filter(a => a.status !== 'offline').length
+    const warnings = assets.filter(a => a.status === 'warning').length
+    const critical = assets.filter(a => a.status === 'critical').length
+    return { online, warnings, critical }
+  }, [assets])
+
+  // Fetch real data from backend
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const headers = { 'Authorization': `Bearer ${token}` }
+
+    const fetchAll = async () => {
+      try {
+        const [compRes, statsRes, alertRes, rulesRes] = await Promise.allSettled([
+          fetch('/api/overview/city-components', { headers }),
+          fetch('/api/overview/stats', { headers }),
+          fetch('/api/alerts/stats/summary', { headers }),
+          fetch('/api/rules', { headers }),
+        ])
+
+        if (compRes.status === 'fulfilled' && compRes.value.ok) {
+          const data = await compRes.value.json()
+          setRestAssets(data.map(mapToCityAsset))
+        }
+
+        if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+          setStats(await statsRes.value.json())
+        }
+
+        if (alertRes.status === 'fulfilled' && alertRes.value.ok) {
+          setAlertSummary(await alertRes.value.json())
+        }
+
+        if (rulesRes.status === 'fulfilled' && rulesRes.value.ok) {
+          setRules(await rulesRes.value.json())
+        }
+      } catch {
+        // Silently fail — panels will show 0s
+      }
+    }
+
+    fetchAll()
+    const interval = setInterval(fetchAll, 10000) // Refresh every 10s
+    return () => clearInterval(interval)
+  }, [])
 
   const handleDeselect = useCallback(() => {}, [])
 
@@ -221,7 +309,7 @@ export default function SmartCityDashboard() {
           >
             <Suspense fallback={null}>
               <CitySceneContent
-                assets={MOCK_ASSETS}
+                assets={assets}
                 onDeselect={handleDeselect}
                 autoRotate={autoRotate}
                 controlsRef={controlsRef}
@@ -245,25 +333,31 @@ export default function SmartCityDashboard() {
               <span className="hud-top-title">Smart City Command</span>
               <div className="hud-top-stat">
                 <span className="stat-dot" style={{ background: 'var(--accent-success)' }} />
-                14 Assets Online
+                {assetStats.online} Assets Online
               </div>
               <div className="hud-top-stat">
                 <span className="stat-dot" style={{ background: 'var(--accent-warning)' }} />
-                2 Warnings
+                {assetStats.warnings} Warnings
               </div>
               <div className="hud-top-stat">
                 <span className="stat-dot" style={{ background: 'var(--accent-danger)' }} />
-                0 Critical
+                {assetStats.critical} Critical
               </div>
+              {wsConnected && (
+                <div className="hud-top-stat">
+                  <span className="stat-dot" style={{ background: '#00e676' }} />
+                  Live
+                </div>
+              )}
             </div>
             <HUDClock />
           </motion.div>
 
           {/* ── Left Panels ── */}
           <div className="hud-left">
-            <TrafficPanel delay={0.1} />
-            <EnergyPanel delay={0.2} />
-            <PopulationPanel delay={0.3} />
+            <EventsPanel delay={0.1} stats={stats} />
+            <AlertsPanel delay={0.2} alertSummary={alertSummary} />
+            <AssetsPanel delay={0.3} assets={assets} />
           </div>
 
           {/* ── Center is transparent (3D shows through) ── */}
@@ -271,8 +365,8 @@ export default function SmartCityDashboard() {
 
           {/* ── Right Panels ── */}
           <div className="hud-right">
-            <AirQualityPanel delay={0.15} />
-            <NetworkPanel delay={0.25} />
+            <DetectionPanel delay={0.15} rules={rules} />
+            <SystemPanel delay={0.25} stats={stats} assets={assets} />
           </div>
 
           {/* ── Bottom Controls ── */}

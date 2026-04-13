@@ -1,0 +1,25 @@
+---
+- name: Escalate Incident
+  hosts: localhost
+  gather_facts: no
+  vars:
+    alert_severity: "{{ severity }}"
+    incident_description: "{{ description }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log incident escalation action
+      debug:
+        msg: "Escalating incident (severity={{ alert_severity }}) for alert {{ alert_id }}"
+
+    - name: Simulate incident ticket creation
+      shell: |
+        echo "SIMULATED: Creating incident ticket INC-{{ alert_id | hash('md5') | truncate(8, True, '') }}"
+        echo "SIMULATED: Assigning to Incident Response Team"
+        echo "SIMULATED: Setting priority to {{ alert_severity }}"
+        echo "[{{ alert_severity }}] Incident escalated for alert {{ alert_id }}: {{ incident_description }} at $(date)" >> /tmp/escalated_incidents.txt
+      register: escalate_result
+
+    - name: Record escalation
+      debug:
+        msg: "Incident escalated. Result: {{ escalate_result.stdout }}"

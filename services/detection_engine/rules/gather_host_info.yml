@@ -1,0 +1,50 @@
+rule_id: gather_host_info_001
+name: Gather Victim Host Information
+description: |
+  Detects attempts to gather information about smart city host systems:
+  - OS fingerprinting through network probes
+  - Banner grabbing from exposed services
+  - SNMP enumeration of host configurations
+  - Excessive DNS queries for host resolution
+  - Targeted probing of known management interfaces
+enabled: true
+severity: medium
+query_window_seconds: 600
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 8
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - os_fingerprint
+      - banner_grab
+      - snmp_query
+      - host_enumeration
+      - dns_query_burst
+    suspicious_indicators:
+      - os_detection_probe
+      - service_version_query
+      - snmp_community_scan
+      - management_interface_probe
+technique_id: T1592
+technique_name: "Gather Victim Host Information"
+response_actions:
+  - block_ip
+  - notify_soc
+  - rate_limit
+log_sources:
+  - logs-network
+  - logs-iot
+false_positive_notes: |
+  Asset management and monitoring systems routinely gather host information.
+
+  Common false positives:
+  - SNMP-based monitoring tools (Nagios, Zabbix)
+  - Inventory management software querying host details
+  - Authorized penetration testing activities
+
+  Reduce false positives by:
+  - Whitelisting known monitoring and management IPs
+  - Correlating with unauthorized source IPs
+  - Flagging queries from external networks targeting internal hosts

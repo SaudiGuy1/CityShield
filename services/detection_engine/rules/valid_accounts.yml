@@ -1,0 +1,28 @@
+rule_id: valid_accounts_001
+name: Valid Accounts Abuse Detection
+description: Detects abuse of valid credentials through impossible travel logins, suspicious authentication patterns, and use of compromised accounts across smart city management systems
+enabled: true
+severity: high
+query_window_seconds: 600
+match_logic:
+  type: brute_force
+  parameters:
+    threshold: 3
+    field: user_id
+    group_by: user_id
+    event_types:
+      - suspicious_login
+      - impossible_travel
+technique_id: T1078
+technique_name: "Valid Accounts"
+response_actions:
+  - disable_account
+  - revoke_token
+  - reset_credentials
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  VPN usage, legitimate travel, and shared accounts may generate false positives.
+  Correlate with HR travel schedules and VPN connection logs. Implement adaptive
+  risk scoring based on historical user behavior baselines.

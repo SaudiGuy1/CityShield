@@ -1,0 +1,27 @@
+rule_id: ssh_hijacking_001
+name: SSH Hijacking Detection
+description: Detects SSH session hijacking attempts including SSH agent forwarding abuse, session multiplexing exploitation, and unauthorized session takeover on smart city management servers
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: lateral_movement
+  parameters:
+    threshold: 2
+    group_by: src_ip
+    event_types:
+      - ssh_hijack
+      - session_takeover
+technique_id: T1563.001
+technique_name: "SSH Hijacking"
+response_actions:
+  - block_ip
+  - kill_process
+  - revoke_token
+  - snapshot_forensics
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Legitimate SSH agent forwarding for infrastructure management and automated
+  deployment pipelines may trigger this rule. Whitelist authorized jump hosts
+  and review SSH configuration policies for agent forwarding restrictions.

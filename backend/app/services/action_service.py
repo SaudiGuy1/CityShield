@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
-from app.db.opensearch_client import opensearch_client
-from app.models.action import (
+from ..db.opensearch_client import opensearch_client
+from ..models.action import (
     ActionMetadata,
     ActionAuditEntry,
     ActionAuditFilters

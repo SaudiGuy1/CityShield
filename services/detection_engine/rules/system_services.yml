@@ -1,0 +1,56 @@
+rule_id: sys_services_001
+name: System Services Abuse Detection
+description: |
+  Detects abuse of system services for execution on smart city infrastructure:
+  - Creation of new services with suspicious binaries
+  - Modification of existing service configurations
+  - Service execution from non-standard paths
+  - Services configured to run with SYSTEM or root privileges
+  - Launchd, systemd, or Windows service manipulation
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: service_execution
+  parameters:
+    threshold: 2
+    group_by: src_ip
+    event_types:
+      - service_creation
+      - service_modification
+      - service_start
+      - process_creation
+    suspicious_indicators:
+      - temp_directory_binary
+      - system_privilege_service
+      - script_based_service
+      - service_path_manipulation
+      - unsigned_service_binary
+    process_filters:
+      - sc.exe
+      - systemctl
+      - launchctl
+      - powershell.exe
+technique_id: T1569
+technique_name: "System Services"
+response_actions:
+  - isolate_service
+  - kill_process
+  - snapshot_forensics
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Service management is routine for system administration.
+
+  Common false positives:
+  - Software installers creating services during installation
+  - System administrators deploying new monitoring agents
+  - Update processes modifying service configurations
+
+  Reduce false positives by:
+  - Whitelisting known installer and management tools
+  - Monitoring for services created from temp or user directories
+  - Flagging unsigned service binaries
+  - Correlating with recent privilege escalation or lateral movement

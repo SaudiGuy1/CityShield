@@ -1,0 +1,27 @@
+rule_id: drive_by_compromise_001
+name: Drive-by Compromise Detection
+description: Detects drive-by compromise attempts by identifying malicious redirects, exploit kit landing pages, and suspicious browser-initiated downloads targeting smart city operator workstations
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: web_exploit
+  parameters:
+    threshold: 3
+    group_by: src_ip
+    event_types:
+      - drive_by
+      - malicious_redirect
+technique_id: T1189
+technique_name: "Drive-by Compromise"
+response_actions:
+  - block_ip
+  - quarantine_host
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Ad networks and legitimate redirects may cause false positives. Maintain
+  a reputation database for known advertising domains and coordinate with
+  web proxy teams for URL categorization accuracy.

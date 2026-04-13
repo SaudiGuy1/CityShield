@@ -1,0 +1,57 @@
+rule_id: file_dir_disc_001
+name: File and Directory Discovery
+description: |
+  Detects enumeration of files and directories on smart city systems:
+  - Directory listing commands (dir, ls, find, tree)
+  - Recursive file searches for sensitive file types
+  - Searching for configuration files, credentials, or keys
+  - Excessive file system traversal from a single source
+  - Targeted searches for backup files, database dumps, or scripts
+enabled: true
+severity: medium
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 5
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - process_creation
+      - cmd_execution
+      - file_discovery
+      - directory_listing
+    suspicious_commands:
+      - "dir /s"
+      - "find / -name"
+      - "tree"
+      - "ls -laR"
+      - "Get-ChildItem -Recurse"
+    sensitive_file_patterns:
+      - "*.conf"
+      - "*.key"
+      - "*.pem"
+      - "*.bak"
+      - "*.sql"
+      - "*.env"
+technique_id: T1083
+technique_name: "File and Directory Discovery"
+response_actions:
+  - notify_soc
+  - snapshot_forensics
+  - isolate_service
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  File browsing and search operations are common in normal system use.
+
+  Common false positives:
+  - Backup software scanning directories for changed files
+  - Antivirus performing file system scans
+  - Developers searching codebases or log directories
+
+  Reduce false positives by:
+  - Focusing on recursive searches for credential or configuration files
+  - Monitoring for discovery commands on critical infrastructure hosts
+  - Correlating with prior unauthorized access or privilege escalation events

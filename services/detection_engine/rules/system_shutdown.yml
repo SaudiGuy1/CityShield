@@ -1,0 +1,28 @@
+rule_id: system_shutdown_001
+name: System Shutdown and Reboot Detection
+description: Detects unauthorized system shutdown and forced reboot commands targeting smart city critical infrastructure including traffic controllers, power grid systems, and water treatment SCADA hosts
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: host_id
+    group_by: host_id
+    event_types:
+      - forced_shutdown
+      - forced_reboot
+technique_id: T1529
+technique_name: "System Shutdown/Reboot"
+response_actions:
+  - isolate_service
+  - notify_soc
+  - escalate_incident
+log_sources:
+  - logs-network
+  - logs-iot
+false_positive_notes: |
+  Scheduled maintenance reboots, patching cycles, and power management
+  policies may trigger this rule. Coordinate with operations teams and
+  correlate with approved change management windows.

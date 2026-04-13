@@ -1,0 +1,28 @@
+rule_id: input_capture_001
+name: Input Capture and Keylogging Detection
+description: Detects keylogging and input capture activities including keyboard hooking, API-based keystroke logging, and credential interception on smart city operator workstations
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: host_id
+    group_by: host_id
+    event_types:
+      - keylogger
+      - input_capture
+technique_id: T1056
+technique_name: "Input Capture"
+response_actions:
+  - quarantine_host
+  - kill_process
+  - reset_credentials
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Accessibility software, remote desktop tools, and input automation scripts
+  may exhibit similar behavior. Maintain an approved software inventory and
+  validate processes against known legitimate input handling applications.

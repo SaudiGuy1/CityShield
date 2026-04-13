@@ -1,0 +1,27 @@
+rule_id: clipboard_data_001
+name: Clipboard Data Collection Detection
+description: Detects clipboard monitoring and data collection activities indicating credential theft, sensitive data harvesting, or information gathering from smart city operator workstations
+enabled: true
+severity: medium
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 5
+    field: host_id
+    group_by: host_id
+    event_types:
+      - clipboard_access
+      - clipboard_monitor
+technique_id: T1115
+technique_name: "Clipboard Data"
+response_actions:
+  - quarantine_host
+  - kill_process
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Clipboard managers, password managers, and remote desktop clipboard
+  redirection are legitimate uses of clipboard APIs. Maintain an approved
+  application list and monitor for unexpected processes accessing clipboard data.

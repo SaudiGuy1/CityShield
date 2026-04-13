@@ -1,0 +1,28 @@
+rule_id: defacement_001
+name: Defacement Detection
+description: Detects web defacement and content manipulation attacks targeting smart city public-facing portals, dashboards, and citizen information systems
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: dst_ip
+    group_by: dst_ip
+    event_types:
+      - web_defacement
+      - content_manipulation
+technique_id: T1491
+technique_name: "Defacement"
+response_actions:
+  - isolate_service
+  - snapshot_forensics
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate content updates, CMS deployments, and authorized website
+  maintenance may trigger this rule. Implement file integrity monitoring
+  on web roots and coordinate with web development teams for change windows.

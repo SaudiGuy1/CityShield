@@ -1,0 +1,28 @@
+rule_id: traffic_signaling_001
+name: Traffic Signaling and Port Knocking Detection
+description: Detects traffic signaling techniques including port knocking sequences, magic packet triggers, and covert channel activation used to open backdoor access to smart city network services
+enabled: true
+severity: high
+query_window_seconds: 600
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 5
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - port_knocking
+      - magic_packet
+technique_id: T1205
+technique_name: "Traffic Signaling"
+response_actions:
+  - block_ip
+  - notify_soc
+  - snapshot_forensics
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Wake-on-LAN packets and legitimate port knocking configurations for
+  authorized remote access may trigger this rule. Document all authorized
+  port knocking sequences and WoL-enabled devices in the asset inventory.

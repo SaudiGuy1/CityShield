@@ -1,0 +1,51 @@
+rule_id: active_scan_001
+name: Active Scanning Detection
+description: |
+  Detects active scanning and probing activity against smart city infrastructure:
+  - Port scanning across multiple hosts or services
+  - Vulnerability scanning signatures (Nmap, Nessus, Masscan)
+  - Service version enumeration
+  - Rapid connection attempts to non-existent services
+  - ICMP sweep and ARP scanning activity
+enabled: true
+severity: medium
+query_window_seconds: 600
+match_logic:
+  type: net_scan
+  parameters:
+    threshold: 10
+    field: dst_ip
+    group_by: src_ip
+    event_types:
+      - port_scan
+      - vulnerability_scan
+      - service_probe
+      - icmp_sweep
+      - network_probe
+    suspicious_indicators:
+      - multi_host_scan
+      - version_enumeration
+      - banner_grabbing
+      - syn_scan
+      - udp_scan
+technique_id: T1595
+technique_name: "Active Scanning"
+response_actions:
+  - block_ip
+  - notify_soc
+  - rate_limit
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Network monitoring and asset discovery tools may trigger this rule.
+
+  Common false positives:
+  - Authorized vulnerability scanners (Nessus, Qualys)
+  - Network monitoring tools performing health checks
+  - Load balancers probing backend services
+
+  Reduce false positives by:
+  - Whitelisting known scanner IPs and scheduled scan windows
+  - Excluding authorized vulnerability assessment tools
+  - Establishing baselines for normal network discovery patterns

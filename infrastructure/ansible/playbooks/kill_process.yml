@@ -1,0 +1,23 @@
+---
+- name: Kill Malicious Process
+  hosts: localhost
+  gather_facts: no
+  vars:
+    target_host: "{{ host_ip }}"
+    target_process: "{{ process_name }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log process kill action
+      debug:
+        msg: "Killing process {{ target_process }} on {{ target_host }} for alert {{ alert_id }}"
+
+    - name: Simulate process termination
+      shell: |
+        echo "SIMULATED: ssh {{ target_host }} pkill -9 {{ target_process }}"
+        echo "Process {{ target_process }} killed on {{ target_host }} at $(date)" >> /tmp/killed_processes.txt
+      register: kill_result
+
+    - name: Record process kill action
+      debug:
+        msg: "Process {{ target_process }} on {{ target_host }} terminated. Result: {{ kill_result.stdout }}"

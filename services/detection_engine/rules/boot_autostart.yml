@@ -1,0 +1,61 @@
+rule_id: boot_autostart_001
+name: Boot or Logon Autostart Execution
+description: |
+  Detects persistence mechanisms via boot or logon autostart locations:
+  - Registry Run/RunOnce key modifications
+  - Startup folder additions
+  - Login items or launch agents on macOS/Linux
+  - Winlogon helper DLL modifications
+  - Boot configuration changes (BCD, GRUB)
+  - Authentication package registration
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: registry_persistence
+  parameters:
+    threshold: 2
+    group_by: src_ip
+    event_types:
+      - registry_modification
+      - file_creation
+      - process_creation
+      - startup_modification
+    suspicious_indicators:
+      - run_key_modification
+      - startup_folder_addition
+      - winlogon_helper_change
+      - boot_config_change
+      - login_item_creation
+    registry_paths:
+      - "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      - "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      - "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+      - "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"
+    process_filters:
+      - reg.exe
+      - powershell.exe
+      - regedit.exe
+technique_id: T1547
+technique_name: "Boot or Logon Autostart Execution"
+response_actions:
+  - isolate_service
+  - snapshot_forensics
+  - kill_process
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Software installations commonly add autostart entries.
+
+  Common false positives:
+  - Legitimate software adding itself to startup (browsers, chat clients)
+  - Group Policy applying startup scripts
+  - System updates modifying boot configuration
+
+  Reduce false positives by:
+  - Whitelisting known software vendors and signed binaries
+  - Monitoring for unsigned or obfuscated binaries in autostart locations
+  - Flagging autostart entries pointing to temp or user directories
+  - Correlating with recent malware download or exploitation events

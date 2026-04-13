@@ -1,0 +1,57 @@
+rule_id: create_acct_gen_001
+name: Suspicious Account Creation
+description: |
+  Detects creation of user accounts across smart city systems for persistence:
+  - Local, domain, and cloud account creation
+  - Accounts created with elevated privileges
+  - Accounts created outside of normal provisioning workflows
+  - Hidden or service accounts created by unauthorized processes
+  - Rapid account creation followed by immediate login
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: account_creation
+  parameters:
+    threshold: 2
+    group_by: src_ip
+    event_types:
+      - user_account_creation
+      - user_group_modification
+      - cloud_account_creation
+      - process_creation
+    suspicious_indicators:
+      - admin_group_membership
+      - hidden_account
+      - password_never_expires
+      - immediate_login
+      - non_provisioning_source
+    process_filters:
+      - net.exe
+      - net1.exe
+      - powershell.exe
+      - useradd
+      - adduser
+technique_id: T1136
+technique_name: "Create Account"
+response_actions:
+  - disable_account
+  - isolate_service
+  - notify_soc
+  - escalate_incident
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Account creation is routine for onboarding and service deployment.
+
+  Common false positives:
+  - IT provisioning systems creating employee accounts
+  - Automated service account creation during deployments
+  - Lab environments spinning up test accounts
+
+  Reduce false positives by:
+  - Whitelisting known provisioning systems and their source IPs
+  - Flagging accounts created with administrative privileges
+  - Monitoring for account creation outside business hours
+  - Detecting accounts created by interactive sessions on servers

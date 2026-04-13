@@ -1,0 +1,56 @@
+rule_id: remote_services_001
+name: Remote Services Lateral Movement
+description: |
+  Detects abuse of remote services for lateral movement across smart city networks:
+  - RDP connections from unusual sources
+  - SSH sessions to critical infrastructure from non-management hosts
+  - WinRM and PSRemoting from unexpected origins
+  - VNC connections to IoT management interfaces
+  - SMB/Windows Admin Shares access from non-admin workstations
+  - Remote service access outside business hours
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: lateral_movement
+  parameters:
+    threshold: 3
+    group_by: src_ip
+    event_types:
+      - rdp_connection
+      - ssh_session
+      - winrm_connection
+      - vnc_connection
+      - smb_access
+      - remote_execution
+    suspicious_indicators:
+      - unusual_source_ip
+      - non_management_host
+      - admin_share_access
+      - off_hours_access
+      - multi_host_lateral
+technique_id: T1021
+technique_name: "Remote Services"
+response_actions:
+  - block_ip
+  - isolate_service
+  - revoke_token
+  - network_segmentation
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+  - logs-iot
+false_positive_notes: |
+  Remote administration is essential for managing distributed smart city systems.
+
+  Common false positives:
+  - IT administrators using RDP or SSH for routine management
+  - Automated deployment tools connecting via SSH or WinRM
+  - Remote support sessions for IoT device troubleshooting
+
+  Reduce false positives by:
+  - Whitelisting known management jump boxes and bastion hosts
+  - Monitoring for remote service access from non-management network segments
+  - Flagging connections to multiple hosts in rapid succession
+  - Correlating with failed authentication attempts preceding successful access

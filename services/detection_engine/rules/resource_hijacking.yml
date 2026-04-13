@@ -1,0 +1,28 @@
+rule_id: resource_hijacking_001
+name: Resource Hijacking and Cryptojacking Detection
+description: Detects resource hijacking including cryptocurrency mining, unauthorized compute usage, and CPU/GPU resource abuse on smart city servers and IoT devices
+enabled: true
+severity: medium
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 3
+    field: host_id
+    group_by: host_id
+    event_types:
+      - crypto_mining
+      - resource_hijack
+technique_id: T1496
+technique_name: "Resource Hijacking"
+response_actions:
+  - kill_process
+  - quarantine_host
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-iot
+false_positive_notes: |
+  High CPU usage from legitimate workloads, batch processing, and data
+  analytics jobs may trigger this rule. Establish baseline resource usage
+  profiles and correlate with known mining pool domain/IP blocklists.

@@ -1,4 +1,5 @@
 """Response manager main application."""
+import ipaddress
 import os
 import time
 import logging
@@ -92,6 +93,39 @@ def get_auto_response_config(client: OpenSearch, rule_id: str) -> dict:
     except Exception as e:
         logger.warning(f"Could not get auto-response config for rule {rule_id}: {e}")
         return {"enabled": False, "conditions": {}}
+
+
+def is_ip_in_subnets(ip_str: str, subnets: list) -> bool:
+    """Check if an IP address falls within any of the given CIDR subnets."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    for cidr in subnets:
+        try:
+            if ip in ipaddress.ip_network(cidr, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+def check_whitelist(alert: dict, conditions: dict) -> bool:
+    """
+    Check if the alert source IP is in a whitelisted subnet.
+
+    Returns True if the source should be whitelisted (alert auto-resolved).
+    """
+    whitelisted = conditions.get("whitelisted_subnets", [])
+    if not whitelisted:
+        return False
+
+    evidence = alert.get("evidence", {})
+    src_ip = evidence.get("src_ip") or evidence.get("host_ip") or evidence.get("asset_id", "")
+    if not src_ip:
+        return False
+
+    return is_ip_in_subnets(src_ip, whitelisted)
 
 
 def check_auto_response_conditions(alert: dict, conditions: dict) -> tuple:
@@ -244,16 +278,29 @@ def update_audit_entry(client: OpenSearch, audit_id: str, result: dict):
         logger.error(f"Error updating audit entry {audit_id}: {e}")
 
 
-def update_alert_response(client: OpenSearch, alert_id: str, response_data: dict):
-    """Update alert with response execution results."""
+def update_alert_response(client: OpenSearch, alert_id: str, response_data: dict,
+                          resolve: bool = False):
+    """Update alert with response execution results.
+
+    Args:
+        client: OpenSearch client
+        alert_id: Alert ID
+        response_data: Response data dict written to the ``response`` field
+        resolve: If True, also set the top-level alert ``status`` to
+                 ``"resolved"`` so ``get_actionable_alerts`` no longer picks
+                 it up.
+    """
     try:
+        doc: dict = {"response": response_data}
+        if resolve:
+            doc["status"] = "resolved"
         client.update(
             index="alerts",
             id=alert_id,
-            body={"doc": {"response": response_data}},
+            body={"doc": doc},
             refresh=True
         )
-        logger.info(f"Updated alert {alert_id} with response data")
+        logger.info(f"Updated alert {alert_id} with response data (resolved={resolve})")
     except Exception as e:
         logger.error(f"Error updating alert {alert_id}: {e}")
 
@@ -318,12 +365,25 @@ def main():
                     # Check if auto-response is enabled for this rule
                     auto_config = get_auto_response_config(client, rule_id)
 
+                    # Check whitelist FIRST — auto-resolve regardless of
+                    # whether full auto-response is enabled for this rule
+                    conditions = auto_config.get("conditions", {})
+                    if check_whitelist(alert, conditions):
+                        src_ip = alert.get("evidence", {}).get("src_ip", "unknown")
+                        logger.info(
+                            f"Alert {alert_id} source {src_ip} is in whitelisted subnet — auto-resolving"
+                        )
+                        update_alert_response(client, alert_id, {
+                            "status": "auto_resolved",
+                            "message": f"Source IP {src_ip} is in a whitelisted subnet",
+                            "completed_at": datetime.utcnow().isoformat() + "Z",
+                        }, resolve=True)
+                        continue
+
                     if not auto_config.get("enabled", False):
                         logger.debug(f"Auto-response disabled for rule {rule_id}, skipping alert {alert_id}")
                         continue
 
-                    # Check auto-response conditions
-                    conditions = auto_config.get("conditions", {})
                     conditions_met, reason = check_auto_response_conditions(alert, conditions)
 
                     if not conditions_met:
@@ -346,12 +406,12 @@ def main():
 
                     if not response_actions:
                         logger.info(f"No response actions defined for rule {rule_id}")
-                        # Mark as processed with no action
+                        # Mark as processed with no action and resolve
                         update_alert_response(client, alert_id, {
                             "status": "no_action",
                             "message": "No response actions configured",
                             "completed_at": datetime.utcnow().isoformat() + "Z"
-                        })
+                        }, resolve=True)
                         continue
 
                     # Execute each response action
@@ -388,13 +448,13 @@ def main():
                             # Update audit entry with error
                             update_audit_entry(client, audit_id, error_result)
 
-                    # Update alert with all response results
+                    # Update alert with all response results and resolve it
                     response_data = {
                         "actions": all_responses,
                         "status": "completed",
                         "completed_at": datetime.utcnow().isoformat() + "Z"
                     }
-                    update_alert_response(client, alert_id, response_data)
+                    update_alert_response(client, alert_id, response_data, resolve=True)
 
             else:
                 logger.debug("No actionable alerts found")

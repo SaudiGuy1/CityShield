@@ -103,19 +103,46 @@ class ResponseExecutor:
         evidence = alert.get("evidence", {})
 
         # Action-specific variable mapping
+        component = alert.get("component", "unknown")
+        service_map = {
+            "traffic_management": "cityshield_traffic_sim",
+            "iot_sensors": "cityshield_iot_sim",
+            "network": "cityshield_network_emulator"
+        }
+
         if action_name == "block_ip":
             extra_vars["ip_address"] = evidence.get("src_ip", "unknown")
+            extra_vars["duration_hours"] = 24
         elif action_name == "isolate_service":
-            # Determine service name from component
-            component = alert.get("component", "unknown")
-            service_map = {
-                "traffic_management": "cityshield_traffic_sim",
-                "iot_sensors": "cityshield_iot_sim",
-                "network": "cityshield_network_emulator"
-            }
             extra_vars["service"] = service_map.get(component, component)
         elif action_name == "revoke_token":
             extra_vars["user"] = evidence.get("user_id", "unknown")
+        elif action_name == "quarantine_host":
+            extra_vars["host_ip"] = evidence.get("src_ip", evidence.get("asset_id", "unknown"))
+            extra_vars["vlan_id"] = "quarantine"
+        elif action_name == "disable_account":
+            extra_vars["username"] = evidence.get("user_id", evidence.get("group_key", "unknown"))
+        elif action_name == "rate_limit":
+            extra_vars["ip_address"] = evidence.get("src_ip", "unknown")
+            extra_vars["requests_per_minute"] = 10
+        elif action_name == "snapshot_forensics":
+            extra_vars["host_ip"] = evidence.get("src_ip", evidence.get("asset_id", "unknown"))
+            extra_vars["capture_memory"] = True
+        elif action_name == "kill_process":
+            extra_vars["host_ip"] = evidence.get("src_ip", evidence.get("asset_id", "unknown"))
+            extra_vars["process_name"] = evidence.get("process_name", "unknown")
+        elif action_name == "reset_credentials":
+            extra_vars["username"] = evidence.get("user_id", evidence.get("group_key", "unknown"))
+        elif action_name == "notify_soc":
+            extra_vars["severity"] = alert.get("severity", "high")
+            extra_vars["message"] = f"Auto-response triggered for rule {alert.get('rule_name', 'unknown')}"
+        elif action_name == "escalate_incident":
+            extra_vars["severity"] = alert.get("severity", "critical")
+            extra_vars["description"] = f"Incident escalation: {alert.get('rule_name', 'unknown')} - {evidence.get('src_ip', 'unknown')}"
+        elif action_name == "network_segmentation":
+            zone = alert.get("city_zone", "unknown")
+            extra_vars["zone_id"] = zone
+            extra_vars["isolation_level"] = "strict" if alert.get("severity") == "critical" else "moderate"
 
         return extra_vars
 

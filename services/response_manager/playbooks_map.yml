@@ -3,21 +3,92 @@
 response_actions:
   block_ip:
     playbook: /ansible/playbooks/block_ip.yml
-    description: Block malicious IP address
+    description: Block malicious IP address at firewall level
     parameters:
       - ip_address
       - alert_id
+      - duration_hours
 
   isolate_service:
     playbook: /ansible/playbooks/isolate_service.yml
-    description: Isolate compromised service
+    description: Isolate compromised service from the network
     parameters:
       - service
       - alert_id
 
   revoke_token:
     playbook: /ansible/playbooks/revoke_token.yml
-    description: Revoke user authentication token
+    description: Revoke user authentication token and force re-login
     parameters:
       - user
       - alert_id
+
+  quarantine_host:
+    playbook: /ansible/playbooks/quarantine_host.yml
+    description: Quarantine compromised host by applying restrictive network rules
+    parameters:
+      - host_ip
+      - alert_id
+      - vlan_id
+
+  disable_account:
+    playbook: /ansible/playbooks/disable_account.yml
+    description: Disable compromised user account to prevent further access
+    parameters:
+      - username
+      - alert_id
+
+  rate_limit:
+    playbook: /ansible/playbooks/rate_limit.yml
+    description: Apply rate limiting to traffic from suspicious source
+    parameters:
+      - ip_address
+      - alert_id
+      - requests_per_minute
+
+  snapshot_forensics:
+    playbook: /ansible/playbooks/snapshot_forensics.yml
+    description: Capture forensic snapshot of affected system for analysis
+    parameters:
+      - host_ip
+      - alert_id
+      - capture_memory
+
+  kill_process:
+    playbook: /ansible/playbooks/kill_process.yml
+    description: Terminate malicious process on target host
+    parameters:
+      - host_ip
+      - process_name
+      - alert_id
+
+  reset_credentials:
+    playbook: /ansible/playbooks/reset_credentials.yml
+    description: Force password reset for compromised accounts
+    parameters:
+      - username
+      - alert_id
+
+  notify_soc:
+    playbook: /ansible/playbooks/notify_soc.yml
+    description: Send immediate notification to SOC team via configured channels
+    parameters:
+      - alert_id
+      - severity
+      - message
+
+  escalate_incident:
+    playbook: /ansible/playbooks/escalate_incident.yml
+    description: Escalate alert to incident response team and create incident ticket
+    parameters:
+      - alert_id
+      - severity
+      - description
+
+  network_segmentation:
+    playbook: /ansible/playbooks/network_segmentation.yml
+    description: Apply micro-segmentation rules to isolate network zone
+    parameters:
+      - zone_id
+      - alert_id
+      - isolation_level

@@ -1,0 +1,28 @@
+rule_id: pass_the_hash_001
+name: Pass the Hash Detection
+description: Detects pass-the-hash attacks where adversaries use stolen NTLM password hashes to authenticate without knowing the plaintext password, enabling lateral movement across city network infrastructure
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: credential_dump
+  parameters:
+    threshold: 2
+    group_by: src_ip
+    event_types:
+      - pth_attempt
+      - ntlm_relay
+technique_id: T1550.002
+technique_name: "Pass the Hash"
+response_actions:
+  - block_ip
+  - disable_account
+  - reset_credentials
+  - isolate_service
+  - escalate_incident
+log_sources:
+  - logs-network
+false_positive_notes: |
+  NTLM authentication in legacy systems and cross-domain trust relationships
+  may generate similar patterns. Identify systems still requiring NTLM and
+  work toward Kerberos migration to reduce both risk and false positives.

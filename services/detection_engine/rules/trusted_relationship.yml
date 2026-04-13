@@ -1,0 +1,28 @@
+rule_id: trusted_relationship_001
+name: Trusted Relationship Abuse Detection
+description: Detects compromise through trusted third-party relationships including vendor access abuse, managed service provider exploitation, and unauthorized third-party connections to city infrastructure
+enabled: true
+severity: critical
+query_window_seconds: 600
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - third_party_access
+      - vendor_compromise
+technique_id: T1199
+technique_name: "Trusted Relationship"
+response_actions:
+  - isolate_service
+  - network_segmentation
+  - escalate_incident
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Scheduled vendor maintenance, authorized MSP access, and trusted partner
+  API integrations may trigger alerts. Maintain a registry of authorized
+  third-party access windows and correlate with change management records.

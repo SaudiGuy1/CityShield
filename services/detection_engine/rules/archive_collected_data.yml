@@ -1,0 +1,71 @@
+rule_id: archive_data_001
+name: Archive Collected Data Detection
+description: |
+  Detects archiving and compression of collected data indicating preparation
+  for exfiltration from smart city systems:
+  - Creation of compressed archives in staging directories
+  - Password-protected or encrypted archive creation
+  - Archiving of sensitive configuration, credential, or telemetry data
+  - Use of built-in compression utilities (tar, zip, gzip, rar, 7z)
+  - Split archive creation for easier exfiltration
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: data_archiving
+  parameters:
+    threshold: 2
+    group_by: src_ip
+    event_types:
+      - process_creation
+      - file_creation
+      - data_staging
+    suspicious_indicators:
+      - password_protected_archive
+      - encrypted_archive
+      - large_archive
+      - sensitive_data_archived
+      - staging_directory
+      - split_archive
+    archive_tools:
+      - rar.exe
+      - winrar.exe
+      - 7z.exe
+      - 7za.exe
+      - tar
+      - gzip
+      - zip
+      - powershell.exe
+      - makecab.exe
+    sensitive_paths:
+      - "/etc"
+      - "/var/log"
+      - "\\Windows\\System32\\config"
+      - "\\ProgramData"
+    size_threshold_mb: 50
+technique_id: T1560
+technique_name: "Archive Collected Data"
+response_actions:
+  - isolate_service
+  - snapshot_forensics
+  - block_ip
+  - notify_soc
+  - escalate_incident
+log_sources:
+  - logs-network
+  - logs-traffic
+  - logs-iot
+false_positive_notes: |
+  Data archiving is common for backups and file transfers.
+
+  Common false positives:
+  - Backup software creating scheduled archives
+  - Developers packaging project files for deployment
+  - Log rotation compressing old log files
+
+  Reduce false positives by:
+  - Monitoring for archives created in temp or staging directories
+  - Flagging password-protected archives (uncommon for legitimate backups)
+  - Detecting archive creation followed by network upload
+  - Correlating with prior data collection or discovery activity
+  - Alerting on archives containing system configuration or credential files

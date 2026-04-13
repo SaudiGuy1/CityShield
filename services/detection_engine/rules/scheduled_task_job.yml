@@ -1,0 +1,57 @@
+rule_id: sched_task_job_001
+name: Scheduled Task/Job Creation or Modification
+description: |
+  Detects creation or modification of scheduled tasks and jobs for persistence
+  or execution on smart city systems:
+  - Windows Task Scheduler (schtasks) and Linux cron job manipulation
+  - AT command scheduling
+  - Systemd timer creation
+  - Tasks executing from suspicious paths or with elevated privileges
+  - Modification of existing legitimate scheduled tasks
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: scheduled_task_creation
+  parameters:
+    threshold: 2
+    group_by: src_ip
+    event_types:
+      - scheduled_task_creation
+      - scheduled_task_modification
+      - cron_job_creation
+      - process_creation
+    suspicious_indicators:
+      - system_privilege
+      - temp_directory
+      - encoded_command
+      - unusual_schedule
+      - cron_persistence
+    process_filters:
+      - schtasks.exe
+      - at.exe
+      - crontab
+      - systemctl
+technique_id: T1053
+technique_name: "Scheduled Task/Job"
+response_actions:
+  - isolate_service
+  - kill_process
+  - snapshot_forensics
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Scheduled tasks are commonly used for legitimate system maintenance.
+
+  Common false positives:
+  - Software updates creating scheduled update checks
+  - Backup software scheduling periodic backup jobs
+  - System administrators creating maintenance tasks
+
+  Reduce false positives by:
+  - Whitelisting signed executables from trusted vendors
+  - Monitoring for tasks created outside change management windows
+  - Flagging tasks that execute scripts from temp or user directories
+  - Correlating with recent unauthorized access events

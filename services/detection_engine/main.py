@@ -1,4 +1,5 @@
 """Detection engine main application."""
+import ipaddress
 import os
 import time
 import logging
@@ -129,6 +130,68 @@ def _ensure_logs_template(client: OpenSearch):
         logger.warning(f"Could not create logs-* index template: {e}")
 
 
+def _ip_in_subnets(ip_str: str, subnets: list) -> bool:
+    """Check if an IP address falls within any of the given CIDR subnets."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    for cidr in subnets:
+        try:
+            if ip in ipaddress.ip_network(cidr, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+def load_whitelists(client: OpenSearch) -> dict:
+    """Fetch whitelisted_subnets per rule_id from the OpenSearch rules index.
+
+    Returns:
+        dict mapping rule_id -> list of CIDR strings
+    """
+    whitelists: dict = {}
+    try:
+        result = client.search(
+            index="rules",
+            body={"query": {"match_all": {}}, "size": 1000, "_source": [
+                "rule_id",
+                "auto_response_config.conditions.whitelisted_subnets",
+            ]},
+        )
+        for hit in result["hits"]["hits"]:
+            src = hit["_source"]
+            rule_id = src.get("rule_id")
+            subnets = (
+                src.get("auto_response_config", {})
+                .get("conditions", {})
+                .get("whitelisted_subnets", [])
+            )
+            if rule_id and subnets:
+                whitelists[rule_id] = subnets
+    except Exception as e:
+        logger.debug(f"Could not load whitelists from rules index: {e}")
+    return whitelists
+
+
+def is_alert_whitelisted(alert_data: dict, whitelists: dict) -> bool:
+    """Return True if the alert source IP is in the rule's whitelist."""
+    rule_id = alert_data.get("rule_id", "")
+    subnets = whitelists.get(rule_id, [])
+    if not subnets:
+        return False
+    evidence = alert_data.get("evidence", {})
+    src_ip = (
+        evidence.get("src_ip")
+        or evidence.get("host_ip")
+        or evidence.get("asset_id", "")
+    )
+    if not src_ip:
+        return False
+    return _ip_in_subnets(src_ip, subnets)
+
+
 def main():
     """Main detection engine loop."""
     logger.info("Starting CityShield Detection Engine...")
@@ -181,6 +244,10 @@ def main():
         try:
             logger.debug("Running detection cycle...")
 
+            # Refresh whitelists from OpenSearch each cycle so UI
+            # changes take effect within one poll interval
+            whitelists = load_whitelists(client)
+
             for rule in rules:
                 try:
                     # Evaluate rule
@@ -188,6 +255,15 @@ def main():
 
                     # Process alerts
                     for alert_data in alerts:
+                        # Check whitelist BEFORE writing the alert
+                        if is_alert_whitelisted(alert_data, whitelists):
+                            src_ip = alert_data.get("evidence", {}).get("src_ip", "unknown")
+                            logger.info(
+                                f"Suppressed alert for rule {rule['rule_id']}: "
+                                f"source {src_ip} is in whitelisted subnet"
+                            )
+                            continue
+
                         # Enrich with threat intelligence
                         enrichment = {}
                         src_ip = alert_data.get("evidence", {}).get("src_ip")

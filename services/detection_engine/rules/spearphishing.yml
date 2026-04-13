@@ -1,0 +1,27 @@
+rule_id: spearphishing_001
+name: Spearphishing Attachment Detection
+description: Detects spearphishing attempts with malicious attachments by monitoring for suspicious email payloads, known malicious file types, and macro-enabled documents targeting city infrastructure personnel
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 3
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - phishing_email
+      - malicious_attachment
+technique_id: T1566.001
+technique_name: "Spearphishing Attachment"
+response_actions:
+  - quarantine_host
+  - notify_soc
+  - disable_account
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Legitimate bulk email with attachments from known vendors or internal
+  newsletters may trigger alerts. Maintain a whitelist of known safe senders
+  and attachment hashes to reduce false positives.

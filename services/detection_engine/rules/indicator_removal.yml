@@ -1,0 +1,60 @@
+rule_id: indicator_removal_001
+name: Indicator Removal Detection
+description: |
+  Detects attempts to remove indicators of compromise from smart city systems:
+  - Event log clearing or selective deletion
+  - File deletion of malware artifacts or tools
+  - Timestamp modification (timestomping)
+  - History file clearing (bash_history, PowerShell history)
+  - Network artifact cleanup
+  - USN journal deletion
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: log_clearing
+  parameters:
+    threshold: 1
+    group_by: src_ip
+    event_types:
+      - log_clearing
+      - event_log_cleared
+      - file_deletion
+      - timestamp_modification
+      - process_creation
+    suspicious_indicators:
+      - security_log_cleared
+      - multiple_logs_cleared
+      - history_file_cleared
+      - timestomping_detected
+      - usn_journal_deleted
+    process_filters:
+      - wevtutil.exe
+      - powershell.exe
+      - fsutil.exe
+      - rm
+      - del
+technique_id: T1070
+technique_name: "Indicator Removal"
+response_actions:
+  - isolate_service
+  - snapshot_forensics
+  - escalate_incident
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Log management and cleanup are part of normal operations.
+
+  Common false positives:
+  - Scheduled log rotation and archival processes
+  - Disk space management clearing old log files
+  - Developers clearing shell history for convenience
+
+  Reduce false positives by:
+  - Flagging Security event log clearing (almost always suspicious)
+  - Monitoring for timestomping (file modification time set before creation time)
+  - Detecting rapid deletion of multiple log sources
+  - Correlating with prior suspicious activity on the same host
+  - Alerting on indicator removal immediately following exploitation events

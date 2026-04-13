@@ -1,0 +1,29 @@
+rule_id: firmware_corruption_001
+name: Firmware Corruption Detection
+description: Detects firmware tampering and corruption attempts targeting IoT devices, SCADA controllers, PLCs, and embedded systems within the smart city infrastructure
+enabled: true
+severity: critical
+query_window_seconds: 600
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: device_id
+    group_by: device_id
+    event_types:
+      - firmware_tamper
+      - firmware_corruption
+technique_id: T1495
+technique_name: "Firmware Corruption"
+response_actions:
+  - isolate_service
+  - snapshot_forensics
+  - escalate_incident
+  - notify_soc
+log_sources:
+  - logs-iot
+  - logs-network
+false_positive_notes: |
+  Authorized firmware updates, OTA update processes, and scheduled device
+  maintenance may trigger this rule. Coordinate with IoT device management
+  teams and maintain a firmware version registry for validation.

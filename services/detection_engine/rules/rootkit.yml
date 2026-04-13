@@ -1,0 +1,30 @@
+rule_id: rootkit_001
+name: Rootkit Detection
+description: Detects rootkit installation and kernel-level persistence including suspicious kernel module loading, hidden process indicators, and system call table modifications on smart city servers and embedded devices
+enabled: true
+severity: critical
+query_window_seconds: 600
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: host_id
+    group_by: host_id
+    event_types:
+      - rootkit_detected
+      - kernel_module_load
+technique_id: T1014
+technique_name: "Rootkit"
+response_actions:
+  - isolate_service
+  - quarantine_host
+  - snapshot_forensics
+  - escalate_incident
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-iot
+false_positive_notes: |
+  Legitimate kernel module loading during driver installation, system updates,
+  and hardware provisioning may trigger this rule. Maintain an approved kernel
+  module whitelist and monitor for unsigned or unexpected module insertions.

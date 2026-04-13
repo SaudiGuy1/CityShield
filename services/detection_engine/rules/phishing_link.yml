@@ -1,0 +1,29 @@
+rule_id: phishing_link_001
+name: Spearphishing Link Detection
+description: Detects spearphishing link clicks and suspicious URL access patterns indicating social engineering attacks targeting smart city operators through crafted URLs and credential harvesting pages
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 3
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - phishing_link_click
+      - suspicious_url
+technique_id: T1566.002
+technique_name: "Spearphishing Link"
+response_actions:
+  - block_ip
+  - quarantine_host
+  - reset_credentials
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  URL shorteners, marketing email links, and legitimate SaaS login pages may
+  trigger this rule. Implement URL reputation scoring and maintain a whitelist
+  of known safe domains used by the organization.

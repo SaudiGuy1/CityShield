@@ -1,0 +1,29 @@
+rule_id: ingress_tool_transfer_001
+name: Ingress Tool Transfer Detection
+description: Detects transfer of attacker tools and utilities into the environment including wget/curl downloads of suspicious binaries, PowerShell download cradles, and unauthorized file transfers to city infrastructure hosts
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 3
+    field: dst_ip
+    group_by: dst_ip
+    event_types:
+      - tool_download
+      - suspicious_transfer
+technique_id: T1105
+technique_name: "Ingress Tool Transfer"
+response_actions:
+  - block_ip
+  - quarantine_host
+  - snapshot_forensics
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate software downloads, package manager updates, and automated
+  deployment tools may trigger this rule. Whitelist approved download sources
+  and software distribution endpoints used by the organization.

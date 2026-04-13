@@ -60,6 +60,36 @@ class RuleRuntime:
             return self._evaluate_lateral_movement(rule)
         elif logic_type == "credential_dump":
             return self._evaluate_credential_dump(rule)
+        elif logic_type == "log_clearing":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "cmd_execution":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "account_creation":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "data_archiving":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "defense_evasion":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "obfuscation_detection":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "powershell_execution":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "process_injection":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "registry_persistence":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "scheduled_task_creation":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "screen_capture":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "service_execution":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "service_persistence":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "token_manipulation":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "event_threshold":
+            return self._evaluate_generic_event(rule)
         else:
             logger.warning(f"Unknown rule type: {logic_type}")
             return []
@@ -956,4 +986,88 @@ class RuleRuntime:
 
         except Exception as e:
             logger.error(f"Error evaluating credential_dump rule: {e}")
+            return []
+
+    def _evaluate_generic_event(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Generic event-based evaluator for rules that match events by type and count threshold."""
+        params = rule["match_logic"]["parameters"]
+        threshold = params.get("threshold", 1)
+        group_by = params.get("group_by", "src_ip")
+        event_types = params.get("event_types", [])
+        window_seconds = rule.get("query_window_seconds", 300)
+        logic_type = rule["match_logic"]["type"]
+
+        now = datetime.utcnow()
+        past = now - timedelta(seconds=window_seconds)
+
+        must_clauses = [
+            {
+                "range": {
+                    "@timestamp": {
+                        "gte": past.isoformat() + "Z",
+                        "lte": now.isoformat() + "Z"
+                    }
+                }
+            }
+        ]
+
+        if event_types:
+            must_clauses.append({
+                "terms": {"event_type.keyword": event_types}
+            })
+
+        query = {
+            "query": {
+                "bool": {
+                    "must": must_clauses
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "by_group": {
+                    "terms": {
+                        "field": _agg_field(group_by),
+                        "size": 100
+                    }
+                }
+            }
+        }
+
+        try:
+            result = self.client.search(index="logs-*", body=query)
+            alerts = []
+
+            for bucket in result["aggregations"]["by_group"]["buckets"]:
+                key = bucket["key"]
+                event_count = bucket["doc_count"]
+
+                if event_count >= threshold:
+                    alert = {
+                        "rule_id": rule["rule_id"],
+                        "rule_name": rule["name"],
+                        "severity": rule["severity"],
+                        "component": rule.get("component", "network"),
+                        "city_zone": None,
+                        "technique_id": rule["technique_id"],
+                        "technique_name": rule["technique_name"],
+                        "evidence": {
+                            "src_ip": key if group_by in ("src_ip", "actor_id") else "unknown",
+                            "group_key": key,
+                            "group_field": group_by,
+                            "event_count": event_count,
+                            "event_types": event_types,
+                            "threshold": threshold,
+                            "time_window_seconds": window_seconds,
+                            "logic_type": logic_type,
+                            "query": str(query)
+                        },
+                        "related_query": f"{group_by}:{key} AND event_type:({' OR '.join(event_types)})"
+                    }
+                    alerts.append(alert)
+                    logger.info(f"Rule {rule['rule_id']} ({logic_type}) matched: {group_by}={key} had {event_count} events (threshold={threshold})")
+
+            return alerts
+
+        except Exception as e:
+            logger.error(f"Error evaluating {logic_type} rule {rule.get('rule_id', 'unknown')}: {e}")
             return []

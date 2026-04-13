@@ -1,0 +1,23 @@
+---
+- name: Disable User Account
+  hosts: localhost
+  gather_facts: no
+  vars:
+    target_user: "{{ username }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log account disable action
+      debug:
+        msg: "Disabling account {{ target_user }} for alert {{ alert_id }}"
+
+    - name: Simulate account disable
+      shell: |
+        echo "SIMULATED: usermod -L {{ target_user }}"
+        echo "SIMULATED: Invalidating all active sessions for {{ target_user }}"
+        echo "Account {{ target_user }} disabled at $(date)" >> /tmp/disabled_accounts.txt
+      register: disable_result
+
+    - name: Record disable action
+      debug:
+        msg: "Account {{ target_user }} has been disabled. Result: {{ disable_result.stdout }}"

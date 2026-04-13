@@ -1,6 +1,8 @@
 """Main FastAPI application."""
+import json
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -316,6 +318,74 @@ def _seed_owasp_scenarios():
         logger.info(f"Seeded {seeded} OWASP Top 10 scenarios")
 
 
+def _seed_detection_rules(retries: int = 3, delay: float = 2.0):
+    """Seed detection rules from bundled JSON into OpenSearch rules index.
+
+    Reads services/detection_engine/rules data that was exported to
+    backend/app/data/detection_rules.json and creates documents in the
+    'rules' index.  Existing rules (matched by rule_id) are skipped so
+    manual edits made through the UI are preserved.
+    """
+    import time
+
+    data_path = Path(__file__).parent / "data" / "detection_rules.json"
+    if not data_path.exists():
+        logger.warning("detection_rules.json not found – skipping rule seeding")
+        return
+
+    try:
+        with open(data_path) as f:
+            rules_data = json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to read detection_rules.json: {e}")
+        return
+
+    now = datetime.utcnow().isoformat()
+    seeded = 0
+    skipped = 0
+
+    for rule in rules_data:
+        rule_id = rule.get("rule_id")
+        if not rule_id:
+            continue
+
+        for attempt in range(1, retries + 1):
+            try:
+                existing = opensearch_client.get_document("rules", rule_id)
+                if existing:
+                    skipped += 1
+                    break
+
+                # Map YAML fields to Rule model expected by frontend
+                doc = {
+                    "rule_id": rule_id,
+                    "name": rule.get("name", ""),
+                    "description": rule.get("description", ""),
+                    "enabled": rule.get("enabled", True),
+                    "severity": rule.get("severity", "medium"),
+                    "match_logic": rule.get("match_logic", {"type": "event_threshold", "parameters": {}}),
+                    "technique_id": rule.get("technique_id", ""),
+                    "technique_name": rule.get("technique_name", ""),
+                    "response_actions": rule.get("response_actions", []),
+                    "log_sources": rule.get("log_sources"),
+                    "false_positive_notes": rule.get("false_positive_notes"),
+                    "auto_response_config": rule.get("auto_response_config"),
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                opensearch_client.index_document("rules", doc, doc_id=rule_id)
+                seeded += 1
+                break
+            except Exception as e:
+                if attempt < retries:
+                    logger.warning(f"Rule seed attempt {attempt}/{retries} for {rule_id} failed: {e}")
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Failed to seed rule {rule_id} after {retries} attempts: {e}")
+
+    logger.info(f"Detection rules seeding complete: {seeded} new, {skipped} existing (total in file: {len(rules_data)})")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
@@ -344,6 +414,12 @@ async def lifespan(app: FastAPI):
         _seed_owasp_scenarios()
     except Exception as e:
         logger.debug(f"OWASP scenario seeding skipped: {e}")
+
+    # Seed detection rules from YAML export (idempotent)
+    try:
+        _seed_detection_rules()
+    except Exception as e:
+        logger.debug(f"Detection rule seeding skipped: {e}")
 
     # Initialize OpenSearch Dashboards (non-blocking)
     try:

@@ -1,0 +1,50 @@
+rule_id: gather_network_001
+name: Gather Victim Network Information
+description: |
+  Detects reconnaissance activity aimed at mapping smart city network topology:
+  - Traceroute and path enumeration
+  - DNS zone transfer attempts
+  - Network topology probing via SNMP
+  - BGP and routing table enumeration
+  - Excessive ARP requests to discover live hosts
+enabled: true
+severity: medium
+query_window_seconds: 600
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 8
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - traceroute
+      - dns_zone_transfer
+      - network_mapping
+      - arp_sweep
+      - routing_enumeration
+    suspicious_indicators:
+      - zone_transfer_attempt
+      - topology_probe
+      - subnet_sweep
+      - gateway_enumeration
+technique_id: T1590
+technique_name: "Gather Victim Network Information"
+response_actions:
+  - block_ip
+  - rate_limit
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Network management tools routinely perform topology discovery.
+
+  Common false positives:
+  - Network monitoring systems using SNMP for topology maps
+  - DNS servers performing legitimate zone transfers
+  - Traceroute utilities used by network engineers
+
+  Reduce false positives by:
+  - Whitelisting authorized network management subnets
+  - Restricting DNS zone transfers to known secondary DNS servers
+  - Alerting on topology discovery from non-management VLANs

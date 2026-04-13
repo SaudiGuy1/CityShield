@@ -1,0 +1,55 @@
+rule_id: net_share_disc_001
+name: Network Share Discovery
+description: |
+  Detects enumeration of network shares on smart city infrastructure:
+  - net share and net view commands
+  - SMB share enumeration
+  - NFS export listing
+  - Mounting of discovered shares from unauthorized sources
+  - Rapid traversal of multiple network shares
+enabled: true
+severity: medium
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 5
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - smb_enumeration
+      - share_discovery
+      - process_creation
+      - network_connection
+    suspicious_commands:
+      - "net share"
+      - "net view"
+      - "smbclient -L"
+      - "showmount -e"
+      - "Get-SmbShare"
+    suspicious_indicators:
+      - multi_share_access
+      - admin_share_enumeration
+      - ipc_share_connection
+technique_id: T1135
+technique_name: "Network Share Discovery"
+response_actions:
+  - notify_soc
+  - snapshot_forensics
+  - network_segmentation
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Network share access is routine for file sharing and collaboration.
+
+  Common false positives:
+  - File servers responding to legitimate share discovery
+  - IT administrators auditing share permissions
+  - Backup software enumerating shares for scheduled backups
+
+  Reduce false positives by:
+  - Whitelisting known file server management accounts
+  - Monitoring for enumeration of admin shares (C$, ADMIN$, IPC$)
+  - Flagging share discovery from non-management workstations
+  - Correlating with subsequent lateral movement or data staging

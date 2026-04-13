@@ -1,0 +1,30 @@
+rule_id: data_destruction_001
+name: Data Destruction Detection
+description: Detects data destruction activities including mass file deletion, disk wiping, database truncation, and deliberate data corruption targeting smart city operational data and configuration stores
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: host_id
+    group_by: host_id
+    event_types:
+      - data_wipe
+      - mass_deletion
+technique_id: T1485
+technique_name: "Data Destruction"
+response_actions:
+  - isolate_service
+  - quarantine_host
+  - snapshot_forensics
+  - escalate_incident
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-iot
+false_positive_notes: |
+  Scheduled data retention cleanup, log rotation, and database maintenance
+  operations may trigger this rule. Coordinate with database administrators
+  and implement change management approval for bulk deletion operations.

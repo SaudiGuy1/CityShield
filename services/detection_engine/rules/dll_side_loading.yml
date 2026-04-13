@@ -1,0 +1,28 @@
+rule_id: dll_side_loading_001
+name: DLL Side-Loading Detection
+description: Detects DLL side-loading attacks where adversaries place malicious DLLs alongside legitimate applications to achieve code execution within smart city control systems
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: host_id
+    group_by: host_id
+    event_types:
+      - dll_side_load
+      - suspicious_dll
+technique_id: T1574.002
+technique_name: "DLL Side-Loading"
+response_actions:
+  - quarantine_host
+  - kill_process
+  - snapshot_forensics
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Software updates and legitimate application installations may load DLLs
+  from non-standard paths. Maintain an approved software baseline and hash
+  whitelist for known legitimate DLL files in the environment.

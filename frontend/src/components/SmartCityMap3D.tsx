@@ -28,13 +28,13 @@ interface Bld {
 interface WindmillData {
   id: string; x: number; z: number; name: string
   running: boolean; speed: number; stress: number
-  status: 'normal' | 'warning' | 'critical' | 'hacked'
+  status: 'normal' | 'warning' | 'critical'
 }
 
 interface TrafficLightData {
   id: string; x: number; z: number; name: string
   active: 'red' | 'yellow' | 'green'
-  mode: 'manual' | 'auto' | 'emergency' | 'hacked'
+  mode: 'manual' | 'auto' | 'emergency'
 }
 
 type SelectedObject =
@@ -477,7 +477,7 @@ function Windmill3D({ data, isSelected, onSelect }: {
 }) {
   const bladeRef = useRef<THREE.Group>(null!)
   const nacelleMatRef = useRef<THREE.MeshStandardMaterial>(null!)
-  const statusColor = data.status === 'hacked' ? '#ff003c' : data.status === 'critical' ? '#ff003c'
+  const statusColor = data.status === 'critical' ? '#ff003c'
     : data.status === 'warning' ? '#ffaa00' : '#00f0ff'
 
   useFrame(({ clock }, dt) => {
@@ -485,14 +485,9 @@ function Windmill3D({ data, isSelected, onSelect }: {
     if (data.running) {
       bladeRef.current.rotation.z -= dt * (data.speed / 15)
     }
-    if (data.status === 'hacked') {
-      bladeRef.current.rotation.z += (Math.random() - 0.5) * 0.15
-    }
     if (nacelleMatRef.current) {
       const t = clock.getElapsedTime()
-      if (data.status === 'hacked') {
-        nacelleMatRef.current.emissiveIntensity = Math.sin(t * 12) > 0 ? 2 : 0.2
-      } else if (data.status === 'critical') {
+      if (data.status === 'critical') {
         nacelleMatRef.current.emissiveIntensity = Math.sin(t * 3) * 0.5 + 1.0
       } else {
         nacelleMatRef.current.emissiveIntensity = 0.3
@@ -573,12 +568,7 @@ function TrafficLight3D({ data, isSelected, onSelect }: {
   useFrame(({ clock }) => {
     if (!redMatRef.current) return
     const t = clock.getElapsedTime()
-    if (data.mode === 'hacked') {
-      redMatRef.current.emissiveIntensity = Math.sin(t * 12) > 0 ? 3 : 0.1
-      yellowMatRef.current.emissiveIntensity = Math.sin(t * 15 + 1) > 0 ? 3 : 0.1
-      greenMatRef.current.emissiveIntensity = Math.sin(t * 18 + 2) > 0 ? 3 : 0.1
-      if (glowRef.current) { glowRef.current.color.set('#ff0000'); glowRef.current.intensity = 4 }
-    } else if (data.mode === 'emergency') {
+    if (data.mode === 'emergency') {
       const f = Math.sin(t * 6) > 0
       redMatRef.current.emissiveIntensity = f ? 4 : 0.5
       yellowMatRef.current.emissiveIntensity = 0.1
@@ -1075,7 +1065,7 @@ function DeviceDetailPanel({ device, onClose }: { device: DeviceInfo; onClose: (
 function WindmillPanel({ windmill, onUpdate, onClose }: {
   windmill: WindmillData; onUpdate: (id: string, u: Partial<WindmillData>) => void; onClose: () => void
 }) {
-  const sc = windmill.status === 'hacked' ? '#ff003c' : windmill.status === 'critical' ? '#ff003c'
+  const sc = windmill.status === 'critical' ? '#ff003c'
     : windmill.status === 'warning' ? '#ffaa00' : '#00f0ff'
   const rpm = Math.round(windmill.speed * 1.2)
   const power = (windmill.speed * 0.85).toFixed(1)
@@ -1110,7 +1100,7 @@ function WindmillPanel({ windmill, onUpdate, onClose }: {
           background: `${sc}10`, border: `1px solid ${sc}30`, borderRadius: 8,
         }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc, boxShadow: `0 0 8px ${sc}`,
-            animation: windmill.status === 'hacked' ? 'neon-pulse 0.5s ease-in-out infinite' : 'neon-pulse 2s ease-in-out infinite' }} />
+            animation: 'neon-pulse 2s ease-in-out infinite' }} />
           <span style={{ fontSize: 11, fontFamily: 'Orbitron', fontWeight: 600, color: sc, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {windmill.status}
           </span>
@@ -1166,31 +1156,6 @@ function WindmillPanel({ windmill, onUpdate, onClose }: {
           ))}
         </div>
 
-        <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${sc}25, transparent)`, margin: '4px 0 12px' }} />
-
-        {/* State Controls */}
-        <div style={{ fontSize: 11, fontFamily: 'Orbitron', fontWeight: 600, color: '#7eb8c9', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-          Simulation Controls
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          {([
-            { label: 'Normal', status: 'normal' as const, c: '#00f0ff' },
-            { label: 'Warning', status: 'warning' as const, c: '#ffaa00' },
-            { label: 'Critical', status: 'critical' as const, c: '#ff003c' },
-            { label: 'Hacked', status: 'hacked' as const, c: '#ff003c' },
-          ]).map(s => (
-            <button key={s.label} onClick={() => onUpdate(windmill.id, {
-              status: s.status,
-              stress: s.status === 'critical' ? 90 : s.status === 'warning' ? 65 : s.status === 'hacked' ? 95 : 20,
-            })} style={{
-              padding: '7px 0', fontSize: 10, fontFamily: 'Orbitron', fontWeight: 600,
-              background: windmill.status === s.status ? `${s.c}20` : 'transparent',
-              border: `1px solid ${windmill.status === s.status ? s.c : 'rgba(0,240,255,0.15)'}`,
-              borderRadius: 6, color: windmill.status === s.status ? s.c : '#4a7a8a',
-              cursor: 'pointer', letterSpacing: '0.06em', textTransform: 'uppercase', transition: 'all 0.2s',
-            }}>{s.label}</button>
-          ))}
-        </div>
       </div>
     </motion.div>
   )
@@ -1203,7 +1168,7 @@ function WindmillPanel({ windmill, onUpdate, onClose }: {
 function TrafficLightPanel({ light, onUpdate, onClose }: {
   light: TrafficLightData; onUpdate: (id: string, u: Partial<TrafficLightData>) => void; onClose: () => void
 }) {
-  const modeColor = light.mode === 'hacked' ? '#ff003c' : light.mode === 'emergency' ? '#ff3300' : '#00f0ff'
+  const modeColor = light.mode === 'emergency' ? '#ff3300' : '#00f0ff'
 
   return (
     <motion.div initial={{ x: '100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '100%', opacity: 0 }}
@@ -1235,7 +1200,7 @@ function TrafficLightPanel({ light, onUpdate, onClose }: {
           background: `${modeColor}10`, border: `1px solid ${modeColor}30`, borderRadius: 8,
         }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: modeColor, boxShadow: `0 0 8px ${modeColor}`,
-            animation: light.mode === 'hacked' ? 'neon-pulse 0.3s ease-in-out infinite' : 'neon-pulse 2s ease-in-out infinite' }} />
+            animation: 'neon-pulse 2s ease-in-out infinite' }} />
           <span style={{ fontSize: 11, fontFamily: 'Orbitron', fontWeight: 600, color: modeColor, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {light.mode} MODE
           </span>
@@ -1270,7 +1235,6 @@ function TrafficLightPanel({ light, onUpdate, onClose }: {
             { label: 'Manual', mode: 'manual' as const, c: '#00f0ff' },
             { label: 'Auto', mode: 'auto' as const, c: '#00ff88' },
             { label: 'Emergency', mode: 'emergency' as const, c: '#ff3300' },
-            { label: 'Hacked', mode: 'hacked' as const, c: '#ff003c' },
           ]).map(m => (
             <button key={m.label} onClick={() => onUpdate(light.id, { mode: m.mode })} style={{
               padding: '8px 0', fontSize: 10, fontFamily: 'Orbitron', fontWeight: 600,
@@ -1445,39 +1409,6 @@ function HUD({ cityState }: { cityState: CityState }) {
 }
 
 /* ═══════════════════════════════════════════════════
-   CITY STATE BAR
-   ═══════════════════════════════════════════════════ */
-
-function CityStateBar({ cityState, onChange }: { cityState: CityState; onChange: (s: CityState) => void }) {
-  const states: { label: string; value: CityState; color: string }[] = [
-    { label: 'Normal', value: 'normal', color: '#00f0ff' },
-    { label: 'Alert', value: 'alert', color: '#ffaa00' },
-    { label: 'Critical', value: 'critical', color: '#ff3300' },
-    { label: 'Cyber Attack', value: 'cyberattack', color: '#ff003c' },
-  ]
-
-  return (
-    <div style={{
-      position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)',
-      display: 'flex', gap: 4, padding: '4px 6px', borderRadius: 10,
-      background: 'rgba(5,10,24,0.85)', backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(0,240,255,0.12)', zIndex: 10,
-    }}>
-      {states.map(s => (
-        <button key={s.value} onClick={() => onChange(s.value)} style={{
-          padding: '5px 12px', fontSize: 10, fontFamily: 'Orbitron', fontWeight: 600,
-          background: cityState === s.value ? `${s.color}20` : 'transparent',
-          border: `1px solid ${cityState === s.value ? s.color : 'transparent'}`,
-          borderRadius: 6, color: cityState === s.value ? s.color : '#4a7a8a',
-          cursor: 'pointer', letterSpacing: '0.06em', textTransform: 'uppercase', transition: 'all 0.2s',
-          textShadow: cityState === s.value ? `0 0 6px ${s.color}60` : 'none',
-        }}>{s.label}</button>
-      ))}
-    </div>
-  )
-}
-
-/* ═══════════════════════════════════════════════════
    ATTACK STAGE TYPES & PHASE DATA
    ═══════════════════════════════════════════════════ */
 
@@ -1629,7 +1560,6 @@ export default function SmartCityMap3D({ activeAttack, onAttackEnd }: SmartCityM
   useEffect(() => {
     const id = setInterval(() => {
       setWindmills(prev => prev.map(wm => {
-        if (wm.status === 'hacked') return wm
         if (!wm.running) return { ...wm, stress: Math.max(0, wm.stress - 2) }
         const delta = (wm.speed / 100) * (Math.random() - 0.4) * 6
         const newStress = Math.max(0, Math.min(100, wm.stress + delta))
@@ -1642,15 +1572,12 @@ export default function SmartCityMap3D({ activeAttack, onAttackEnd }: SmartCityM
 
   // City state effects
   useEffect(() => {
-    if (cityState === 'cyberattack') {
-      setTrafficLights(prev => prev.map(tl => ({ ...tl, mode: 'hacked' as const })))
-      setWindmills(prev => prev.map(wm => ({ ...wm, status: 'hacked' as const, stress: 95 })))
-    } else if (cityState === 'critical') {
+    if (cityState === 'cyberattack' || cityState === 'critical') {
       setTrafficLights(prev => prev.map(tl => ({ ...tl, mode: 'emergency' as const })))
-      setWindmills(prev => prev.map(wm => wm.status === 'hacked' ? { ...wm, status: 'critical' as const, stress: 85 } : wm))
+      setWindmills(prev => prev.map(wm => ({ ...wm, status: 'critical' as const, stress: 85 })))
     } else if (cityState === 'alert') {
-      setTrafficLights(prev => prev.map(tl => tl.mode === 'hacked' ? { ...tl, mode: 'auto' as const } : tl))
-      setWindmills(prev => prev.map(wm => wm.status === 'hacked' ? { ...wm, status: 'warning' as const, stress: 55 } : wm))
+      setTrafficLights(prev => prev.map(tl => tl.mode === 'emergency' ? { ...tl, mode: 'auto' as const } : tl))
+      setWindmills(prev => prev.map(wm => wm.status === 'critical' ? { ...wm, status: 'warning' as const, stress: 55 } : wm))
     } else {
       setTrafficLights(prev => prev.map(tl => ({ ...tl, mode: 'auto' as const })))
       setWindmills(prev => prev.map(wm => ({ ...wm, status: 'normal' as const, stress: Math.max(0, wm.stress - 30) })))
@@ -1781,7 +1708,6 @@ export default function SmartCityMap3D({ activeAttack, onAttackEnd }: SmartCityM
 
       <HUD cityState={cityState} />
 
-      <CityStateBar cityState={cityState} onChange={setCityState} />
 
       {/* Warning overlay */}
       <AnimatePresence>

@@ -1,0 +1,61 @@
+rule_id: abuse_elevation_001
+name: Abuse Elevation Control Mechanism
+description: |
+  Detects abuse of elevation control mechanisms for privilege escalation:
+  - UAC bypass techniques on Windows
+  - Sudo abuse or sudoers file modification on Linux
+  - SetUID/SetGID binary manipulation
+  - Exploitation of elevated COM objects
+  - Token manipulation to gain elevated privileges
+  - Bypass of macOS authorization mechanisms
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - uac_bypass
+      - sudo_abuse
+      - setuid_modification
+      - privilege_escalation
+      - process_creation
+    suspicious_indicators:
+      - uac_bypass_technique
+      - sudoers_modification
+      - suid_bit_change
+      - elevated_com_object
+      - token_elevation
+    process_filters:
+      - fodhelper.exe
+      - eventvwr.exe
+      - sdclt.exe
+      - powershell.exe
+      - sudo
+technique_id: T1548
+technique_name: "Abuse Elevation Control Mechanism"
+response_actions:
+  - isolate_service
+  - kill_process
+  - revoke_token
+  - snapshot_forensics
+  - escalate_incident
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate elevation requests are common in administrative workflows.
+
+  Common false positives:
+  - Administrators using UAC prompts for legitimate tasks
+  - Software installers requiring elevated permissions
+  - Developers using sudo for build or deployment tasks
+
+  Reduce false positives by:
+  - Monitoring for known UAC bypass binaries (fodhelper, eventvwr, sdclt)
+  - Flagging sudoers file modifications outside of change management
+  - Detecting SetUID changes on non-standard binaries
+  - Correlating with suspicious parent process chains

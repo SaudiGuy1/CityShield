@@ -1,0 +1,32 @@
+---
+- name: Capture Forensic Snapshot
+  hosts: localhost
+  gather_facts: no
+  vars:
+    target_host: "{{ host_ip }}"
+    mem_capture: "{{ capture_memory }}"
+    alert_id: "{{ alert_id }}"
+
+  tasks:
+    - name: Log forensic snapshot action
+      debug:
+        msg: "Capturing forensic snapshot of {{ target_host }} (memory={{ mem_capture }}) for alert {{ alert_id }}"
+
+    - name: Simulate disk snapshot
+      shell: |
+        echo "SIMULATED: Creating disk snapshot of {{ target_host }}"
+        echo "SIMULATED: snapshot-{{ alert_id }}-disk.img created"
+        echo "Disk snapshot of {{ target_host }} captured at $(date)" >> /tmp/forensic_snapshots.txt
+      register: disk_result
+
+    - name: Simulate memory capture
+      shell: |
+        echo "SIMULATED: Capturing memory dump of {{ target_host }}"
+        echo "SIMULATED: memdump-{{ alert_id }}.raw created"
+        echo "Memory dump of {{ target_host }} captured at $(date)" >> /tmp/forensic_snapshots.txt
+      when: mem_capture | bool
+      register: mem_result
+
+    - name: Record forensic snapshot action
+      debug:
+        msg: "Forensic snapshot of {{ target_host }} complete. Disk: {{ disk_result.stdout }}"

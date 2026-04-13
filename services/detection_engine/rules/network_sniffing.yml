@@ -1,0 +1,26 @@
+rule_id: network_sniffing_001
+name: Network Sniffing Detection
+description: Detects network sniffing and packet capture activities including promiscuous mode activation and unauthorized traffic interception on smart city network segments
+enabled: true
+severity: medium
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 3
+    field: host_id
+    group_by: host_id
+    event_types:
+      - packet_capture
+      - promiscuous_mode
+technique_id: T1040
+technique_name: "Network Sniffing"
+response_actions:
+  - notify_soc
+  - snapshot_forensics
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Network monitoring tools, legitimate traffic analysis, and IDS/IPS sensors
+  may trigger this rule. Whitelist authorized network monitoring infrastructure
+  and security appliance interfaces configured for traffic inspection.

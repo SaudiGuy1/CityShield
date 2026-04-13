@@ -1,0 +1,28 @@
+rule_id: automated_collection_001
+name: Automated Data Collection Detection
+description: Detects automated data collection and scraping activities including bulk database queries, mass file access, and systematic data harvesting from smart city information systems
+enabled: true
+severity: high
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 10
+    field: src_ip
+    group_by: src_ip
+    event_types:
+      - automated_scraping
+      - bulk_data_access
+technique_id: T1119
+technique_name: "Automated Collection"
+response_actions:
+  - rate_limit
+  - block_ip
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-traffic
+false_positive_notes: |
+  Legitimate data analytics pipelines, backup processes, and reporting tools
+  may trigger this rule. Whitelist authorized ETL processes, backup agents,
+  and business intelligence tools by their service accounts and source IPs.

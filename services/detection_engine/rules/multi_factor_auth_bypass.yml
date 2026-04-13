@@ -1,0 +1,29 @@
+rule_id: multi_factor_auth_bypass_001
+name: Multi-Factor Authentication Bypass Detection
+description: Detects MFA bypass attempts including MFA fatigue attacks, push notification bombing, SIM swapping indicators, and token replay attacks targeting smart city administrative accounts
+enabled: true
+severity: critical
+query_window_seconds: 300
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 5
+    field: user_id
+    group_by: user_id
+    event_types:
+      - mfa_bypass
+      - mfa_fatigue
+technique_id: T1556.006
+technique_name: "Multi-Factor Authentication"
+response_actions:
+  - disable_account
+  - revoke_token
+  - reset_credentials
+  - escalate_incident
+  - notify_soc
+log_sources:
+  - logs-network
+false_positive_notes: |
+  Users with connectivity issues, new device enrollments, and MFA provider
+  outages may generate multiple authentication attempts. Correlate with
+  MFA provider status and implement number-matching instead of push approval.

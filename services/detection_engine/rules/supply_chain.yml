@@ -1,0 +1,29 @@
+rule_id: supply_chain_001
+name: Supply Chain Compromise Detection
+description: Detects supply chain compromise indicators including unauthorized package installations, tampered software updates, and unexpected dependency changes in smart city infrastructure components
+enabled: true
+severity: critical
+query_window_seconds: 600
+match_logic:
+  type: event_threshold
+  parameters:
+    threshold: 2
+    field: asset_id
+    group_by: asset_id
+    event_types:
+      - supply_chain_compromise
+      - unauthorized_package
+technique_id: T1195
+technique_name: "Supply Chain Compromise"
+response_actions:
+  - isolate_service
+  - snapshot_forensics
+  - escalate_incident
+  - notify_soc
+log_sources:
+  - logs-network
+  - logs-iot
+false_positive_notes: |
+  Scheduled software updates and authorized package deployments may trigger
+  this rule. Coordinate with change management to whitelist planned maintenance
+  windows and approved software repositories.
