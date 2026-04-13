@@ -55,34 +55,46 @@ function AnimatedRoutes({
         } />
         <Route path="/" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition>
-              <Overview user={user} activeAttack={activeAttack} onAttackEnd={() => setActiveAttack(null)} />
-            </PageTransition>
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <PageTransition>
+                <Overview user={user} activeAttack={activeAttack} onAttackEnd={() => setActiveAttack(null)} />
+              </PageTransition>
+            )}
           </ProtectedRoute>
         } />
         <Route path="/alerts" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition><Alerts activeAttack={activeAttack} /></PageTransition>
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <PageTransition><Alerts activeAttack={activeAttack} /></PageTransition>
+            )}
           </ProtectedRoute>
         } />
         <Route path="/devices" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition><DeviceManagement user={user} /></PageTransition>
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <PageTransition><DeviceManagement user={user} /></PageTransition>
+            )}
           </ProtectedRoute>
         } />
         <Route path="/scenarios" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition><ScenarioBuilder onAttackLaunched={setActiveAttack} /></PageTransition>
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <PageTransition><ScenarioBuilder onAttackLaunched={setActiveAttack} /></PageTransition>
+            )}
           </ProtectedRoute>
         } />
         <Route path="/scenarios/custom" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition><CustomScenarioBuilder /></PageTransition>
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <PageTransition><CustomScenarioBuilder /></PageTransition>
+            )}
           </ProtectedRoute>
         } />
         <Route path="/rules" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition><Rules /></PageTransition>
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <PageTransition><Rules /></PageTransition>
+            )}
           </ProtectedRoute>
         } />
         <Route path="/awareness" element={
@@ -92,20 +104,26 @@ function AnimatedRoutes({
         } />
         <Route path="/proposals" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition><AttackProposals user={user} /></PageTransition>
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <PageTransition><AttackProposals user={user} /></PageTransition>
+            )}
           </ProtectedRoute>
         } />
         <Route path="/admin/users" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <PageTransition><AdminUsers user={user} /></PageTransition>
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <PageTransition><AdminUsers user={user} /></PageTransition>
+            )}
           </ProtectedRoute>
         } />
         <Route path="/city" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            <SmartCityDashboard />
+            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+              <SmartCityDashboard />
+            )}
           </ProtectedRoute>
         } />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to={user?.role === 'Viewer' ? '/awareness' : '/'} />} />
       </Routes>
     </AnimatePresence>
   )

@@ -8,7 +8,8 @@ def test_valid_roles():
     assert Role.ADMINISTRATOR in VALID_ROLES
     assert Role.ANALYST in VALID_ROLES
     assert Role.RESEARCHER in VALID_ROLES
-    assert len(VALID_ROLES) == 3
+    assert Role.VIEWER in VALID_ROLES
+    assert len(VALID_ROLES) == 4
 
 
 def test_role_constants():
@@ -16,3 +17,4 @@ def test_role_constants():
     assert Role.ADMINISTRATOR == "Administrator"
     assert Role.ANALYST == "Analyst"
     assert Role.RESEARCHER == "Researcher"
+    assert Role.VIEWER == "Viewer"

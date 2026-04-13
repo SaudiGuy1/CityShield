@@ -9,10 +9,13 @@ interface NavItem {
   roles?: string[]
 }
 
+const NON_VIEWER_ROLES = ['Administrator', 'Analyst', 'Researcher']
+
 const navItems: NavItem[] = [
   {
     to: '/',
     label: 'Dashboard',
+    roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -25,6 +28,7 @@ const navItems: NavItem[] = [
   {
     to: '/city',
     label: 'Smart City',
+    roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
         <path d="M3 21h18" />
@@ -39,6 +43,7 @@ const navItems: NavItem[] = [
   {
     to: '/alerts',
     label: 'Alerts',
+    roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -49,6 +54,7 @@ const navItems: NavItem[] = [
   {
     to: '/devices',
     label: 'Devices',
+    roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
         <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -60,6 +66,7 @@ const navItems: NavItem[] = [
   {
     to: '/scenarios',
     label: 'Scenarios',
+    roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -69,6 +76,7 @@ const navItems: NavItem[] = [
   {
     to: '/rules',
     label: 'Rules',
+    roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />

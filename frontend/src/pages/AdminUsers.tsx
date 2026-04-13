@@ -127,6 +127,7 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
       case 'Administrator': return 'badge-danger'
       case 'Analyst': return 'badge-primary'
       case 'Researcher': return 'badge-warning'
+      case 'Viewer': return 'badge-info'
       default: return 'badge-secondary'
     }
   }
@@ -231,6 +232,7 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
                   onChange={e => setFormData({ ...formData, role: e.target.value })}
                   required
                 >
+                  <option value="Viewer">Viewer - View security awareness content only</option>
                   <option value="Analyst">Analyst - View and analyze security data, execute response actions</option>
                   <option value="Researcher">Researcher - Design scenarios, configure rules, manage research lab</option>
                   <option value="Administrator">Administrator - Full system access including user management</option>
@@ -334,6 +336,12 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <h3>Role Permissions</h3>
         <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+          <div>
+            <span className="badge badge-info">Viewer</span>
+            <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              View security awareness content only
+            </p>
+          </div>
           <div>
             <span className="badge badge-primary">Analyst</span>
             <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>

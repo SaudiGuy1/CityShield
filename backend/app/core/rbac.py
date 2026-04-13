@@ -8,9 +8,10 @@ class Role:
     ADMINISTRATOR = "Administrator"
     ANALYST = "Analyst"
     RESEARCHER = "Researcher"
+    VIEWER = "Viewer"
 
 # Valid roles
-VALID_ROLES = [Role.ADMINISTRATOR, Role.ANALYST, Role.RESEARCHER]
+VALID_ROLES = [Role.ADMINISTRATOR, Role.ANALYST, Role.RESEARCHER, Role.VIEWER]
 
 
 def require_roles(allowed_roles: List[str]):

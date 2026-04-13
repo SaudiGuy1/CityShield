@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, Suspense, Component, type ReactNode } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
@@ -18,6 +18,49 @@ import NeonPillars from '../components/smartcity/NeonPillars'
 import { TrafficPanel, EnergyPanel, PopulationPanel, AirQualityPanel, NetworkPanel } from '../components/smartcity/panels'
 
 import type { CityAsset } from '../types/assets'
+
+/* ─── Error Boundary for 3D Canvas ─── */
+class Canvas3DErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: string }
+> {
+  state = { hasError: false, error: '' }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', background: 'linear-gradient(180deg, #0a0e1a 0%, #050810 100%)',
+          color: 'var(--text-secondary)', flexDirection: 'column', gap: '1rem',
+        }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ff4060" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: '1.1rem' }}>
+            3D visualization could not load
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', maxWidth: '400px', textAlign: 'center' }}>
+            {this.state.error || 'WebGL may not be supported or an error occurred.'}
+          </div>
+          <button
+            className="btn btn-sm btn-secondary"
+            onClick={() => this.setState({ hasError: false, error: '' })}
+          >
+            Retry
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 /* ─── Mock city assets for standalone mode ─── */
 const MOCK_ASSETS: CityAsset[] = [
@@ -51,7 +94,7 @@ function CitySceneContent({
 }) {
   return (
     <>
-      <PerspectiveCamera makeDefault position={[28, 20, 28]} fov={42} />
+      <PerspectiveCamera makeDefault position={[22, 16, 22]} fov={50} />
       <OrbitControls
         ref={controlsRef}
         enableZoom
@@ -67,14 +110,15 @@ function CitySceneContent({
         autoRotateSpeed={0.3}
       />
 
-      {/* Lighting */}
-      <ambientLight intensity={0.2} color="#1a1a3a" />
-      <directionalLight position={[10, 20, 5]} intensity={0.35} color="#4466aa" castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-camera-far={80} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
-      <pointLight position={[0, 10, 4]} intensity={3.0} distance={25} decay={2} color="#7c4dff" />
-      <pointLight position={[-12, 8, -10]} intensity={2.5} distance={22} decay={2} color="#ff4060" />
-      <pointLight position={[12, 8, -10]} intensity={2.5} distance={22} decay={2} color="#00e5ff" />
-      <pointLight position={[-4, 8, 14]} intensity={2.0} distance={20} decay={2} color="#ff6d00" />
-      <pointLight position={[18, 8, 8]} intensity={2.0} distance={20} decay={2} color="#00e676" />
+      {/* Lighting — brighter for visibility */}
+      <ambientLight intensity={0.5} color="#2a2a5a" />
+      <directionalLight position={[10, 20, 5]} intensity={0.6} color="#6688cc" castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-camera-far={80} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
+      <pointLight position={[0, 12, 4]} intensity={4.0} distance={40} decay={2} color="#7c4dff" />
+      <pointLight position={[-12, 10, -10]} intensity={3.5} distance={35} decay={2} color="#ff4060" />
+      <pointLight position={[12, 10, -10]} intensity={3.5} distance={35} decay={2} color="#00e5ff" />
+      <pointLight position={[-4, 10, 14]} intensity={3.0} distance={30} decay={2} color="#ff6d00" />
+      <pointLight position={[18, 10, 8]} intensity={3.0} distance={30} decay={2} color="#00e676" />
+      <hemisphereLight color="#4466aa" groundColor="#1a0a2e" intensity={0.4} />
 
       <Stars radius={80} depth={50} count={2500} factor={3} saturation={0.1} fade speed={0.3} />
 
@@ -97,10 +141,10 @@ function CitySceneContent({
       <NeonPillars />
 
       {/* Fog + post-processing */}
-      <fog attach="fog" args={['#0a0e1a', 35, 70]} />
+      <fog attach="fog" args={['#0a0e1a', 50, 90]} />
       <EffectComposer>
-        <Bloom intensity={1.8} luminanceThreshold={0.15} luminanceSmoothing={0.7} mipmapBlur />
-        <Vignette eskil={false} offset={0.25} darkness={0.8} />
+        <Bloom intensity={1.5} luminanceThreshold={0.12} luminanceSmoothing={0.6} mipmapBlur />
+        <Vignette eskil={false} offset={0.3} darkness={0.6} />
       </EffectComposer>
     </>
   )
@@ -138,7 +182,7 @@ export default function SmartCityDashboard() {
     if (controlsRef.current) {
       const controls = controlsRef.current
       const startPos = controls.object.position.clone()
-      const endPos = new THREE.Vector3(28, 20, 28)
+      const endPos = new THREE.Vector3(22, 16, 22)
       const startTarget = controls.target.clone()
       const endTarget = new THREE.Vector3(2, 0, 2)
       const duration = 800
@@ -160,23 +204,31 @@ export default function SmartCityDashboard() {
     <div className="hud-viewport with-sidebar">
       {/* 3D Canvas */}
       <div className="hud-canvas">
-        <Canvas
-          shadows
-          dpr={[1, 1.5]}
-          gl={{
-            antialias: true,
-            toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 0.85,
-          }}
-          style={{ width: '100%', height: '100%', background: 'linear-gradient(180deg, #0a0e1a 0%, #050810 100%)' }}
-        >
-          <CitySceneContent
-            assets={MOCK_ASSETS}
-            onDeselect={handleDeselect}
-            autoRotate={autoRotate}
-            controlsRef={controlsRef}
-          />
-        </Canvas>
+        <Canvas3DErrorBoundary>
+          <Canvas
+            shadows
+            dpr={[1, 1.5]}
+            gl={{
+              antialias: true,
+              toneMapping: THREE.ACESFilmicToneMapping,
+              toneMappingExposure: 1.1,
+              powerPreference: 'high-performance',
+            }}
+            style={{ width: '100%', height: '100%', background: 'linear-gradient(180deg, #0a0e1a 0%, #050810 100%)' }}
+            onCreated={({ gl }) => {
+              gl.setClearColor('#0a0e1a')
+            }}
+          >
+            <Suspense fallback={null}>
+              <CitySceneContent
+                assets={MOCK_ASSETS}
+                onDeselect={handleDeselect}
+                autoRotate={autoRotate}
+                controlsRef={controlsRef}
+              />
+            </Suspense>
+          </Canvas>
+        </Canvas3DErrorBoundary>
       </div>
 
       {/* HUD Overlay */}
