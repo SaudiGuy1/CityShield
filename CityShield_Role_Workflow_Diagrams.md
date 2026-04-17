@@ -240,7 +240,6 @@
   └───────────────────┘
 ```
 
-**Outcome:** Researcher generates real attack traffic, validates detection coverage, tunes rules, and documents findings.
 
 ---
 
@@ -370,8 +369,6 @@
    │  cycle            │
    └───────────────────┘
 ```
-
-**Outcome:** Analyst detects, investigates, and resolves security incidents with a complete audit trail.
 
 ---
 
@@ -557,7 +554,6 @@
    └─────────────┘└─────────────┘└─────────────┘
 ```
 
-**Outcome:** Admin maintains platform health, manages users and devices, governs research proposals, and ensures operational readiness.
 
 ---
 

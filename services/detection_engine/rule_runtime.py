@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 # String fields used in aggregations need .keyword suffix because
 # the logs-* indices are auto-mapped (text + keyword sub-field).
 # Numeric fields (dst_port, src_port) are auto-mapped as long and work directly.
-KEYWORD_FIELDS = {"src_ip", "dst_ip", "actor_id", "event_type", "component", "city_zone", "asset_id", "sensor_id"}
+KEYWORD_FIELDS = {"src_ip", "dst_ip", "actor_id", "event_type", "component", "city_zone", "asset_id", "sensor_id",
+                   "user_id", "host_id", "device_id", "target_ip", "protocol", "service", "action"}
 
 
 def _agg_field(field: str) -> str:
@@ -89,6 +90,8 @@ class RuleRuntime:
         elif logic_type == "token_manipulation":
             return self._evaluate_generic_event(rule)
         elif logic_type == "event_threshold":
+            return self._evaluate_generic_event(rule)
+        elif logic_type == "threshold":
             return self._evaluate_generic_event(rule)
         else:
             logger.warning(f"Unknown rule type: {logic_type}")
