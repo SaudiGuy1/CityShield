@@ -1,5 +1,6 @@
 """Device management routes."""
 import logging
+import httpx
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -283,6 +284,132 @@ async def _calculate_realtime_metrics(doc: dict) -> dict:
     }
 
 
+@router.get("/discover")
+async def discover_devices(
+    ip: Optional[str] = Query(None, description="IP address to probe directly"),
+    current_user: dict = Depends(require_admin)
+):
+    """Discover physical devices by probing their HTTP /status endpoint.
+
+    If ?ip= is provided, probes that specific IP.
+    Otherwise, scans logs-* for known physical device IPs and probes each.
+    Only returns devices NOT already registered in city-assets.
+    """
+    discovered = []
+    ips_to_probe = set()
+
+    if ip:
+        # Direct probe — user provided an IP
+        ips_to_probe.add(ip.strip())
+    else:
+        # Gather IPs from OpenSearch logs (physical_esp32 events)
+        try:
+            query = {
+                "query": {"term": {"metadata.device_type.keyword": "physical_esp32"}},
+                "size": 0,
+                "aggs": {"ips": {"terms": {"field": "src_ip", "size": 50}}}
+            }
+            result = opensearch_client.client.search(index="logs-*", body=query)
+            for bucket in result.get("aggregations", {}).get("ips", {}).get("buckets", []):
+                ips_to_probe.add(bucket["key"])
+        except Exception as e:
+            logger.warning(f"OpenSearch discovery scan failed: {e}")
+
+    # Probe each IP by hitting GET /status
+    for probe_ip in ips_to_probe:
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"http://{probe_ip}/status")
+                if resp.status_code != 200:
+                    continue
+                live = resp.json()
+                asset_id = live.get("asset_id", f"esp32-{probe_ip.replace('.', '-')}")
+
+                # Skip if already registered
+                existing = opensearch_client.get_document("city-assets", asset_id)
+                if existing:
+                    continue
+
+                discovered.append({
+                    "asset_id": asset_id,
+                    "ip_address": probe_ip,
+                    "zone": "zone-a",
+                    "signal_state": live.get("signal_state", "unknown"),
+                    "device_mode": live.get("state", "unknown"),
+                    "free_heap": live.get("free_heap"),
+                    "wifi_rssi": live.get("wifi_rssi"),
+                    "uptime_ms": live.get("uptime_ms"),
+                    "live": True,
+                    "event_count": 0,
+                    "traffic_rules": "",
+                })
+        except Exception:
+            # IP didn't respond — not an ESP32 or offline
+            if ip:
+                # User explicitly asked for this IP, report failure
+                discovered.append({
+                    "asset_id": f"unknown-{probe_ip.replace('.', '-')}",
+                    "ip_address": probe_ip,
+                    "live": False,
+                    "zone": "zone-a",
+                    "signal_state": "unknown",
+                    "device_mode": "offline",
+                    "event_count": 0,
+                })
+
+    return {"devices": discovered}
+
+
+@router.post("")
+async def register_device(
+    body: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """Register a new physical or virtual device (admin only)."""
+    asset_id = body.get("asset_id", "").strip()
+    if not asset_id:
+        raise HTTPException(status_code=400, detail="asset_id is required")
+
+    # Check if already exists
+    existing = opensearch_client.get_document("city-assets", asset_id)
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Device {asset_id} already exists")
+
+    now = datetime.utcnow().isoformat() + "Z"
+    doc = {
+        "asset_id": asset_id,
+        "name": body.get("name", asset_id),
+        "asset_type": body.get("asset_type", "traffic_signal"),
+        "asset_class": body.get("asset_class", "iot_device"),
+        "device_type": body.get("device_type", "physical"),
+        "status": "active",
+        "lifecycle_state": "active",
+        "criticality": body.get("criticality", "medium"),
+        "zone": body.get("zone", "zone-a"),
+        "network": {
+            k: v for k, v in {
+                "ip_address": body.get("ip_address", "").strip() or None,
+                "subnet": body.get("subnet", "").strip() or None,
+                "mac_address": body.get("mac_address", "").strip() or None,
+            }.items() if v
+        },
+        "location": {
+            "zone": body.get("zone", "zone-a"),
+            "building": body.get("building", ""),
+        },
+        "tags": body.get("tags", ["physical"]),
+        "@timestamp": now,
+    }
+
+    try:
+        opensearch_client.index_document("city-assets", doc, doc_id=asset_id)
+        logger.info(f"Device {asset_id} registered by {current_user.get('username', 'unknown')}")
+        return {"success": True, "message": f"Device {asset_id} registered", "asset_id": asset_id}
+    except Exception as e:
+        logger.error(f"Failed to register device: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("", response_model=List[Device])
 async def list_devices(
     zone: Optional[str] = Query(None),
@@ -517,16 +644,50 @@ async def perform_device_action(
     if not doc:
         raise HTTPException(status_code=404, detail="Device not found")
 
+    device_type = doc.get("device_type", "simulated")
+    ip_address = (doc.get("network") or {}).get("ip_address")
+
+    # For physical devices, forward commands via HTTP to the device
+    async def send_physical_command(cmd: str) -> dict:
+        if not ip_address:
+            return {"success": False, "message": f"No IP address configured for physical device {asset_id}"}
+        url = f"http://{ip_address}/command"
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.post(url, json={"action": cmd})
+                return resp.json()
+        except Exception as e:
+            logger.error(f"Failed to reach physical device {asset_id} at {ip_address}: {e}")
+            return {"success": False, "message": f"Device unreachable at {ip_address}: {str(e)}"}
+
     # Handle different actions
     if action.action == "disable":
         opensearch_client.update_document("city-assets", asset_id, {"status": "inactive"})
+        if device_type == "physical":
+            hw_result = await send_physical_command("disable")
+            return {"success": True, "message": f"Device {asset_id} disabled", "action": action.action, "hardware": hw_result}
         return {"success": True, "message": f"Device {asset_id} disabled", "action": action.action}
     elif action.action == "enable":
         opensearch_client.update_document("city-assets", asset_id, {"status": "active"})
+        if device_type == "physical":
+            hw_result = await send_physical_command("enable")
+            return {"success": True, "message": f"Device {asset_id} enabled", "action": action.action, "hardware": hw_result}
         return {"success": True, "message": f"Device {asset_id} enabled", "action": action.action}
     elif action.action == "restart":
-        # For simulated devices, this is a no-op but we log it
+        if device_type == "physical":
+            hw_result = await send_physical_command("restart")
+            opensearch_client.update_document("city-assets", asset_id, {"status": "active"})
+            return {"success": True, "message": f"Restart signal sent to physical device {asset_id}", "action": action.action, "hardware": hw_result}
         logger.info(f"Restart requested for device {asset_id} (simulated)")
         return {"success": True, "message": f"Restart signal sent to {asset_id}", "action": action.action}
+    elif action.action == "isolate":
+        opensearch_client.update_document("city-assets", asset_id, {"status": "isolated"})
+        if device_type == "physical":
+            hw_result = await send_physical_command("isolate")
+            return {"success": True, "message": f"Device {asset_id} isolated", "action": action.action, "hardware": hw_result}
+        return {"success": True, "message": f"Device {asset_id} isolated (network segmentation simulated)", "action": action.action}
+    elif action.action == "crash_detected":
+        opensearch_client.update_document("city-assets", asset_id, {"status": "crashed"})
+        return {"success": True, "message": f"Device {asset_id} marked as crashed", "action": action.action}
     else:
         raise HTTPException(status_code=400, detail=f"Unknown action: {action.action}")

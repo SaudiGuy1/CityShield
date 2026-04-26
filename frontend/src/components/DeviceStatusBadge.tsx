@@ -1,5 +1,5 @@
 interface DeviceStatusBadgeProps {
-  status: 'active' | 'inactive' | 'maintenance' | 'decommissioned'
+  status: 'active' | 'inactive' | 'maintenance' | 'decommissioned' | 'isolated' | 'crashed' | string
   size?: 'sm' | 'md' | 'lg'
 }
 
@@ -32,6 +32,20 @@ export default function DeviceStatusBadge({ status, size = 'md' }: DeviceStatusB
           label: 'Decommissioned',
           color: 'var(--accent-danger)',
           bg: 'rgba(239,68,68,0.15)',
+          badgeClass: 'badge-danger'
+        }
+      case 'isolated':
+        return {
+          label: 'Isolated',
+          color: '#f97316',
+          bg: 'rgba(249,115,22,0.15)',
+          badgeClass: 'badge-warning'
+        }
+      case 'crashed':
+        return {
+          label: 'Crashed',
+          color: '#dc2626',
+          bg: 'rgba(220,38,38,0.2)',
           badgeClass: 'badge-danger'
         }
       default:

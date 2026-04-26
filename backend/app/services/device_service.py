@@ -14,6 +14,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 import logging
+import httpx
 from ..db.opensearch_client import opensearch_client
 
 logger = logging.getLogger(__name__)
@@ -269,55 +270,108 @@ class SimulatedDevice(DeviceInterface):
 
 
 class PhysicalDevice(DeviceInterface):
-    """Implementation for physical IoT devices.
+    """Implementation for physical IoT devices via HTTP REST API.
 
-    This is a placeholder for future implementation when real IoT devices
-    are connected to CityShield. Will use protocols like MQTT, CoAP, or
-    device-specific APIs.
-
-    Example integration:
-        - MQTT: Subscribe to device topics, publish commands
-        - CoAP: Send GET/POST requests to device endpoints
-        - REST API: Call device management API
+    Communicates with ESP32 and similar devices that expose an HTTP server
+    with /status and /command endpoints.
     """
 
+    def _get_device_url(self) -> Optional[str]:
+        """Get the device HTTP base URL from config or OpenSearch."""
+        ip = self.config.get("ip_address")
+        if not ip:
+            doc = opensearch_client.get_document("city-assets", self.asset_id)
+            if doc:
+                ip = (doc.get("network") or {}).get("ip_address")
+        return f"http://{ip}" if ip else None
+
     async def get_status(self) -> Dict[str, Any]:
-        """Get status from physical device via protocol."""
-        # TODO: Implement physical device status retrieval
-        # Example for MQTT:
-        #   - Connect to MQTT broker
-        #   - Subscribe to {asset_id}/status topic
-        #   - Wait for status message (with timeout)
-        #   - Return parsed status
-        raise NotImplementedError("Physical device support coming soon")
+        """Get status from physical device via HTTP GET /status."""
+        base_url = self._get_device_url()
+        if not base_url:
+            return {"status": "error", "last_seen": None, "error": "No IP configured"}
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{base_url}/status")
+                data = resp.json()
+                # Also update OpenSearch with latest status
+                opensearch_client.update_document("city-assets", self.asset_id, {
+                    "status": data.get("state", "active"),
+                    "last_seen": datetime.utcnow().isoformat() + "Z"
+                })
+                return {
+                    "status": data.get("state", "active"),
+                    "last_seen": datetime.utcnow().isoformat() + "Z",
+                    "device_type": "physical",
+                    "signal_state": data.get("signal_state"),
+                    "uptime_ms": data.get("uptime_ms"),
+                    "wifi_rssi": data.get("wifi_rssi"),
+                    "free_heap": data.get("free_heap")
+                }
+        except Exception as e:
+            logger.error(f"Failed to reach physical device {self.asset_id}: {e}")
+            return {"status": "offline", "last_seen": None, "error": str(e)}
 
     async def send_command(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
-        """Send command to physical device."""
-        # TODO: Implement physical device command sending
-        # Example for MQTT:
-        #   - Connect to MQTT broker
-        #   - Publish to {asset_id}/command topic
-        #   - Wait for acknowledgment
-        #   - Return result
-        raise NotImplementedError("Physical device support coming soon")
+        """Send command to physical device via HTTP POST /command."""
+        base_url = self._get_device_url()
+        if not base_url:
+            return {"success": False, "message": "No IP configured for device"}
+        try:
+            payload = {"action": command}
+            if params:
+                payload.update(params)
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.post(f"{base_url}/command", json=payload)
+                return resp.json()
+        except Exception as e:
+            logger.error(f"Failed to send command to {self.asset_id}: {e}")
+            return {"success": False, "message": f"Device unreachable: {str(e)}"}
 
     async def get_telemetry(self, duration_hours: int = 1) -> Dict[str, Any]:
-        """Get telemetry from physical device."""
-        # TODO: Implement physical device telemetry retrieval
-        # Could combine:
-        #   - Real-time data from device (via MQTT/CoAP)
-        #   - Historical data from time-series database (InfluxDB, TimescaleDB)
-        raise NotImplementedError("Physical device support coming soon")
+        """Get telemetry — combines live device status with OpenSearch logs."""
+        # Get live status from device
+        live_status = await self.get_status()
+        # Get historical events from OpenSearch (same as simulated)
+        try:
+            now = datetime.utcnow()
+            start_time = (now - timedelta(hours=duration_hours)).isoformat() + "Z"
+            query = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"asset_id": self.asset_id}},
+                            {"range": {"@timestamp": {"gte": start_time}}}
+                        ]
+                    }
+                },
+                "size": 100,
+                "sort": [{"@timestamp": {"order": "desc"}}]
+            }
+            events = opensearch_client.search("logs-*", query)
+            return {
+                "events": events[:20],
+                "metrics": {"total_events": len(events), "duration_hours": duration_hours},
+                "live_status": live_status,
+                "last_update": now.isoformat() + "Z"
+            }
+        except Exception as e:
+            return {"events": [], "metrics": {}, "live_status": live_status, "error": str(e)}
 
     async def get_health(self) -> Dict[str, Any]:
-        """Get health from physical device."""
-        # TODO: Implement physical device health check
-        # Example:
-        #   - Ping device
-        #   - Check last heartbeat
-        #   - Query diagnostic endpoint
-        #   - Return health status
-        raise NotImplementedError("Physical device support coming soon")
+        """Get health by pinging the physical device."""
+        live = await self.get_status()
+        healthy = live.get("status") not in ("offline", "error", "crashed")
+        issues = []
+        if not healthy:
+            issues.append(f"Device status: {live.get('status')} - {live.get('error', 'unreachable')}")
+        return {
+            "healthy": healthy,
+            "issues": issues,
+            "uptime_percentage": 100.0 if healthy else 0.0,
+            "last_heartbeat": live.get("last_seen"),
+            "live_status": live
+        }
 
 
 class DeviceFactory:

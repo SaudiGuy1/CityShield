@@ -113,7 +113,7 @@ export interface Device {
   criticality: 'low' | 'medium' | 'high' | 'critical'
   location?: DeviceLocation
   network?: DeviceNetwork
-  status: 'active' | 'inactive' | 'maintenance' | 'decommissioned'
+  status: 'active' | 'inactive' | 'maintenance' | 'decommissioned' | 'isolated' | 'crashed'
   last_seen?: string
   events_1h: number
   alerts_open: number

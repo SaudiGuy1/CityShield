@@ -13,6 +13,7 @@
 \usepackage{balance}
 \usepackage{enumitem}
 \usepackage{float}
+\usepackage{stfloats}
 \usepackage{url}
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, calc, backgrounds}
@@ -390,8 +391,8 @@ Ten HUD panels overlay the 3D scene, displaying: alert counts by severity, traff
 
 \begin{figure}[t]
 \centering
-\IfFileExists{cityshield_dashboard.png}{%
-    \includegraphics[width=\columnwidth]{cityshield_dashboard.png}%
+\IfFileExists{cityshield_dashboard.jpeg}{%
+    \includegraphics[width=\columnwidth]{cityshield_dashboard.jpeg}%
 }{%
     \framebox[\columnwidth]{\parbox{0.9\columnwidth}{\centering\vspace{2cm}\textit{Screenshot placeholder --- add \texttt{cityshield\_dashboard.png} to compile.}\vspace{2cm}}}%
 }
@@ -427,132 +428,176 @@ Manage user accounts & -- & -- & -- & \checkmark \\
 \end{tabular}
 \end{table}
 
-Each role follows a distinct operational workflow designed to mirror real-world security operations center (SOC) responsibilities. Fig.~\ref{fig:workflows} illustrates the three primary role workflows.
+Each role follows a distinct operational workflow designed to mirror real-world security operations center (SOC) responsibilities. Fig.~\ref{fig:workflows} illustrates the four role workflows arranged in a $2 \times 2$ grid.
 
-\begin{figure*}[t]
+\textbf{Researcher workflow.} Researchers follow three paths (Fig.~\ref{fig:workflows}a): (a)~execute built-in scenarios (DDoS, brute force, malware) against selected targets; (b)~build custom multi-stage attack chains by selecting MITRE ATT\&CK techniques, configuring parameters, and ordering phases; or (c)~provision per-user Ubuntu lab containers connected to all three networks for hands-on exploitation against Metasploitable2 and the IoT target hub. After execution, researchers review alerts filtered by correlation ID and iteratively tune rule thresholds and auto-response configurations.
+
+\textbf{Analyst workflow.} Analysts (Fig.~\ref{fig:workflows}b) monitor the 3D smart city visualization for red-flagged assets, then navigate to the alert dashboard to filter by severity and status. For each alert, three investigation tabs are available: an Analysis tab (MITRE technique details, enrichment indicators, recommended mitigations), an Actions tab (12 executable response actions with confirmation dialogs), and a Related Events tab (raw event timeline with source-destination cross-referencing). After classifying each alert as true or false positive, the analyst executes response actions or resolves the alert, then verifies closure through the audit log.
+
+\textbf{Administrator workflow.} Administrators (Fig.~\ref{fig:workflows}c) perform six task categories: user management (create, enable/disable, delete accounts with role assignment), device management (filter by zone/type/status, view metrics and related alerts), proposal review (approve or reject researcher attack proposals with feedback), rule oversight (toggle rules, review auto-response configurations and execution history), monitoring (OpenSearch Dashboards for custom queries, MTTD/MTTR/accuracy metrics, full audit log), and security awareness training management.
+
+\textbf{Viewer workflow.} Viewers (Fig.~\ref{fig:workflows}d) have the most restricted access: upon login, they are automatically redirected to the security awareness training page---the only page visible in their sidebar. The module offers three role-targeted training programs (general employees, executives, IT/security staff), each comprising 4 training modules, interactive practice scenarios, and a competency quiz with role-appropriate passing thresholds (70\%, 75\%, and 80\% respectively). This role serves non-technical smart city staff who need cybersecurity awareness but do not require access to operational dashboards or detection tools.
+
+\begin{figure*}[!htbp]
 \centering
 \resizebox{\textwidth}{!}{
 \begin{tikzpicture}[
-    node distance=0.45cm,
-    every node/.style={font=\small},
+    every node/.style={font=\scriptsize},
     box/.style={rectangle, draw, rounded corners=3pt, minimum width=2.0cm, minimum height=0.55cm, align=center, font=\scriptsize},
     startbox/.style={box, fill=gray!15, font=\scriptsize\bfseries},
     resbox/.style={box, fill=blue!10},
     anabox/.style={box, fill=orange!10},
     admbox/.style={box, fill=green!10},
-    decbox/.style={diamond, draw, aspect=2, inner sep=1pt, font=\scriptsize, fill=yellow!8},
-    arrow/.style={-{Stealth[length=1.8mm]}, thick, gray!70},
-    title/.style={font=\small\bfseries, fill=white}
+    vwbox/.style={box, fill=violet!10},
+    decbox/.style={box, fill=yellow!12},
+    myarrow/.style={-{Stealth[length=1.8mm]}, thick, gray!70},
+    coltitle/.style={font=\normalsize\bfseries}
 ]
 
-% ── RESEARCHER COLUMN ──
-\node[title] (rt) at (0, 0) {Researcher};
-\node[startbox, below=0.3cm of rt] (r1) {Login};
-\node[resbox, below=of r1] (r2) {Dashboard\\Review stats};
-\node[resbox, below=of r2] (r3) {Choose Path};
-\node[resbox, below left=0.5cm and 0.3cm of r3] (r4a) {Built-in\\Scenario};
-\node[resbox, below=of r3] (r4b) {Custom\\Scenario};
-\node[resbox, below right=0.5cm and 0.3cm of r3] (r4c) {Research\\Lab};
-\node[resbox, below=0.8cm of r4a] (r5a) {Select Target\\Run Scenario};
-\node[resbox, below=0.8cm of r4b] (r5b) {ATT\&CK Techniques\\Build Chain};
-\node[resbox, below=0.8cm of r4c] (r5c) {Launch Ubuntu\\Container};
-\node[resbox, below=1.5cm of r3, yshift=-2.8cm] (r6) {Review Alerts\\by Correlation ID};
-\node[resbox, below=of r6] (r7) {Tune Rules\\Thresholds};
-\node[resbox, below=of r7] (r8) {Configure\\Auto-Response};
+% ════════════════════════════════════════
+% TOP-LEFT: RESEARCHER (origin 0,0)
+% ════════════════════════════════════════
+\node[coltitle] at (0, 0) {(a) Researcher};
+\node[startbox] (r1) at (0, -0.8) {Login};
+\node[resbox]   (r2) at (0, -1.8) {Dashboard};
+\node[resbox]   (r3) at (0, -2.8) {Choose Path};
+\node[resbox]   (r4a) at (-2.2, -4.0) {Built-in Scenario};
+\node[resbox]   (r4b) at (0, -4.0) {Custom Scenario};
+\node[resbox]   (r4c) at (2.2, -4.0) {Research Lab};
+\node[resbox]   (r5a) at (-2.2, -5.2) {Select Target};
+\node[resbox]   (r5b) at (0, -5.2) {Build Attack Chain};
+\node[resbox]   (r5c) at (2.2, -5.2) {Launch Container};
+\node[resbox]   (r6) at (0, -6.4) {Review Alerts};
+\node[resbox]   (r7) at (0, -7.4) {Tune Thresholds};
+\node[resbox]   (r8) at (0, -8.4) {Configure Auto-Response};
 
-\draw[arrow] (r1) -- (r2);
-\draw[arrow] (r2) -- (r3);
-\draw[arrow] (r3) -| (r4a);
-\draw[arrow] (r3) -- (r4b);
-\draw[arrow] (r3) -| (r4c);
-\draw[arrow] (r4a) -- (r5a);
-\draw[arrow] (r4b) -- (r5b);
-\draw[arrow] (r4c) -- (r5c);
-\draw[arrow] (r5a) |- (r6);
-\draw[arrow] (r5b) -- (r6);
-\draw[arrow] (r5c) |- (r6);
-\draw[arrow] (r6) -- (r7);
-\draw[arrow] (r7) -- (r8);
+\draw[myarrow] (r1) -- (r2);
+\draw[myarrow] (r2) -- (r3);
+\draw[myarrow] (r3) -| (r4a);
+\draw[myarrow] (r3) -- (r4b);
+\draw[myarrow] (r3) -| (r4c);
+\draw[myarrow] (r4a) -- (r5a);
+\draw[myarrow] (r4b) -- (r5b);
+\draw[myarrow] (r4c) -- (r5c);
+\draw[myarrow] (r5a) |- (r6);
+\draw[myarrow] (r5b) -- (r6);
+\draw[myarrow] (r5c) |- (r6);
+\draw[myarrow] (r6) -- (r7);
+\draw[myarrow] (r7) -- (r8);
 
-% ── ANALYST COLUMN ──
-\node[title] (at) at (6.5, 0) {Analyst};
-\node[startbox, below=0.3cm of at] (a1) {Login};
-\node[anabox, below=of a1] (a2) {Dashboard\\Check alerts};
-\node[anabox, below=of a2] (a3) {3D Smart City\\Scan for red};
-\node[anabox, below=of a3] (a4) {Alert List\\Filter \& Sort};
-\node[anabox, below=of a4] (a5) {Expand Alert\\Details};
-\node[anabox, below left=0.5cm and 0.1cm of a5] (a6a) {Analysis Tab\\MITRE info};
-\node[anabox, below=of a5] (a6b) {Actions Tab\\block / isolate};
-\node[anabox, below right=0.5cm and 0.1cm of a5] (a6c) {Events Tab\\Raw timeline};
-\node[decbox, below=1.5cm of a5, yshift=-1.0cm] (a7) {True\\Positive?};
-\node[anabox, below left=0.5cm and 0.4cm of a7] (a8a) {Execute\\Response Action};
-\node[anabox, below right=0.5cm and 0.4cm of a7] (a8b) {Resolve as\\False Positive};
-\node[anabox, below=1.5cm of a7, yshift=-0.5cm] (a9) {Review Audit\\Log \& Verify};
-\node[anabox, below=of a9] (a10) {Next Alert\\Continue triage};
+% ════════════════════════════════════════
+% TOP-RIGHT: ANALYST (origin 10,0)
+% ════════════════════════════════════════
+\node[coltitle] at (10, 0) {(b) Analyst};
+\node[startbox] (a1) at (10, -0.8) {Login};
+\node[anabox]   (a2) at (10, -1.8) {Dashboard};
+\node[anabox]   (a3) at (10, -2.8) {3D City View};
+\node[anabox]   (a4) at (10, -3.8) {Alert List};
+\node[anabox]   (a5) at (10, -4.8) {Expand Alert};
+\node[anabox]   (a6a) at (8.0, -5.9) {Analysis Tab};
+\node[anabox]   (a6b) at (10, -5.9) {Actions Tab};
+\node[anabox]   (a6c) at (12.0, -5.9) {Events Tab};
+\node[decbox]   (a7) at (10, -7.0) {True Positive?};
+\node[anabox]   (a8a) at (8.2, -8.1) {Execute Action};
+\node[anabox]   (a8b) at (11.8, -8.1) {Resolve as FP};
+\node[anabox]   (a9) at (10, -9.2) {Review Audit Log};
 
-\draw[arrow] (a1) -- (a2);
-\draw[arrow] (a2) -- (a3);
-\draw[arrow] (a3) -- (a4);
-\draw[arrow] (a4) -- (a5);
-\draw[arrow] (a5) -| (a6a);
-\draw[arrow] (a5) -- (a6b);
-\draw[arrow] (a5) -| (a6c);
-\draw[arrow] (a6a) |- (a7);
-\draw[arrow] (a6b) -- (a7);
-\draw[arrow] (a6c) |- (a7);
-\draw[arrow] (a7) -| node[above, font=\tiny, pos=0.3] {Yes} (a8a);
-\draw[arrow] (a7) -| node[above, font=\tiny, pos=0.3] {No} (a8b);
-\draw[arrow] (a8a) |- (a9);
-\draw[arrow] (a8b) |- (a9);
-\draw[arrow] (a9) -- (a10);
+\draw[myarrow] (a1) -- (a2);
+\draw[myarrow] (a2) -- (a3);
+\draw[myarrow] (a3) -- (a4);
+\draw[myarrow] (a4) -- (a5);
+\draw[myarrow] (a5) -| (a6a);
+\draw[myarrow] (a5) -- (a6b);
+\draw[myarrow] (a5) -| (a6c);
+\draw[myarrow] (a6a) |- (a7);
+\draw[myarrow] (a6b) -- (a7);
+\draw[myarrow] (a6c) |- (a7);
+\draw[myarrow] (a7) -| node[above, font=\tiny, pos=0.25] {Yes} (a8a);
+\draw[myarrow] (a7) -| node[above, font=\tiny, pos=0.25] {No} (a8b);
+\draw[myarrow] (a8a) |- (a9);
+\draw[myarrow] (a8b) |- (a9);
 
-% ── ADMIN COLUMN ──
-\node[title] (dt) at (13, 0) {Administrator};
-\node[startbox, below=0.3cm of dt] (d1) {Login};
-\node[admbox, below=of d1] (d2) {Dashboard\\Full health check};
-\node[admbox, below=of d2] (d3) {Admin Tasks};
-\node[admbox, below left=0.5cm and 0.6cm of d3] (d4a) {User Mgmt\\Create/Disable};
-\node[admbox, below left=0.5cm and -0.3cm of d3] (d4b) {Device Mgmt\\Status/Logs};
-\node[admbox, below right=0.5cm and -0.3cm of d3] (d4c) {Proposal\\Review};
-\node[admbox, below right=0.5cm and 0.6cm of d3] (d4d) {Rule\\Oversight};
-\node[admbox, below=2.0cm of d3] (d5) {Monitoring};
-\node[admbox, below left=0.5cm and 0.3cm of d5] (d6a) {OpenSearch\\Dashboards};
-\node[admbox, below=of d5] (d6b) {Metrics\\MTTD / MTTR};
-\node[admbox, below right=0.5cm and 0.3cm of d5] (d6c) {Audit Log\\All actions};
-\node[admbox, below=2.5cm of d5, yshift=0.2cm] (d7) {Security\\Awareness};
+% ── Top row separator ──
+\draw[dashed, gray!40] (5.5, 0.4) -- (5.5, -9.5);
 
-\draw[arrow] (d1) -- (d2);
-\draw[arrow] (d2) -- (d3);
-\draw[arrow] (d3) -| (d4a);
-\draw[arrow] (d3) -- (d4b);
-\draw[arrow] (d3) -- (d4c);
-\draw[arrow] (d3) -| (d4d);
-\draw[arrow] (d4a) |- (d5);
-\draw[arrow] (d4b) -- (d5);
-\draw[arrow] (d4c) -- (d5);
-\draw[arrow] (d4d) |- (d5);
-\draw[arrow] (d5) -| (d6a);
-\draw[arrow] (d5) -- (d6b);
-\draw[arrow] (d5) -| (d6c);
-\draw[arrow] (d6a) |- (d7);
-\draw[arrow] (d6b) -- (d7);
-\draw[arrow] (d6c) |- (d7);
+% ── Horizontal separator between rows ──
+\draw[dashed, gray!40] (-4.0, -10.2) -- (14.5, -10.2);
 
-% ── Separators ──
-\draw[dashed, gray!40] (3.5, 0.3) -- (3.5, -10.5);
-\draw[dashed, gray!40] (9.8, 0.3) -- (9.8, -10.5);
+% ════════════════════════════════════════
+% BOTTOM-LEFT: ADMINISTRATOR (origin 0, -11)
+% ════════════════════════════════════════
+\node[coltitle] at (0, -11.0) {(c) Administrator};
+\node[startbox] (d1) at (0, -11.8) {Login};
+\node[admbox]   (d2) at (0, -12.8) {Dashboard};
+\node[admbox]   (d3) at (0, -13.8) {Admin Tasks};
+\node[admbox]   (d4a) at (-2.5, -15.0) {User Mgmt};
+\node[admbox]   (d4b) at (-0.8, -15.0) {Device Mgmt};
+\node[admbox]   (d4c) at (0.8, -15.0) {Proposals};
+\node[admbox]   (d4d) at (2.5, -15.0) {Rule Oversight};
+\node[admbox]   (d5) at (0, -16.2) {Monitoring};
+\node[admbox]   (d6a) at (-2.0, -17.3) {OpenSearch Dashboards};
+\node[admbox]   (d6b) at (0, -17.3) {MTTD/MTTR Metrics};
+\node[admbox]   (d6c) at (2.0, -17.3) {Audit Log};
+\node[admbox]   (d7) at (0, -18.4) {Security Awareness};
+
+\draw[myarrow] (d1) -- (d2);
+\draw[myarrow] (d2) -- (d3);
+\draw[myarrow] (d3) -| (d4a);
+\draw[myarrow] (d3) -- (d4b);
+\draw[myarrow] (d3) -- (d4c);
+\draw[myarrow] (d3) -| (d4d);
+\draw[myarrow] (d4a) |- (d5);
+\draw[myarrow] (d4b) -- (d5);
+\draw[myarrow] (d4c) -- (d5);
+\draw[myarrow] (d4d) |- (d5);
+\draw[myarrow] (d5) -| (d6a);
+\draw[myarrow] (d5) -- (d6b);
+\draw[myarrow] (d5) -| (d6c);
+\draw[myarrow] (d6a) |- (d7);
+\draw[myarrow] (d6b) -- (d7);
+\draw[myarrow] (d6c) |- (d7);
+
+% ════════════════════════════════════════
+% BOTTOM-RIGHT: VIEWER (origin 10, -11)
+% ════════════════════════════════════════
+\node[coltitle] at (10, -11.0) {(d) Viewer};
+\node[startbox] (v1) at (10, -11.8) {Login};
+\node[vwbox]    (v2) at (10, -12.8) {Auto-redirect to /awareness};
+\node[vwbox]    (v3) at (10, -13.8) {Security Awareness Page};
+\node[vwbox]    (v4a) at (7.8, -15.0) {Employee Training};
+\node[vwbox]    (v4b) at (10, -15.0) {Executive Training};
+\node[vwbox]    (v4c) at (12.2, -15.0) {IT/Security Training};
+\node[vwbox]    (v5a) at (7.8, -16.1) {4 Modules};
+\node[vwbox]    (v5b) at (10, -16.1) {4 Modules};
+\node[vwbox]    (v5c) at (12.2, -16.1) {4 Modules};
+\node[vwbox]    (v6a) at (7.8, -17.2) {Quiz (70\%)};
+\node[vwbox]    (v6b) at (10, -17.2) {Quiz (75\%)};
+\node[vwbox]    (v6c) at (12.2, -17.2) {Quiz (80\%)};
+\node[vwbox]    (v7) at (10, -18.3) {Completion};
+
+\draw[myarrow] (v1) -- (v2);
+\draw[myarrow] (v2) -- (v3);
+\draw[myarrow] (v3) -| (v4a);
+\draw[myarrow] (v3) -- (v4b);
+\draw[myarrow] (v3) -| (v4c);
+\draw[myarrow] (v4a) -- (v5a);
+\draw[myarrow] (v4b) -- (v5b);
+\draw[myarrow] (v4c) -- (v5c);
+\draw[myarrow] (v5a) -- (v6a);
+\draw[myarrow] (v5b) -- (v6b);
+\draw[myarrow] (v5c) -- (v6c);
+\draw[myarrow] (v6a) |- (v7);
+\draw[myarrow] (v6b) -- (v7);
+\draw[myarrow] (v6c) |- (v7);
+
+% ── Bottom row separator ──
+\draw[dashed, gray!40] (5.5, -10.2) -- (5.5, -19.0);
 
 \end{tikzpicture}
 }
-\caption{Role-based operational workflows. Researchers design and execute attack campaigns, then tune detection rules. Analysts follow a triage-investigate-respond cycle on individual alerts. Administrators oversee users, devices, proposals, and platform-wide metrics.}
+\caption{Role-based operational workflows ($2 \times 2$ layout). (a)~Researchers design and execute attack campaigns, then tune detection rules. (b)~Analysts follow a triage-investigate-respond cycle. (c)~Administrators oversee users, devices, proposals, and platform-wide metrics. (d)~Viewers access only the security awareness training module.}
 \label{fig:workflows}
 \end{figure*}
-
-\textbf{Researcher workflow.} Researchers follow three paths (Fig.~\ref{fig:workflows}, left): (a)~execute built-in scenarios (DDoS, brute force, malware) against selected targets; (b)~build custom multi-stage attack chains by selecting MITRE ATT\&CK techniques, configuring parameters, and ordering phases; or (c)~provision per-user Ubuntu lab containers connected to all three networks for hands-on exploitation against Metasploitable2 and the IoT target hub. After execution, researchers review alerts filtered by correlation ID and iteratively tune rule thresholds and auto-response configurations.
-
-\textbf{Analyst workflow.} Analysts (Fig.~\ref{fig:workflows}, center) monitor the 3D smart city visualization for red-flagged assets, then navigate to the alert dashboard to filter by severity and status. For each alert, three investigation tabs are available: an Analysis tab (MITRE technique details, enrichment indicators, recommended mitigations), an Actions tab (12 executable response actions with confirmation dialogs), and a Related Events tab (raw event timeline with source-destination cross-referencing). After classifying each alert as true or false positive, the analyst executes response actions or resolves the alert, then verifies closure through the audit log.
-
-\textbf{Administrator workflow.} Administrators (Fig.~\ref{fig:workflows}, right) perform six task categories: user management (create, enable/disable, delete accounts with role assignment), device management (filter by zone/type/status, view metrics and related alerts), proposal review (approve or reject researcher attack proposals with feedback), rule oversight (toggle rules, review auto-response configurations and execution history), monitoring (OpenSearch Dashboards for custom queries, MTTD/MTTR/accuracy metrics, full audit log), and security awareness training management.
 
 % ═══════════════════════════════════════════════════════════════════
 % VII. DETECTION AND RESPONSE PIPELINE
@@ -562,107 +607,98 @@ Each role follows a distinct operational workflow designed to mirror real-world 
 
 Fig.~\ref{fig:detection_flow} illustrates the end-to-end detection and response flow, from raw event ingestion through alert generation, policy validation, playbook execution, and audit logging.
 
-\begin{figure*}[t]
+\begin{figure*}[!htbp]
 \centering
 \resizebox{\textwidth}{!}{
 \begin{tikzpicture}[
-    node distance=0.4cm and 0.6cm,
-    every node/.style={font=\small},
-    source/.style={rectangle, draw, rounded corners, minimum width=1.8cm, minimum height=0.7cm, fill=blue!8, font=\scriptsize, align=center},
-    process/.style={rectangle, draw, rounded corners, minimum width=2.0cm, minimum height=0.7cm, fill=orange!10, font=\scriptsize, align=center},
-    decision/.style={diamond, draw, aspect=2.2, inner sep=1pt, font=\scriptsize, fill=yellow!8, align=center},
-    store/.style={cylinder, draw, shape border rotate=90, minimum width=1.4cm, minimum height=0.6cm, fill=green!8, aspect=0.25, font=\scriptsize, align=center},
-    action/.style={rectangle, draw, rounded corners, minimum width=1.8cm, minimum height=0.7cm, fill=red!10, font=\scriptsize, align=center},
-    audit/.style={rectangle, draw, rounded corners, minimum width=1.8cm, minimum height=0.7cm, fill=purple!10, font=\scriptsize, align=center},
-    arrow/.style={-{Stealth[length=2mm]}, thick, gray!70},
-    darrow/.style={-{Stealth[length=2mm]}, thick, red!60},
-    label/.style={font=\tiny, fill=white, inner sep=1pt}
+    every node/.style={font=\scriptsize},
+    source/.style={rectangle, draw, rounded corners, minimum width=2.0cm, minimum height=0.7cm, fill=blue!8, align=center, font=\scriptsize},
+    process/.style={rectangle, draw, rounded corners, minimum width=2.2cm, minimum height=0.7cm, fill=orange!10, align=center, font=\scriptsize},
+    store/.style={cylinder, draw, shape border rotate=90, minimum width=1.6cm, minimum height=0.7cm, fill=green!10, aspect=0.25, align=center, font=\scriptsize},
+    decision/.style={diamond, draw, aspect=2.5, inner sep=2pt, fill=yellow!12, align=center, font=\scriptsize},
+    action/.style={rectangle, draw, rounded corners, minimum width=2.0cm, minimum height=0.7cm, fill=red!10, align=center, font=\scriptsize},
+    audit/.style={rectangle, draw, rounded corners, minimum width=2.0cm, minimum height=0.7cm, fill=purple!10, align=center, font=\scriptsize},
+    frontend/.style={rectangle, draw, rounded corners, minimum width=3.0cm, minimum height=0.7cm, fill=teal!10, align=center, font=\scriptsize},
+    myarrow/.style={-{Stealth[length=2mm]}, thick, gray!70},
+    redarrow/.style={-{Stealth[length=2mm]}, thick, red!60},
+    lbl/.style={font=\tiny, fill=white, inner sep=1pt},
+    stglbl/.style={font=\scriptsize\bfseries, gray}
 ]
 
 % ── Stage 1: Event Sources ──
-\node[source] (tsim) {Traffic Sim\\:8001};
-\node[source, right=0.4cm of tsim] (isim) {IoT Sim\\:8002};
-\node[source, right=0.4cm of isim] (nsim) {Network Emu.\\:8003};
-\node[source, right=0.4cm of nsim] (atk) {Attack Engine\\injection};
+\node[stglbl] at (-2.2, 0) {Stage 1};
+\node[source] (tsim) at (0.5, 0) {Traffic Sim :8001};
+\node[source] (isim) at (3.5, 0) {IoT Sim :8002};
+\node[source] (nsim) at (6.5, 0) {Network Emu :8003};
+\node[source] (atk)  at (9.5, 0) {Attack Engine};
 
-% ── OpenSearch ──
-\node[store, below=0.8cm of $(isim)!0.5!(nsim)$] (os) {OpenSearch\\logs-*};
+% ── OpenSearch store ──
+\node[store] (os) at (5.0, -1.8) {OpenSearch logs-*};
 
-\draw[arrow] (tsim) -- (os);
-\draw[arrow] (isim) -- (os);
-\draw[arrow] (nsim) -- (os);
-\draw[arrow] (atk) -- (os);
+\draw[myarrow] (tsim) -- (os);
+\draw[myarrow] (isim) -- (os);
+\draw[myarrow] (nsim) -- (os);
+\draw[myarrow] (atk) -- (os);
 
-% ── Stage 2: Detection Engine ──
-\node[process, below=0.8cm of os] (poll) {Detection Engine\\polls every 30s};
-\node[process, right=2.0cm of poll] (eval) {Rule Evaluator};
+% ── Stage 2: Detection ──
+\node[stglbl] at (-2.2, -3.5) {Stage 2};
+\node[process] (det) at (1.5, -3.5) {Detection Engine (30s poll)};
+\node[process] (eval) at (5.5, -3.5) {Rule Evaluator};
 
-\draw[arrow] (os) -- node[label, right] {query} (poll);
-\draw[arrow] (poll) -- node[label, above] {75 rules} (eval);
+\draw[myarrow] (os) -- (det);
+\draw[myarrow] (det) -- node[lbl, above] {75 rules} (eval);
 
 % ── Evaluator split ──
-\node[process, above right=0.3cm and 1.5cm of eval] (spec) {11 Specialized\\Evaluators};
-\node[process, below right=0.3cm and 1.5cm of eval] (gen) {Generic Threshold\\Evaluator (54)};
+\node[process] (spec) at (10.0, -2.7) {11 Specialized Evaluators};
+\node[process] (gen)  at (10.0, -4.3) {Generic Threshold (54 rules)};
 
-\draw[arrow] (eval) -| node[label, above, pos=0.3] {21 rules} (spec);
-\draw[arrow] (eval) -| node[label, below, pos=0.3] {54 rules} (gen);
+\draw[myarrow] (eval) -- node[lbl, above, pos=0.35] {21 rules} (spec);
+\draw[myarrow] (eval) -- node[lbl, below, pos=0.35] {54 rules} (gen);
 
-% ── Threshold check ──
-\node[decision, right=1.5cm of $(spec)!0.5!(gen)$] (thresh) {Threshold\\exceeded?};
+% ── Threshold decision ──
+\node[decision] (thresh) at (14.5, -3.5) {Threshold exceeded?};
 
-\draw[arrow] (spec) -| (thresh);
-\draw[arrow] (gen) -| (thresh);
+\draw[myarrow] (spec) -| (thresh);
+\draw[myarrow] (gen)  -| (thresh);
 
-% ── Alert generation ──
-\node[store, right=1.5cm of thresh] (alerts) {alerts\\index};
-\node[below=0.15cm of thresh, font=\tiny] {No $\rightarrow$ skip};
+% ── Alert store ──
+\node[store] (alerts) at (18.5, -3.5) {alerts index};
 
-\draw[arrow] (thresh) -- node[label, above] {Yes} (alerts);
+\draw[myarrow] (thresh) -- node[lbl, above] {Yes} (alerts);
+\node[font=\tiny, gray] at (14.5, -4.5) {No: skip};
 
-% ── Stage 3: Response Manager ──
-\node[process, below=1.5cm of poll] (rmgr) {Response Mgr\\polls every 30s};
+% ── Stage 3: Response ──
+\node[stglbl] at (-2.2, -6.2) {Stage 3};
+\node[process]  (rmgr)   at (1.5, -6.2) {Response Mgr (30s poll)};
+\node[decision] (wl)     at (5.8, -6.2) {Whitelisted?};
+\node[decision] (policy) at (10.5, -6.2) {Auto-response OK?};
+\node[action]   (play)   at (14.5, -6.2) {Ansible Playbook};
+\node[audit]    (auditlog) at (18.5, -6.2) {action-audit-log};
 
-\draw[arrow] (alerts) |- (rmgr);
+\draw[myarrow] (alerts) -- (rmgr);
+\draw[myarrow] (rmgr) -- (wl);
+\draw[myarrow] (wl) -- node[lbl, above] {No} (policy);
+\draw[myarrow] (policy) -- node[lbl, above] {Yes} (play);
+\draw[myarrow] (play) -- (auditlog);
 
-% ── Whitelist check ──
-\node[decision, right=1.8cm of rmgr] (wl) {Whitelisted\\IP?};
-\draw[arrow] (rmgr) -- (wl);
+% ── Whitelist resolve branch ──
+\node[process] (resolve) at (5.8, -8.0) {Auto-resolve alert};
+\draw[redarrow] (wl) -- node[lbl, right] {Yes} (resolve);
 
-% ── Policy check ──
-\node[decision, right=1.8cm of wl] (policy) {Auto-resp.\\conditions\\met?};
-\draw[arrow] (wl) -- node[label, above] {No} (policy);
+\node[font=\tiny, gray] at (10.5, -7.2) {No: skip};
 
-\node[process, below=0.6cm of wl] (resolve) {Auto-resolve\\alert};
-\draw[darrow] (wl) -- node[label, right] {Yes} (resolve);
+% ── Stage 4: Presentation ──
+\node[stglbl] at (-2.2, -8.8) {Stage 4};
+\node[process]  (update) at (14.5, -8.0) {Update alert: resolved};
+\node[frontend] (fe)     at (10.5, -9.5) {React Frontend (REST + WebSocket)};
 
-% ── Playbook execution ──
-\node[action, right=1.8cm of policy] (play) {Ansible\\Playbook};
-\draw[arrow] (policy) -- node[label, above] {Yes} (play);
-
-\node[below=0.15cm of policy, font=\tiny] {No $\rightarrow$ skip};
-
-% ── Audit ──
-\node[audit, below=0.8cm of play] (auditlog) {action-audit-log\\index};
-\draw[arrow] (play) -- (auditlog);
-
-% ── Update alert ──
-\node[process, left=1.5cm of auditlog] (update) {Update alert\\status: resolved};
-\draw[arrow] (auditlog) -- (update);
-
-% ── Frontend ──
-\node[source, below=0.8cm of $(rmgr)!0.5!(update)$, fill=teal!10, minimum width=3.0cm] (fe) {React Frontend\\REST + WebSocket};
-\draw[arrow] (alerts) |- (fe);
-\draw[arrow] (auditlog) |- (fe);
-
-% ── Stage labels ──
-\node[font=\scriptsize\bfseries, gray, above=0.15cm of tsim, xshift=-0.3cm] {Stage 1: Generation};
-\node[font=\scriptsize\bfseries, gray, left=0.1cm of poll] {Stage 2: Detection};
-\node[font=\scriptsize\bfseries, gray, left=0.1cm of rmgr] {Stage 3: Response};
-\node[font=\scriptsize\bfseries, gray, left=0.1cm of fe, xshift=-0.2cm] {Stage 4: Presentation};
+\draw[myarrow] (auditlog) -- (update);
+\draw[myarrow] (alerts) |- (fe);
+\draw[myarrow] (auditlog) |- (fe);
 
 \end{tikzpicture}
 }
-\caption{Detection and response pipeline flow. Events from four sources are indexed in OpenSearch. The detection engine evaluates 75 rules using specialized or generic evaluators, generating alerts when thresholds are exceeded. The response manager validates whitelist, auto-response conditions, and executes Ansible playbooks with full audit traceability.}
+\caption{Detection and response pipeline flow. Events from four sources are indexed in OpenSearch (cylinder). The detection engine evaluates 75 rules using specialized or generic evaluators; diamond nodes indicate decision points. The response manager validates whitelist and auto-response conditions, then executes Ansible playbooks with full audit traceability.}
 \label{fig:detection_flow}
 \end{figure*}
 
