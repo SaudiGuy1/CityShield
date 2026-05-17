@@ -8,10 +8,11 @@ class Role:
     ADMINISTRATOR = "Administrator"
     ANALYST = "Analyst"
     RESEARCHER = "Researcher"
+    MANAGER = "Manager"
     VIEWER = "Viewer"
 
 # Valid roles
-VALID_ROLES = [Role.ADMINISTRATOR, Role.ANALYST, Role.RESEARCHER, Role.VIEWER]
+VALID_ROLES = [Role.ADMINISTRATOR, Role.ANALYST, Role.RESEARCHER, Role.MANAGER, Role.VIEWER]
 
 
 def require_roles(allowed_roles: List[str]):
@@ -41,3 +42,8 @@ def require_analyst_or_admin(current_user: dict = Depends(get_current_user)):
 def require_researcher_or_admin(current_user: dict = Depends(get_current_user)):
     """Require researcher or administrator role."""
     return require_roles([Role.RESEARCHER, Role.ADMINISTRATOR])(current_user)
+
+
+def require_manager_or_admin(current_user: dict = Depends(get_current_user)):
+    """Require manager or administrator role."""
+    return require_roles([Role.MANAGER, Role.ADMINISTRATOR])(current_user)

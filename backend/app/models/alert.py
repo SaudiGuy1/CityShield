@@ -3,6 +3,13 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel
 
+from .alert_resolution import AlertResolution
+
+
+# Canonical alert status values. "resolved" is reserved for alerts that have
+# gone through the resolution workflow (a `resolution` object is attached).
+ALERT_STATUSES = ("open", "triaged", "resolved")
+
 
 class AlertBase(BaseModel):
     """Base alert model."""
@@ -27,13 +34,14 @@ class Alert(AlertBase):
     """Alert model."""
     enrichment: Optional[Dict[str, Any]] = None
     response: Optional[Dict[str, Any]] = None
+    resolution: Optional[AlertResolution] = None
 
     class Config:
         from_attributes = True
 
 
 class AlertUpdate(BaseModel):
-    """Alert update model."""
+    """Alert update model (legacy lightweight update)."""
     status: Optional[str] = None
     enrichment: Optional[Dict[str, Any]] = None
     response: Optional[Dict[str, Any]] = None

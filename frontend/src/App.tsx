@@ -12,10 +12,19 @@ import AdminUsers from './pages/AdminUsers'
 import AttackProposals from './pages/AttackProposals'
 import SecurityAwareness from './pages/SecurityAwareness'
 import SmartCityDashboard from './pages/SmartCityDashboard'
+import TeamAnalytics from './pages/TeamAnalytics'
+import ResolutionAnalytics from './pages/ResolutionAnalytics'
+import { useLang } from './hooks/useLang'
+import { useTheme } from './hooks/useTheme'
 import Nav from './components/Nav'
 import ProtectedRoute from './components/ProtectedRoute'
 import CityBackground from './components/CityBackground'
 import PageTransition from './components/PageTransition'
+
+// Roles whose default surface is restricted away from the analyst dashboard.
+// Each entry is redirected to its landing route when it visits a non-permitted page.
+const LIMITED_ROLES = ['Viewer', 'Manager']
+const LANDING: Record<string, string> = { Viewer: '/awareness', Manager: '/team' }
 
 export interface ActiveAttack {
   runId: string
@@ -55,7 +64,7 @@ function AnimatedRoutes({
         } />
         <Route path="/" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <PageTransition>
                 <Overview user={user} activeAttack={activeAttack} onAttackEnd={() => setActiveAttack(null)} />
               </PageTransition>
@@ -64,35 +73,35 @@ function AnimatedRoutes({
         } />
         <Route path="/alerts" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <PageTransition><Alerts activeAttack={activeAttack} /></PageTransition>
             )}
           </ProtectedRoute>
         } />
         <Route path="/devices" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <PageTransition><DeviceManagement user={user} /></PageTransition>
             )}
           </ProtectedRoute>
         } />
         <Route path="/scenarios" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <PageTransition><ScenarioBuilder onAttackLaunched={setActiveAttack} /></PageTransition>
             )}
           </ProtectedRoute>
         } />
         <Route path="/scenarios/custom" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <PageTransition><CustomScenarioBuilder /></PageTransition>
             )}
           </ProtectedRoute>
         } />
         <Route path="/rules" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <PageTransition><Rules /></PageTransition>
             )}
           </ProtectedRoute>
@@ -102,28 +111,42 @@ function AnimatedRoutes({
             <PageTransition><SecurityAwareness /></PageTransition>
           </ProtectedRoute>
         } />
+        <Route path="/team" element={
+          <ProtectedRoute isAuth={isAuthenticated}>
+            {user?.role === 'Manager' || user?.role === 'Administrator' ? (
+              <PageTransition><TeamAnalytics user={user} /></PageTransition>
+            ) : <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace />}
+          </ProtectedRoute>
+        } />
+        <Route path="/analytics/resolutions" element={
+          <ProtectedRoute isAuth={isAuthenticated}>
+            {user?.role === 'Analyst' || user?.role === 'Administrator' ? (
+              <PageTransition><ResolutionAnalytics /></PageTransition>
+            ) : <Navigate to={LANDING[user?.role ?? ''] ?? '/'} replace />}
+          </ProtectedRoute>
+        } />
         <Route path="/proposals" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <PageTransition><AttackProposals user={user} /></PageTransition>
             )}
           </ProtectedRoute>
         } />
         <Route path="/admin/users" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <PageTransition><AdminUsers user={user} /></PageTransition>
             )}
           </ProtectedRoute>
         } />
         <Route path="/city" element={
           <ProtectedRoute isAuth={isAuthenticated}>
-            {user?.role === 'Viewer' ? <Navigate to="/awareness" replace /> : (
+            {LIMITED_ROLES.includes(user?.role ?? '') ? <Navigate to={LANDING[user?.role ?? ''] ?? '/awareness'} replace /> : (
               <SmartCityDashboard />
             )}
           </ProtectedRoute>
         } />
-        <Route path="*" element={<Navigate to={user?.role === 'Viewer' ? '/awareness' : '/'} />} />
+        <Route path="*" element={<Navigate to={LANDING[user?.role ?? ''] ?? '/'} />} />
       </Routes>
     </AnimatePresence>
   )
@@ -133,6 +156,18 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<{ username?: string; role?: string } | null>(null)
   const [activeAttack, setActiveAttack] = useState<ActiveAttack | null>(null)
+  const { dir, lang } = useLang()
+  const { theme } = useTheme()
+
+  // Propagate the active language + theme to <html> so global CSS (RTL,
+  // light-theme variables, font stack) flips synchronously without
+  // requiring every page to spread `dir` on its own container.
+  useEffect(() => {
+    const html = document.documentElement
+    html.setAttribute('dir', dir)
+    html.setAttribute('lang', lang)
+    html.setAttribute('data-theme', theme)
+  }, [dir, lang, theme])
 
   useEffect(() => {
     const token = localStorage.getItem('token')

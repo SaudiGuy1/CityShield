@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { formatDateOnly } from '../utils/datetime'
+import { useLang } from '../hooks/useLang'
 
 interface AppUser {
   username: string
@@ -7,19 +8,31 @@ interface AppUser {
   role: string
   is_active: boolean
   created_at?: string
+  manager_username?: string | null
 }
 
 export default function AdminUsers({ user }: { user: { username?: string; role?: string } | null }) {
+  const { tk, dir } = useLang()
   const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    username: string
+    email: string
+    password: string
+    role: string
+    is_active: boolean
+    manager_username: string | null
+  }>({
     username: '',
     email: '',
     password: '',
     role: 'Analyst',
-    is_active: true
+    is_active: true,
+    manager_username: null,
   })
+  const [editingManagerFor, setEditingManagerFor] = useState<string | null>(null)
+  const [managerDraft, setManagerDraft] = useState<string>('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -69,7 +82,7 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
 
       if (res.ok) {
         setSuccess('User created successfully!')
-        setFormData({ username: '', email: '', password: '', role: 'Analyst', is_active: true })
+        setFormData({ username: '', email: '', password: '', role: 'Analyst', is_active: true, manager_username: null })
         setShowCreateForm(false)
         await fetchUsers()
       } else {
@@ -101,6 +114,34 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
     }
   }
 
+  const assignManager = async (username: string, manager_username: string | null) => {
+    setError('')
+    setSuccess('')
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/users/${username}/manager`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ manager_username }),
+      })
+      if (res.ok) {
+        setEditingManagerFor(null)
+        setSuccess(manager_username
+          ? `Manager set to "${manager_username}" for "${username}"`
+          : `Manager cleared for "${username}"`)
+        await fetchUsers()
+      } else {
+        const data = await res.json()
+        setError(data.detail || 'Failed to assign manager')
+      }
+    } catch (err) {
+      setError('Error assigning manager')
+    }
+  }
+
   const deleteUser = async (username: string) => {
     if (!confirm(`Are you sure you want to delete user "${username}"?`)) return
 
@@ -127,31 +168,36 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
       case 'Administrator': return 'badge-danger'
       case 'Analyst': return 'badge-primary'
       case 'Researcher': return 'badge-warning'
+      case 'Manager': return 'badge-info'
       case 'Viewer': return 'badge-info'
       default: return 'badge-secondary'
     }
   }
 
+  const managerCandidates = users.filter(u =>
+    u.is_active && (u.role === 'Manager' || u.role === 'Administrator')
+  )
+
   if (user?.role !== 'Administrator') {
     return (
-      <div className="container">
+      <div className="container" dir={dir}>
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <h1>Access Denied</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>This page is only accessible to administrators</p>
+          <h1>{tk('admin.access_denied')}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('admin.admin_only')}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container">
+    <div className="container" dir={dir}>
       <div className="page-header">
         <div>
-          <h1>User Management</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Manage user accounts and role-based access control</p>
+          <h1>{tk('admin.title')}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('admin.subtitle')}</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreateForm(true)}>
-          + Create User
+          {tk('admin.create_user')}
         </button>
       </div>
 
@@ -185,10 +231,10 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
             maxWidth: '500px',
             width: '90%'
           }} onClick={e => e.stopPropagation()}>
-            <h3>Create New User</h3>
+            <h3>{tk('admin.create_new_user')}</h3>
             <form onSubmit={createUser} style={{ marginTop: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Username</label>
+                <label className="form-label">{tk('common.username')}</label>
                 <input
                   type="text"
                   className="form-control"
@@ -199,7 +245,7 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
               </div>
 
               <div className="form-group">
-                <label className="form-label">Email</label>
+                <label className="form-label">{tk('common.email')}</label>
                 <input
                   type="email"
                   className="form-control"
@@ -210,7 +256,7 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
               </div>
 
               <div className="form-group">
-                <label className="form-label">Password</label>
+                <label className="form-label">{tk('admin.password')}</label>
                 <input
                   type="password"
                   className="form-control"
@@ -220,23 +266,45 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
                   minLength={8}
                 />
                 <small style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>
-                  Minimum 8 characters
+                  {tk('admin.password_hint')}
                 </small>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Role</label>
+                <label className="form-label">{tk('common.role')}</label>
                 <select
                   className="form-control"
                   value={formData.role}
                   onChange={e => setFormData({ ...formData, role: e.target.value })}
                   required
                 >
-                  <option value="Viewer">Viewer - View security awareness content only</option>
-                  <option value="Analyst">Analyst - View and analyze security data, execute response actions</option>
-                  <option value="Researcher">Researcher - Design scenarios, configure rules, manage research lab</option>
-                  <option value="Administrator">Administrator - Full system access including user management</option>
+                  <option value="Viewer">{tk('admin.role.viewer.desc')}</option>
+                  <option value="Manager">{tk('admin.role.manager.desc')}</option>
+                  <option value="Analyst">{tk('admin.role.analyst.desc')}</option>
+                  <option value="Researcher">{tk('admin.role.researcher.desc')}</option>
+                  <option value="Administrator">{tk('admin.role.administrator.desc')}</option>
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">{tk('admin.manager_optional')}</label>
+                <select
+                  className="form-control"
+                  value={formData.manager_username ?? ''}
+                  onChange={e => setFormData({ ...formData, manager_username: e.target.value || null })}
+                >
+                  <option value="">{tk('admin.manager_none')}</option>
+                  {managerCandidates
+                    .filter(m => m.username !== formData.username)
+                    .map(m => (
+                      <option key={m.username} value={m.username}>
+                        {m.username} ({m.role})
+                      </option>
+                    ))}
+                </select>
+                <small style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>
+                  {tk('admin.manager_hint')}
+                </small>
               </div>
 
               <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -280,12 +348,13 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
             <table className="table">
               <thead>
                 <tr>
-                  <th>Username</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
+                  <th>{tk('common.username')}</th>
+                  <th>{tk('common.email')}</th>
+                  <th>{tk('common.role')}</th>
+                  <th>{tk('admin.manager')}</th>
+                  <th>{tk('common.status')}</th>
+                  <th>{tk('common.created')}</th>
+                  <th>{tk('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -295,6 +364,52 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
                     <td>{u.email}</td>
                     <td>
                       <span className={`badge ${getRoleBadgeClass(u.role)}`}>{u.role}</span>
+                    </td>
+                    <td>
+                      {editingManagerFor === u.username ? (
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                          <select
+                            className="form-control"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', minWidth: 140 }}
+                            value={managerDraft}
+                            onChange={e => setManagerDraft(e.target.value)}
+                          >
+                            <option value="">— None —</option>
+                            {managerCandidates
+                              .filter(m => m.username !== u.username)
+                              .map(m => (
+                                <option key={m.username} value={m.username}>{m.username}</option>
+                              ))}
+                          </select>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => assignManager(u.username, managerDraft || null)}
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => setEditingManagerFor(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ color: u.manager_username ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                            {u.manager_username || '—'}
+                          </span>
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => {
+                              setEditingManagerFor(u.username)
+                              setManagerDraft(u.manager_username ?? '')
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td>
                       {u.is_active ? (
@@ -340,6 +455,12 @@ export default function AdminUsers({ user }: { user: { username?: string; role?:
             <span className="badge badge-info">Viewer</span>
             <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
               View security awareness content only
+            </p>
+          </div>
+          <div>
+            <span className="badge badge-info">Manager</span>
+            <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              View awareness training progress for their direct reports; cannot view security analyst data
             </p>
           </div>
           <div>

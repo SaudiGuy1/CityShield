@@ -32,6 +32,7 @@ class OpenSearchClient:
                         "username": {"type": "keyword"},
                         "email": {"type": "keyword"},
                         "role": {"type": "keyword"},
+                        "manager_username": {"type": "keyword"},
                         "hashed_password": {"type": "keyword"},
                         "created_at": {"type": "date"},
                         "is_active": {"type": "boolean"}
@@ -108,7 +109,36 @@ class OpenSearchClient:
                         "response": {"type": "object"},
                         "asset_id": {"type": "keyword"},
                         "correlation_id": {"type": "keyword"},
-                        "related_events_count": {"type": "integer"}
+                        "related_events_count": {"type": "integer"},
+                        "resolution": {
+                            "properties": {
+                                "classification": {"type": "keyword"},
+                                "resolution_notes": {"type": "text"},
+                                "investigation_notes": {"type": "text"},
+                                "remediation_notes": {"type": "text"},
+                                "resolved_by": {"type": "keyword"},
+                                "resolved_at": {"type": "date"},
+                                "last_amended_by": {"type": "keyword"},
+                                "last_amended_at": {"type": "date"}
+                            }
+                        }
+                    }
+                }
+            },
+            "alert-resolution-history": {
+                "mappings": {
+                    "properties": {
+                        "history_id": {"type": "keyword"},
+                        "alert_id": {"type": "keyword"},
+                        "action": {"type": "keyword"},
+                        "classification": {"type": "keyword"},
+                        "previous_classification": {"type": "keyword"},
+                        "resolution_notes": {"type": "text"},
+                        "investigation_notes": {"type": "text"},
+                        "remediation_notes": {"type": "text"},
+                        "reason": {"type": "text"},
+                        "performed_by": {"type": "keyword"},
+                        "performed_at": {"type": "date"}
                     }
                 }
             },
@@ -220,6 +250,27 @@ class OpenSearchClient:
                         "error": {"type": "text"}
                     }
                 }
+            },
+            "awareness-progress": {
+                "mappings": {
+                    "properties": {
+                        "event_id": {"type": "keyword"},
+                        "username": {"type": "keyword"},
+                        "category_id": {"type": "keyword"},
+                        "event_type": {"type": "keyword"},
+                        "module_id": {"type": "keyword"},
+                        "concept_id": {"type": "keyword"},
+                        "scenario_id": {"type": "keyword"},
+                        "video_key": {"type": "keyword"},
+                        "quiz_score": {"type": "integer"},
+                        "quiz_total": {"type": "integer"},
+                        "passed": {"type": "boolean"},
+                        "pre_assessment_weak_categories": {"type": "keyword"},
+                        "lang": {"type": "keyword"},
+                        "metadata": {"type": "object"},
+                        "created_at": {"type": "date"}
+                    }
+                }
             }
         }
 
@@ -245,6 +296,23 @@ class OpenSearchClient:
                 "target_component_id": {"type": "keyword"},
                 "stages": {"type": "object"},
                 "custom_parameters": {"type": "object"},
+            },
+            "users": {
+                "manager_username": {"type": "keyword"},
+            },
+            "alerts": {
+                "resolution": {
+                    "properties": {
+                        "classification": {"type": "keyword"},
+                        "resolution_notes": {"type": "text"},
+                        "investigation_notes": {"type": "text"},
+                        "remediation_notes": {"type": "text"},
+                        "resolved_by": {"type": "keyword"},
+                        "resolved_at": {"type": "date"},
+                        "last_amended_by": {"type": "keyword"},
+                        "last_amended_at": {"type": "date"},
+                    }
+                },
             },
         }
         for index_name, new_fields in migrations.items():

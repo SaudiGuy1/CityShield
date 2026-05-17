@@ -9,6 +9,7 @@ class UserBase(BaseModel):
     username: str
     email: EmailStr
     role: str
+    manager_username: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -22,6 +23,12 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
+    manager_username: Optional[str] = None
+
+
+class ManagerAssignment(BaseModel):
+    """Request body for assigning or clearing a user's manager."""
+    manager_username: Optional[str] = None
 
 
 class User(UserBase):

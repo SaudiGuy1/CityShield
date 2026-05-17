@@ -5,6 +5,7 @@ import EventDrillDown from '../components/EventDrillDown'
 import ActionConfirmDialog from '../components/ActionConfirmDialog'
 import ActionHistoryTable from '../components/ActionHistoryTable'
 import ExecutionDetailsModal from '../components/ExecutionDetailsModal'
+import AlertResolutionModal, { type AlertResolution } from '../components/AlertResolutionModal'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
 import type { ActiveAttack } from '../App'
 
@@ -20,6 +21,21 @@ interface AlertItem {
   timestamp?: string
   evidence?: Record<string, unknown>
   related_query?: string
+  resolution?: AlertResolution | null
+}
+
+interface ResolutionHistoryEntry {
+  history_id: string
+  alert_id: string
+  action: 'resolve' | 'amend' | 'reopen'
+  classification?: AlertResolution['classification'] | null
+  previous_classification?: AlertResolution['classification'] | null
+  resolution_notes?: string | null
+  investigation_notes?: string | null
+  remediation_notes?: string | null
+  reason?: string | null
+  performed_by: string
+  performed_at: string
 }
 
 interface AlertAnalysis {
@@ -86,6 +102,13 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
   const [executingAction, setExecutingAction] = useState<string | null>(null)
   const [showExecutionDetails, setShowExecutionDetails] = useState(false)
   const [selectedAuditEntry, setSelectedAuditEntry] = useState<ActionAuditEntry | null>(null)
+
+  // Resolution workflow state
+  const [resolveAlertId, setResolveAlertId] = useState<string | null>(null)
+  const [resolveExisting, setResolveExisting] = useState<AlertResolution | null>(null)
+  const [historyAlertId, setHistoryAlertId] = useState<string | null>(null)
+  const [historyEntries, setHistoryEntries] = useState<ResolutionHistoryEntry[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const detailRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -281,6 +304,55 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
     }
   }
 
+  const openResolveModal = (alert: AlertItem) => {
+    setResolveAlertId(alert.alert_id)
+    setResolveExisting(null)
+  }
+
+  const openAmendModal = (alert: AlertItem) => {
+    setResolveAlertId(alert.alert_id)
+    setResolveExisting(alert.resolution ?? null)
+  }
+
+  const closeResolveModal = () => {
+    setResolveAlertId(null)
+    setResolveExisting(null)
+  }
+
+  const reopenAlert = async (alertId: string) => {
+    const reason = window.prompt('Reason for reopening this alert? (required)')?.trim()
+    if (!reason) return
+    const token = localStorage.getItem('token')
+    const res = await fetch(`/api/alerts/${alertId}/reopen`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      alert(typeof data.detail === 'string' ? data.detail : 'Could not reopen alert')
+      return
+    }
+    fetchAlerts()
+  }
+
+  const openHistory = async (alertId: string) => {
+    setHistoryAlertId(alertId)
+    setHistoryEntries([])
+    setHistoryLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/alerts/${alertId}/resolution-history`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setHistoryEntries(await res.json())
+      }
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
   const viewOnMap = (alert: AlertItem) => {
     navigate(`/?highlight=${alert.city_zone}&alert=${alert.alert_id}`)
   }
@@ -396,7 +468,7 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
       {activeAttack && (
         <div className="card" style={{
           marginBottom: '1rem',
-          borderLeft: '4px solid var(--accent-danger)',
+          borderInlineStart: '4px solid var(--accent-danger)',
           background: 'rgba(239,68,68,0.08)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -461,7 +533,7 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
                   style={{
                     cursor: 'pointer',
                     padding: '1rem 1.25rem',
-                    borderLeft: `4px solid ${alert.severity === 'critical' ? 'var(--accent-danger)' : alert.severity === 'high' ? '#f97316' : alert.severity === 'medium' ? 'var(--accent-warning)' : 'var(--accent-success)'}`,
+                    borderInlineStart: `4px solid ${alert.severity === 'critical' ? 'var(--accent-danger)' : alert.severity === 'high' ? '#f97316' : alert.severity === 'medium' ? 'var(--accent-warning)' : 'var(--accent-success)'}`,
                     background: isExpanded ? 'var(--bg-tertiary)' : 'var(--bg-card)',
                     transition: 'all 0.2s',
                     marginBottom: isExpanded ? 0 : undefined,
@@ -514,11 +586,24 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
                         </button>
                       )}
                       {alert.status !== 'resolved' && (
-                        <button className="btn btn-sm btn-success" onClick={e => { e.stopPropagation(); updateStatus(alert.alert_id, 'resolved') }}>
-                          Resolve
+                        <button className="btn btn-sm btn-success" onClick={e => { e.stopPropagation(); openResolveModal(alert) }}>
+                          Resolve\u2026
                         </button>
                       )}
-                      <span style={{ color: 'var(--text-tertiary)', fontSize: '1rem', marginLeft: '0.25rem' }}>
+                      {alert.status === 'resolved' && (
+                        <>
+                          <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openAmendModal(alert) }}>
+                            Amend
+                          </button>
+                          <button className="btn btn-sm btn-warning" onClick={e => { e.stopPropagation(); reopenAlert(alert.alert_id) }}>
+                            Reopen
+                          </button>
+                        </>
+                      )}
+                      <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openHistory(alert.alert_id) }}>
+                        History
+                      </button>
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: '1rem', marginInlineStart: '0.25rem' }}>
                         {isExpanded ? '\u25B2' : '\u25BC'}
                       </span>
                     </div>
@@ -791,11 +876,56 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
                             </button>
                           )}
                           {alert.status !== 'resolved' && (
-                            <button className="btn btn-sm btn-success" onClick={() => updateStatus(alert.alert_id, 'resolved')}>
-                              Mark as Resolved
+                            <button className="btn btn-sm btn-success" onClick={() => openResolveModal(alert)}>
+                              Resolve with Classification…
                             </button>
                           )}
+                          {alert.status === 'resolved' && (
+                            <>
+                              <button className="btn btn-sm btn-secondary" onClick={() => openAmendModal(alert)}>
+                                Amend Resolution
+                              </button>
+                              <button className="btn btn-sm btn-warning" onClick={() => reopenAlert(alert.alert_id)}>
+                                Reopen
+                              </button>
+                            </>
+                          )}
+                          <button className="btn btn-sm btn-secondary" onClick={() => openHistory(alert.alert_id)}>
+                            View History
+                          </button>
                         </div>
+                        {alert.status === 'resolved' && alert.resolution && (
+                          <div style={{
+                            marginTop: '0.75rem',
+                            padding: '0.85rem 1rem',
+                            background: 'var(--bg-tertiary)',
+                            borderRadius: '0.6rem',
+                            borderInlineStart: '3px solid var(--accent-success)',
+                          }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-success)', letterSpacing: '0.05em' }}>
+                              {alert.resolution.classification.replace('_', ' ').toUpperCase()}
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
+                              <strong>Notes:</strong> {alert.resolution.resolution_notes}
+                            </div>
+                            {alert.resolution.investigation_notes && (
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                                <strong>Investigation:</strong> {alert.resolution.investigation_notes}
+                              </div>
+                            )}
+                            {alert.resolution.remediation_notes && (
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                                <strong>Remediation:</strong> {alert.resolution.remediation_notes}
+                              </div>
+                            )}
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: '0.45rem' }}>
+                              Resolved by {alert.resolution.resolved_by} at {formatDateTimeWithSeconds(alert.resolution.resolved_at)}
+                              {alert.resolution.last_amended_by && (
+                                <> · last amended by {alert.resolution.last_amended_by} at {formatDateTimeWithSeconds(alert.resolution.last_amended_at ?? '')}</>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                         ) : (
                           <p style={{ color: 'var(--text-secondary)' }}>Unable to load analysis</p>
@@ -940,6 +1070,92 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
           }}
         />
       )}
+
+      {/* Resolution Modal */}
+      <AlertResolutionModal
+        open={resolveAlertId !== null}
+        alertId={resolveAlertId ?? ''}
+        existingResolution={resolveExisting}
+        onClose={closeResolveModal}
+        onResolved={() => { fetchAlerts(); if (expandedId) fetchAnalysis(expandedId) }}
+      />
+
+      {/* Resolution History */}
+      {historyAlertId !== null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setHistoryAlertId(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+          }}
+        >
+          <div className="card" onClick={e => e.stopPropagation()} style={{ maxWidth: 720, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>Resolution History · {historyAlertId}</h3>
+            {historyLoading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
+            ) : historyEntries.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)' }}>No history entries for this alert.</p>
+            ) : (
+              <ol style={{ paddingInlineStart: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.5rem' }}>
+                {historyEntries.map(e => (
+                  <li key={e.history_id} style={{
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: '0.55rem',
+                    padding: '0.75rem 0.85rem',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                      <span style={{
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        letterSpacing: '0.05em',
+                        color: e.action === 'resolve' ? 'var(--accent-success)'
+                          : e.action === 'reopen' ? 'var(--accent-warning)'
+                          : 'var(--accent-primary)',
+                      }}>{e.action.toUpperCase()}</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                        {e.performed_by} · {formatDateTimeWithSeconds(e.performed_at)}
+                      </span>
+                    </div>
+                    {e.classification && (
+                      <div style={{ fontSize: '0.8rem', marginTop: '0.4rem', color: 'var(--text-secondary)' }}>
+                        Classification: <strong>{e.classification.replace('_', ' ')}</strong>
+                        {e.previous_classification && (
+                          <> (was <em>{e.previous_classification.replace('_', ' ')}</em>)</>
+                        )}
+                      </div>
+                    )}
+                    {e.resolution_notes && (
+                      <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+                        <strong>Notes:</strong> {e.resolution_notes}
+                      </div>
+                    )}
+                    {e.investigation_notes && (
+                      <div style={{ fontSize: '0.78rem', marginTop: '0.2rem', color: 'var(--text-secondary)' }}>
+                        <strong>Investigation:</strong> {e.investigation_notes}
+                      </div>
+                    )}
+                    {e.remediation_notes && (
+                      <div style={{ fontSize: '0.78rem', marginTop: '0.2rem', color: 'var(--text-secondary)' }}>
+                        <strong>Remediation:</strong> {e.remediation_notes}
+                      </div>
+                    )}
+                    {e.reason && (
+                      <div style={{ fontSize: '0.78rem', marginTop: '0.2rem', color: 'var(--text-tertiary)' }}>
+                        <strong>Reason:</strong> {e.reason}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+              <button className="btn btn-secondary" onClick={() => setHistoryAlertId(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -989,7 +1205,7 @@ function AnalysisSection({ title, icon, iconColor, content }: {
         }}>{icon}</div>
         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{title}</span>
       </div>
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, paddingLeft: '2rem' }}>
+      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, paddingInlineStart: '2rem' }}>
         {content}
       </p>
     </div>

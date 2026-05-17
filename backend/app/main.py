@@ -28,6 +28,7 @@ from .api import (
     routes_lab,
     routes_proposals,
     routes_mitre,
+    routes_awareness,
 )
 from .api.routes_overview import init_opensearch_dashboards
 
@@ -470,6 +471,7 @@ app.include_router(routes_websocket.router)
 app.include_router(routes_lab.router)
 app.include_router(routes_proposals.router)
 app.include_router(routes_mitre.router)
+app.include_router(routes_awareness.router)
 
 
 @app.get("/")

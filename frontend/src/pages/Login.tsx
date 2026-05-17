@@ -1,16 +1,22 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useLang } from '../hooks/useLang'
+import LangToggle from '../components/LangToggle'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function Login({ onLogin }: { onLogin: (user: { username?: string; role?: string }) => void }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
+  const { tk } = useLang()
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
+    setSubmitting(true)
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -30,10 +36,12 @@ export default function Login({ onLogin }: { onLogin: (user: { username?: string
         onLogin(user)
         navigate('/')
       } else {
-        setError('Invalid credentials')
+        setError(tk('login.error'))
       }
     } catch (err) {
-      setError('Login failed')
+      setError(tk('login.error'))
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -45,27 +53,31 @@ export default function Login({ onLogin }: { onLogin: (user: { username?: string
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
-        <div className="login-brand">CITYSHIELD</div>
-        <div className="login-subtitle">Security Operations Platform</div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <LangToggle />
+          <ThemeToggle />
+        </div>
+        <div className="login-brand">{tk('login.title').toUpperCase()}</div>
+        <div className="login-subtitle">{tk('login.subtitle')}</div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Username</label>
+            <label>{tk('login.username')}</label>
             <input
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              placeholder="Enter username"
+              placeholder={tk('login.username')}
               required
             />
           </div>
           <div className="form-group">
-            <label>Password</label>
+            <label>{tk('login.password')}</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="Enter password"
+              placeholder={tk('login.password')}
               required
             />
           </div>
@@ -74,7 +86,9 @@ export default function Login({ onLogin }: { onLogin: (user: { username?: string
               {error}
             </div>
           )}
-          <button type="submit">Access System</button>
+          <button type="submit" disabled={submitting}>
+            {submitting ? tk('login.signing_in') : tk('login.submit')}
+          </button>
         </form>
       </motion.div>
     </div>

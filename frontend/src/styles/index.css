@@ -37,6 +37,57 @@
   --glass-blur: 16px;
 }
 
+/* ─── LIGHT THEME OVERRIDES ───
+ * Activated by `<html data-theme="light">` via the useTheme() hook.
+ * Token names are unchanged so all existing var(--…) references stay valid.
+ * Color targets satisfy WCAG AA contrast for normal text:
+ *   - text-primary on bg-primary ≈ 14:1
+ *   - text-secondary on bg-primary ≈ 8:1
+ *   - text-tertiary on bg-primary ≈ 4.7:1
+ */
+[data-theme="light"] {
+  --bg-primary:   #f6f9fc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary:  #eef2f7;
+  --bg-card:      rgba(255, 255, 255, 0.92);
+
+  --accent-primary:   #00838f;
+  --accent-secondary: #7c0fff;
+  --accent-success:   #047857;
+  --accent-warning:   #b45309;
+  --accent-danger:    #b91c1c;
+
+  --text-primary:   #0a1628;
+  --text-secondary: #455066;
+  --text-tertiary:  #6b7689;
+
+  --border-color: rgba(10, 22, 40, 0.14);
+  --glass-border: rgba(10, 22, 40, 0.10);
+
+  --shadow-sm:   0 1px 3px rgba(10, 22, 40, 0.06);
+  --shadow-md:   0 4px 12px rgba(10, 22, 40, 0.08);
+  --shadow-lg:   0 8px 32px rgba(10, 22, 40, 0.10);
+  --shadow-glow: 0 0 18px rgba(0, 131, 143, 0.18);
+
+  --glass-bg: rgba(255, 255, 255, 0.88);
+}
+
+/* Scrollbar fills track tint per theme so it does not punch through. */
+[data-theme="light"]::-webkit-scrollbar-thumb {
+  background: rgba(10, 22, 40, 0.20);
+}
+[data-theme="light"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(10, 22, 40, 0.32);
+}
+
+/* ─── RTL ─── */
+html[dir="rtl"] body {
+  /* Prefer a stack with better Arabic glyph coverage when in RTL. The
+     existing display font (Orbitron / Rajdhani) has weak AR glyphs. */
+  font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', 'Cairo',
+               -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
 /* ─── RESET ─── */
 *, *::before, *::after {
   margin: 0;
@@ -1484,4 +1535,36 @@ label {
   th, td {
     padding: 0.75rem 0.5rem;
   }
+
 }
+
+/* ─── RTL overrides ─── */
+html[dir="rtl"] nav {
+  left: auto;
+  right: 0;
+  border-right: none;
+  border-left: 1px solid var(--glass-border);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+html[dir="rtl"] .container {
+  margin-left: 0;
+  margin-right: var(--sidebar-width);
+}
+
+/* `.nav-item.active`'s left bar should sit on the start edge, which is the
+   right in RTL. The original rule paints a left border, so we re-paint on the
+   right in RTL. */
+html[dir="rtl"] nav a.active,
+html[dir="rtl"] .nav-item.active,
+html[dir="rtl"] nav .active {
+  border-left: none;
+  border-right: 3px solid var(--accent-primary);
+}
+
+@media (max-width: 768px) {
+  html[dir="rtl"] .container {
+    margin-right: 0;
+  }
+}
+

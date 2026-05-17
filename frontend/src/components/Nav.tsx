@@ -1,10 +1,14 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { ActiveAttack } from '../App'
+import { useLang } from '../hooks/useLang'
+import LangToggle from './LangToggle'
+import ThemeToggle from './ThemeToggle'
+import type { StringKey } from '../i18n'
 
 interface NavItem {
   to: string
-  label: string
+  labelKey: StringKey
   icon: JSX.Element
   roles?: string[]
 }
@@ -14,7 +18,7 @@ const NON_VIEWER_ROLES = ['Administrator', 'Analyst', 'Researcher']
 const navItems: NavItem[] = [
   {
     to: '/',
-    label: 'Dashboard',
+    labelKey: 'nav.dashboard',
     roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
@@ -27,7 +31,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/city',
-    label: 'Smart City',
+    labelKey: 'nav.smart_city',
     roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
@@ -42,7 +46,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/alerts',
-    label: 'Alerts',
+    labelKey: 'nav.alerts',
     roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
@@ -53,7 +57,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/devices',
-    label: 'Devices',
+    labelKey: 'nav.devices',
     roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
@@ -65,7 +69,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/scenarios',
-    label: 'Scenarios',
+    labelKey: 'nav.scenarios',
     roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
@@ -75,7 +79,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/rules',
-    label: 'Rules',
+    labelKey: 'nav.rules',
     roles: NON_VIEWER_ROLES,
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
@@ -84,8 +88,19 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    to: '/analytics/resolutions',
+    labelKey: 'nav.resolutions',
+    roles: ['Analyst', 'Administrator'],
+    icon: (
+      <svg className="nav-item-icon" viewBox="0 0 24 24">
+        <path d="M3 3v18h18" />
+        <path d="M7 14l4-4 4 4 6-6" />
+      </svg>
+    ),
+  },
+  {
     to: '/awareness',
-    label: 'Awareness',
+    labelKey: 'nav.awareness',
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10" />
@@ -95,8 +110,21 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    to: '/team',
+    labelKey: 'nav.team',
+    roles: ['Manager', 'Administrator'],
+    icon: (
+      <svg className="nav-item-icon" viewBox="0 0 24 24">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
     to: '/proposals',
-    label: 'Proposals',
+    labelKey: 'nav.proposals',
     roles: ['Researcher', 'Administrator'],
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
@@ -109,7 +137,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/admin/users',
-    label: 'Users',
+    labelKey: 'nav.users',
     roles: ['Administrator'],
     icon: (
       <svg className="nav-item-icon" viewBox="0 0 24 24">
@@ -132,6 +160,7 @@ export default function Nav({
   onLogout: () => void
 }) {
   const location = useLocation()
+  const { tk } = useLang()
 
   const visibleItems = navItems.filter(
     (item) => !item.roles || (user?.role && item.roles.includes(user.role))
@@ -142,6 +171,12 @@ export default function Nav({
       <div className="nav-container">
         {/* Brand */}
         <span className="nav-brand">CityShield</span>
+
+        {/* Lang + Theme toggles */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem' }}>
+          <LangToggle />
+          <ThemeToggle />
+        </div>
 
         {/* Nav Links */}
         <div className="nav-links">
@@ -158,7 +193,7 @@ export default function Nav({
                   className={isActive ? 'active' : ''}
                 >
                   {item.icon}
-                  <span>{item.label}</span>
+                  <span>{tk(item.labelKey)}</span>
                 </Link>
               </motion.div>
             )
@@ -168,7 +203,7 @@ export default function Nav({
           {activeAttack && (
             <Link to="/" className="attack-live-badge">
               <span className="attack-live-dot" />
-              ATTACK LIVE
+              {tk('nav.attack_live')}
             </Link>
           )}
         </div>
@@ -180,8 +215,8 @@ export default function Nav({
               {user?.username?.charAt(0).toUpperCase() || '?'}
             </div>
             <div className="sidebar-user-details">
-              <div className="sidebar-user-name">{user?.username || 'User'}</div>
-              <div className="sidebar-user-role">{user?.role || 'Unknown'}</div>
+              <div className="sidebar-user-name">{user?.username || tk('nav.user')}</div>
+              <div className="sidebar-user-role">{user?.role || tk('nav.unknown_role')}</div>
             </div>
           </div>
           <button className="btn btn-sm btn-secondary" style={{ width: '100%' }} onClick={onLogout}>
@@ -190,7 +225,7 @@ export default function Nav({
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            Logout
+            {tk('common.logout')}
           </button>
         </div>
       </div>

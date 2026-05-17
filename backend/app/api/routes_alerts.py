@@ -4,7 +4,17 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 from datetime import datetime, timedelta
-from ..models.alert import Alert, AlertUpdate
+from ..models.alert import Alert, AlertUpdate, ALERT_STATUSES
+from ..models.alert_resolution import (
+    AlertResolutionAmendment,
+    AlertResolutionHistoryEntry,
+    AlertResolutionRequest,
+    AlertReopenRequest,
+    AnalystActivityRow,
+    ResolutionTimelineResponse,
+    TpFpTrendResponse,
+)
+from ..services.alert_resolution_service import AlertResolutionService
 from ..core.rbac import require_analyst_or_admin
 from ..core.security import get_current_user
 from ..db.opensearch_client import opensearch_client
@@ -490,8 +500,16 @@ async def update_alert(
     # Prepare updates
     update_data = {}
     if updates.status is not None:
-        if updates.status not in ["open", "triaged", "resolved"]:
+        if updates.status not in ALERT_STATUSES:
             raise HTTPException(status_code=400, detail="Invalid status")
+        if updates.status == "resolved":
+            # Resolution must go through POST /resolve so a classification +
+            # mandatory resolution notes are recorded and audited.
+            raise HTTPException(
+                status_code=400,
+                detail="Use POST /api/alerts/{alert_id}/resolve to resolve an "
+                       "alert (classification + resolution_notes required).",
+            )
         update_data["status"] = updates.status
     if updates.enrichment is not None:
         update_data["enrichment"] = updates.enrichment
@@ -638,3 +656,95 @@ async def get_alert_replay_events(
         "event_count": len(events),
         "metadata": metadata
     }
+
+
+# ─────────────────────── Resolution workflow ───────────────────────
+
+
+@router.post("/{alert_id}/resolve", response_model=Alert)
+async def resolve_alert(
+    alert_id: str,
+    request: AlertResolutionRequest,
+    current_user: dict = Depends(require_analyst_or_admin),
+):
+    """Resolve an alert with mandatory classification + notes.
+
+    Analyst or Administrator only. Returns 409 if the alert is already
+    resolved (use PUT /resolution to amend or POST /reopen to reopen).
+    """
+    username = current_user.get("username", "unknown")
+    doc = AlertResolutionService.resolve_alert(alert_id, request, username)
+    return Alert(**doc)
+
+
+@router.put("/{alert_id}/resolution", response_model=Alert)
+async def amend_alert_resolution(
+    alert_id: str,
+    amendment: AlertResolutionAmendment,
+    current_user: dict = Depends(require_analyst_or_admin),
+):
+    """Amend an existing resolution. `reason` is required and recorded in
+    the history; the previous classification is preserved automatically."""
+    username = current_user.get("username", "unknown")
+    doc = AlertResolutionService.amend_resolution(alert_id, amendment, username)
+    return Alert(**doc)
+
+
+@router.post("/{alert_id}/reopen", response_model=Alert)
+async def reopen_alert(
+    alert_id: str,
+    request: AlertReopenRequest,
+    current_user: dict = Depends(require_analyst_or_admin),
+):
+    """Reopen a resolved alert. The resolution object is preserved (the
+    history is the audit trail) but `status` is reset to 'open'."""
+    username = current_user.get("username", "unknown")
+    doc = AlertResolutionService.reopen_alert(alert_id, request, username)
+    return Alert(**doc)
+
+
+@router.get(
+    "/{alert_id}/resolution-history",
+    response_model=List[AlertResolutionHistoryEntry],
+)
+async def get_alert_resolution_history(
+    alert_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Full audit history for an alert's resolution (any authenticated user)."""
+    return AlertResolutionService.get_history(alert_id)
+
+
+# ─────────────────────── Analytics dashboards ───────────────────────
+
+
+@router.get("/analytics/tp-fp-trends", response_model=TpFpTrendResponse)
+async def analytics_tp_fp_trends(
+    start: Optional[datetime] = Query(None),
+    end: Optional[datetime] = Query(None),
+    interval: str = Query("day", description="hour, day, or week"),
+    current_user: dict = Depends(require_analyst_or_admin),
+):
+    """Time-bucketed counts of resolution classifications."""
+    return AlertResolutionService.tp_fp_trends(start, end, interval)
+
+
+@router.get("/analytics/analyst-activity", response_model=List[AnalystActivityRow])
+async def analytics_analyst_activity(
+    start: Optional[datetime] = Query(None),
+    end: Optional[datetime] = Query(None),
+    current_user: dict = Depends(require_analyst_or_admin),
+):
+    """Counts of resolve/amend/reopen actions per analyst."""
+    return AlertResolutionService.analyst_activity(start, end)
+
+
+@router.get("/analytics/resolution-timelines", response_model=ResolutionTimelineResponse)
+async def analytics_resolution_timelines(
+    start: Optional[datetime] = Query(None),
+    end: Optional[datetime] = Query(None),
+    sample_limit: int = Query(1000, ge=1, le=5000),
+    current_user: dict = Depends(require_analyst_or_admin),
+):
+    """Time-to-resolve samples plus mean/median/p95 over the window."""
+    return AlertResolutionService.resolution_timelines(start, end, sample_limit)
