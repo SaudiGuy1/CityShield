@@ -1756,3 +1756,133 @@ html[dir="rtl"] h3 {
   text-shadow: none;
 }
 
+/* ──────── Light Theme — Suppress neon glows & improve contrast ──────── */
+
+/* Nav hover/active: remove neon cyan glow, use muted teal */
+[data-theme="light"] nav a:hover {
+  color: #0d9488 !important;
+  text-shadow: none;
+  background: rgba(13, 148, 136, 0.08);
+}
+[data-theme="light"] nav a.active {
+  color: #0d9488 !important;
+  text-shadow: none;
+  border-color: #0d9488;
+}
+
+/* Button glow shadows: remove neon box-shadows */
+[data-theme="light"] .btn-primary:hover {
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+[data-theme="light"] .btn-success:hover {
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+[data-theme="light"] .btn-warning:hover {
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+[data-theme="light"] .btn-danger:hover {
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+[data-theme="light"] .btn-secondary:hover {
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.15);
+}
+
+/* Form input focus: subtle teal ring instead of neon */
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus,
+[data-theme="light"] textarea:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+  outline: none;
+}
+
+/* Table row hover: neutral gray instead of neon tint */
+[data-theme="light"] tbody tr:hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+[data-theme="light"] table tr:hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Toggle switch: remove neon glow when checked */
+[data-theme="light"] .toggle-switch input:checked + .toggle-track {
+  box-shadow: none;
+  background: #0d9488;
+}
+
+/* Stat card hover: muted border instead of neon */
+[data-theme="light"] .stat-card:hover {
+  border-color: #0d9488;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* HUD panel glow line: soften */
+[data-theme="light"] .hud-panel::before {
+  background: linear-gradient(90deg, transparent, rgba(13, 148, 136, 0.2), transparent) !important;
+}
+
+/* Attack live badge: tone down animation in light mode */
+[data-theme="light"] .attack-live-badge {
+  text-shadow: none;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+}
+
+/* HUD status dots: remove neon box-shadow */
+[data-theme="light"] .hud-status-dot.online {
+  box-shadow: none;
+  background: #10b981;
+}
+[data-theme="light"] .hud-status-dot.warning {
+  box-shadow: none;
+  background: #f59e0b;
+}
+[data-theme="light"] .hud-status-dot.critical {
+  box-shadow: none;
+  background: #ef4444;
+}
+
+/* HUD cam button hover: remove neon */
+[data-theme="light"] .hud-cam-btn:hover {
+  background: rgba(13, 148, 136, 0.1);
+  border-color: #0d9488;
+  box-shadow: none;
+  color: #0d9488;
+}
+
+/* Card hover: subtle shadow instead of neon border */
+[data-theme="light"] .card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Chart container: remove any neon effects */
+[data-theme="light"] .chart-container {
+  border-color: var(--border-color);
+  box-shadow: none;
+}
+
+/* Badge text shadows: ensure all glow variants covered */
+[data-theme="light"] .badge-danger,
+[data-theme="light"] .badge-warning,
+[data-theme="light"] .badge-success,
+[data-theme="light"] .badge-info,
+[data-theme="light"] .badge-primary,
+[data-theme="light"] .badge-secondary {
+  text-shadow: none;
+}
+
+/* Spinner: tone down */
+[data-theme="light"] .spinner {
+  border-top-color: #0d9488;
+}
+
+/* Code blocks in light theme */
+[data-theme="light"] code {
+  background: rgba(0, 0, 0, 0.05);
+  color: #0d7377;
+}
+
+/* Modal overlays: slightly lighter backdrop */
+[data-theme="light"] [role="dialog"] {
+  backdrop-filter: blur(2px);
+}
+

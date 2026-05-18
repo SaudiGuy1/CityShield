@@ -8,6 +8,7 @@ import ExecutionDetailsModal from '../components/ExecutionDetailsModal'
 import AlertResolutionModal, { type AlertResolution } from '../components/AlertResolutionModal'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
 import type { ActiveAttack } from '../App'
+import { useLang } from '../hooks/useLang'
 
 interface AlertItem {
   alert_id: string
@@ -83,6 +84,7 @@ interface ActionAuditEntry {
 }
 
 export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack | null }) {
+  const { tk, dir } = useLang()
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ severity: '', status: '' })
@@ -448,11 +450,11 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
   }
 
   return (
-    <div className="container">
+    <div className="container" dir={dir}>
       <div className="page-header">
         <div>
-          <h1>Security Alerts</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Monitor, investigate, and remediate security threats</p>
+          <h1>{tk('alerts.page_title')}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('alerts.page_subtitle')}</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <span className="badge badge-danger" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}>
@@ -487,12 +489,12 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
 
       {/* Filters */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3>Filters</h3>
+        <h3>{tk('common.filters')}</h3>
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
           <div>
-            <label>Severity</label>
+            <label>{tk('common.severity')}</label>
             <select value={filters.severity} onChange={e => setFilters({ ...filters, severity: e.target.value })}>
-              <option value="">All Severities</option>
+              <option value="">{tk('alerts.all_severities')}</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -500,9 +502,9 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
             </select>
           </div>
           <div>
-            <label>Status</label>
+            <label>{tk('common.status')}</label>
             <select value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })}>
-              <option value="">All Statuses</option>
+              <option value="">{tk('alerts.all_statuses')}</option>
               <option value="open">Open</option>
               <option value="triaged">Triaged</option>
               <option value="resolved">Resolved</option>
@@ -514,11 +516,11 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-          <p style={{ color: 'var(--text-secondary)' }}>Loading alerts...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('alerts.loading')}</p>
         </div>
       ) : alerts.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: 'var(--text-secondary)' }}>No alerts found</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('alerts.no_alerts')}</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -655,7 +657,7 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
                         analysisLoading ? (
                       <div style={{ textAlign: 'center', padding: '2rem' }}>
                         <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-                        <p style={{ color: 'var(--text-secondary)' }}>Analyzing threat...</p>
+                        <p style={{ color: 'var(--text-secondary)' }}>{tk('alerts.analyzing')}</p>
                       </div>
                     ) : analysis ? (
                       <div style={{ display: 'grid', gap: '1.25rem' }}>
@@ -928,7 +930,7 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
                         )}
                       </div>
                         ) : (
-                          <p style={{ color: 'var(--text-secondary)' }}>Unable to load analysis</p>
+                          <p style={{ color: 'var(--text-secondary)' }}>{tk('alerts.unable_to_load')}</p>
                         )
                       )}
 

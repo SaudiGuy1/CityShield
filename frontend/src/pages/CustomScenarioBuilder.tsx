@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AttackEffectivenessAnalyzer from '../components/AttackEffectivenessAnalyzer'
+import { useLang } from '../hooks/useLang'
 
 interface ParameterConfig {
   type: string
@@ -32,6 +33,7 @@ interface MitreTechnique {
 }
 
 export default function CustomScenarioBuilder() {
+  const { tk, dir } = useLang()
   const [availableTechniques, setAvailableTechniques] = useState<AttackTechnique[]>([])
   const [scenarioName, setScenarioName] = useState('')
   const [scenarioDescription, setScenarioDescription] = useState('')
@@ -239,12 +241,12 @@ export default function CustomScenarioBuilder() {
   }
 
   return (
-    <div className="container">
+    <div className="container" dir={dir}>
       <div className="page-header">
         <div>
-          <h1>Custom Scenario Builder</h1>
+          <h1>{tk('custom_scenario.title')}</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Design and execute custom attack scenarios to test detection capabilities
+            {tk('custom_scenario.subtitle')}
           </p>
         </div>
       </div>
@@ -282,7 +284,7 @@ export default function CustomScenarioBuilder() {
               className="btn btn-secondary"
               onClick={() => navigate('/scenarios')}
             >
-              Back to Scenarios
+              {tk('custom_scenario.back')}
             </button>
           </div>
         </div>
@@ -293,17 +295,17 @@ export default function CustomScenarioBuilder() {
         <div>
           {/* Scenario Details */}
           <div className="card" style={{ marginBottom: '1.5rem' }}>
-            <h3>Scenario Details</h3>
+            <h3>{tk('custom_scenario.details')}</h3>
             <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
-                  Scenario Name
+                  {tk('custom_scenario.name')}
                 </label>
                 <input
                   type="text"
                   value={scenarioName}
                   onChange={e => setScenarioName(e.target.value)}
-                  placeholder="e.g., Advanced Persistent Threat Test"
+                  placeholder={tk('custom_scenario.name_placeholder')}
                   style={{ width: '100%' }}
                 />
               </div>
@@ -321,35 +323,35 @@ export default function CustomScenarioBuilder() {
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
-                  Target Component
+                  {tk('custom_scenario.target_component')}
                 </label>
                 <select
                   value={targetComponent}
                   onChange={e => setTargetComponent(e.target.value)}
                   style={{ width: '100%' }}
                 >
-                  <option value="traffic_management">Traffic Management</option>
-                  <option value="iot_sensors">IoT Sensors</option>
-                  <option value="network_infrastructure">Network Infrastructure</option>
-                  <option value="security">Security</option>
-                  <option value="industrial_systems">Industrial Systems</option>
+                  <option value="traffic_management">{tk('custom_scenario.comp_traffic')}</option>
+                  <option value="iot_sensors">{tk('custom_scenario.comp_iot')}</option>
+                  <option value="network_infrastructure">{tk('custom_scenario.comp_network')}</option>
+                  <option value="security">{tk('custom_scenario.comp_security')}</option>
+                  <option value="industrial_systems">{tk('custom_scenario.comp_industrial')}</option>
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
-                  Target Device (Optional)
+                  {tk('custom_scenario.target_device')}
                 </label>
                 <input
                   type="text"
                   value={targetDevice}
                   onChange={e => setTargetDevice(e.target.value)}
-                  placeholder="Leave empty for random selection"
+                  placeholder={tk('custom_scenario.target_device_placeholder')}
                   style={{ width: '100%' }}
                 />
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
-                  MITRE ATT&CK Techniques (Optional)
+                  {tk('custom_scenario.mitre_techniques')}
                 </label>
                 {selectedMitre.length > 0 && (
                   <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
@@ -401,9 +403,9 @@ export default function CustomScenarioBuilder() {
 
           {/* Available Techniques */}
           <div className="card">
-            <h3>Available Attack Techniques</h3>
+            <h3>{tk('custom_scenario.available_techniques')}</h3>
             {loading ? (
-              <p style={{ color: 'var(--text-secondary)', marginTop: '1rem' }}>Loading techniques...</p>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '1rem' }}>{tk('custom_scenario.loading_techniques')}</p>
             ) : (
               <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
                 {availableTechniques.map(tech => (
@@ -450,7 +452,7 @@ export default function CustomScenarioBuilder() {
             {/* Parameter Configuration */}
             {selectedTechnique && (
               <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
-                <h4>Configure Parameters</h4>
+                <h4>{tk('custom_scenario.configure_params')}</h4>
                 <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
                   {Object.entries(selectedTechnique.parameters).map(([paramName, paramConfig]) => (
                     <div key={paramName}>
@@ -463,7 +465,7 @@ export default function CustomScenarioBuilder() {
                   onClick={addToChain}
                   style={{ marginTop: '1rem', width: '100%' }}
                 >
-                  Add to Attack Chain
+                  {tk('custom_scenario.add_to_chain')}
                 </button>
               </div>
             )}

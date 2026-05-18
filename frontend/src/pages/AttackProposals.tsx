@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useLang } from '../hooks/useLang'
 
 interface Proposal {
   proposal_id: string
@@ -50,6 +51,7 @@ const formatDate = (d: string) => {
 }
 
 export default function AttackProposals({ user }: { user: { username?: string; role?: string } | null }) {
+  const { tk, dir } = useLang()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -166,17 +168,17 @@ export default function AttackProposals({ user }: { user: { username?: string; r
   }
 
   return (
-    <div className="container">
+    <div className="container" dir={dir}>
       <div className="page-header">
         <div>
-          <h1>Attack Proposals</h1>
+          <h1>{tk('proposals.title')}</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            {isAdmin ? 'Review and approve researcher attack proposals' : 'Submit attack proposals for admin review'}
+            {isAdmin ? tk('proposals.subtitle_admin') : tk('proposals.subtitle_user')}
           </p>
         </div>
         {(user?.role === 'Researcher' || isAdmin) && (
           <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-            + Submit Proposal
+            {tk('proposals.submit')}
           </button>
         )}
       </div>
@@ -200,7 +202,7 @@ export default function AttackProposals({ user }: { user: { username?: string; r
             className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setFilter(f)}
           >
-            {f || 'All'}
+            {f === '' ? tk('proposals.all') : f === 'pending' ? tk('proposals.pending') : f === 'approved' ? tk('proposals.approved') : tk('proposals.rejected')}
           </button>
         ))}
       </div>
@@ -209,34 +211,34 @@ export default function AttackProposals({ user }: { user: { username?: string; r
       {showForm && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowForm(false)}>
           <div className="card" style={{ maxWidth: '600px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h3>Submit Attack Proposal</h3>
+            <h3>{tk('proposals.submit_title')}</h3>
             <form onSubmit={submitProposal} style={{ marginTop: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Title</label>
+                <label className="form-label">{tk('proposals.form_title')}</label>
                 <input type="text" className="form-control" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label className="form-label">Description</label>
+                <label className="form-label">{tk('proposals.form_desc')}</label>
                 <textarea className="form-control" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label className="form-label">Target Component</label>
+                <label className="form-label">{tk('proposals.form_target')}</label>
                 <select className="form-control" value={formData.target_component} onChange={e => setFormData({ ...formData, target_component: e.target.value })}>
                   {COMPONENTS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Attack Pattern</label>
+                <label className="form-label">{tk('proposals.form_pattern')}</label>
                 <select className="form-control" value={formData.attack_pattern} onChange={e => setFormData({ ...formData, attack_pattern: e.target.value })}>
                   {ATTACK_PATTERNS.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Duration (seconds)</label>
+                <label className="form-label">{tk('proposals.form_duration')}</label>
                 <input type="number" className="form-control" min={60} max={3600} value={formData.duration_seconds} onChange={e => setFormData({ ...formData, duration_seconds: parseInt(e.target.value) || 300 })} />
               </div>
               <div className="form-group">
-                <label className="form-label">MITRE Techniques (optional)</label>
+                <label className="form-label">{tk('proposals.form_mitre')}</label>
                 <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '0.375rem', padding: '0.5rem' }}>
                   {techniques.map(t => (
                     <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', fontSize: '0.85rem', cursor: 'pointer' }}>
@@ -248,8 +250,8 @@ export default function AttackProposals({ user }: { user: { username?: string; r
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn btn-primary">Submit Proposal</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">{tk('proposals.submit_btn')}</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>{tk('common.cancel')}</button>
               </div>
             </form>
           </div>
@@ -260,7 +262,7 @@ export default function AttackProposals({ user }: { user: { username?: string; r
       {reviewModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setReviewModal(null)}>
           <div className="card" style={{ maxWidth: '500px', width: '90%' }} onClick={e => e.stopPropagation()}>
-            <h3>Review Proposal</h3>
+            <h3>{tk('proposals.review_title')}</h3>
             <div style={{ marginTop: '1rem' }}>
               <p><strong>{reviewModal.title}</strong></p>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{reviewModal.description}</p>
@@ -272,13 +274,13 @@ export default function AttackProposals({ user }: { user: { username?: string; r
                 ))}
               </div>
               <div className="form-group">
-                <label className="form-label">Review Comment (optional)</label>
+                <label className="form-label">{tk('proposals.review_comment')}</label>
                 <textarea className="form-control" rows={2} value={reviewComment} onChange={e => setReviewComment(e.target.value)} placeholder="Reason for approval or rejection..." />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button className="btn btn-success" onClick={() => reviewProposal('approved')}>Approve</button>
-                <button className="btn btn-danger" onClick={() => reviewProposal('rejected')}>Reject</button>
-                <button className="btn btn-secondary" onClick={() => setReviewModal(null)}>Cancel</button>
+                <button className="btn btn-success" onClick={() => reviewProposal('approved')}>{tk('common.approve')}</button>
+                <button className="btn btn-danger" onClick={() => reviewProposal('rejected')}>{tk('common.reject')}</button>
+                <button className="btn btn-secondary" onClick={() => setReviewModal(null)}>{tk('common.cancel')}</button>
               </div>
             </div>
           </div>
@@ -288,11 +290,11 @@ export default function AttackProposals({ user }: { user: { username?: string; r
       {/* Proposals List */}
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: 'var(--text-secondary)' }}>Loading proposals...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('proposals.loading')}</p>
         </div>
       ) : proposals.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: 'var(--text-secondary)' }}>No proposals found</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('proposals.no_proposals')}</p>
         </div>
       ) : (
         <div className="card">
@@ -301,13 +303,13 @@ export default function AttackProposals({ user }: { user: { username?: string; r
             <table className="table">
               <thead>
                 <tr>
-                  <th>Title</th>
-                  <th>Target</th>
-                  <th>Pattern</th>
-                  <th>Status</th>
-                  <th>Submitted By</th>
-                  <th>Date</th>
-                  {isAdmin && <th>Actions</th>}
+                  <th>{tk('proposals.col_title')}</th>
+                  <th>{tk('proposals.col_target')}</th>
+                  <th>{tk('proposals.col_pattern')}</th>
+                  <th>{tk('proposals.col_status')}</th>
+                  <th>{tk('proposals.col_submitted_by')}</th>
+                  <th>{tk('proposals.col_date')}</th>
+                  {isAdmin && <th>{tk('common.actions')}</th>}
                 </tr>
               </thead>
               <tbody>

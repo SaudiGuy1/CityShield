@@ -4,12 +4,14 @@ import { Device, DeviceDetail } from '../types/assets'
 import DeviceStatusBadge from '../components/DeviceStatusBadge'
 import RiskScoreBar from '../components/RiskScoreBar'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
+import { useLang } from '../hooks/useLang'
 
 interface DeviceManagementProps {
   user?: { username?: string; role?: string } | null
 }
 
 export default function DeviceManagement({ user }: DeviceManagementProps) {
+  const { tk, dir } = useLang()
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDevice, setSelectedDevice] = useState<DeviceDetail | null>(null)
@@ -423,12 +425,12 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
   const uniqueTypes = [...new Set(devices.map(d => d.asset_type))]
 
   return (
-    <div className="container">
+    <div className="container" dir={dir}>
       <div className="page-header">
         <div>
-          <h1>Device Management</h1>
+          <h1>{tk('devices.title')}</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Monitor and manage smart city devices and assets
+            {tk('devices.subtitle')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -456,7 +458,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
               }}
               onClick={() => { setShowRegisterModal(true); setDiscoveredDevices([]); setRegisterError(''); setProbeIp(''); }}
             >
-              + Register Device
+              {tk('devices.register')}
             </button>
           )}
         </div>
@@ -464,7 +466,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
 
       {/* Filters */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ marginBottom: '1rem' }}>Filters</h3>
+        <h3 style={{ marginBottom: '1rem' }}>{tk('common.filters')}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
           <div>
             <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>
@@ -475,7 +477,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
               onChange={e => setFilters({ ...filters, zone: e.target.value })}
               style={{ width: '100%' }}
             >
-              <option value="">All Zones</option>
+              <option value="">{tk('devices.all_zones')}</option>
               {uniqueZones.map(zone => (
                 <option key={zone} value={zone}>{zone}</option>
               ))}
@@ -490,7 +492,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
               onChange={e => setFilters({ ...filters, asset_type: e.target.value })}
               style={{ width: '100%' }}
             >
-              <option value="">All Types</option>
+              <option value="">{tk('devices.all_types')}</option>
               {uniqueTypes.map(type => (
                 <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
               ))}
@@ -505,7 +507,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
               onChange={e => setFilters({ ...filters, status: e.target.value })}
               style={{ width: '100%' }}
             >
-              <option value="">All Statuses</option>
+              <option value="">{tk('devices.all_statuses')}</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="isolated">Isolated</option>
@@ -523,7 +525,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
               onChange={e => setFilters({ ...filters, criticality: e.target.value })}
               style={{ width: '100%' }}
             >
-              <option value="">All Levels</option>
+              <option value="">{tk('devices.all_levels')}</option>
               <option value="critical">Critical</option>
               <option value="high">High</option>
               <option value="medium">Medium</option>
@@ -560,7 +562,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-          <p style={{ color: 'var(--text-secondary)' }}>Loading devices...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('devices.loading')}</p>
         </div>
       ) : devices.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -1024,7 +1026,7 @@ export default function DeviceManagement({ user }: DeviceManagementProps) {
                   onClick={() => setSelectedDevice(null)}
                   style={{ padding: '0.5rem 1rem' }}
                 >
-                  Close
+                  {tk('common.close')}
                 </button>
               </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import ActionHistoryTable from '../components/ActionHistoryTable'
+import { useLang } from '../hooks/useLang'
 
 interface AutoResponseConditions {
   min_severity: string
@@ -109,6 +110,7 @@ function getTacticForRule(rule: Rule): string {
 }
 
 export default function Rules() {
+  const { tk, dir } = useLang()
   const [rules, setRules] = useState<Rule[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState({ severity: '', enabled: '', tactic: '', search: '' })
@@ -375,12 +377,12 @@ export default function Rules() {
   }, [rules])
 
   return (
-    <div className="container">
+    <div className="container" dir={dir}>
       <div className="page-header">
         <div>
-          <h1>Detection Rules</h1>
+          <h1>{tk('rules.title')}</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            MITRE ATT&CK aligned detection rules — {rules.length} rules across {Object.keys(tacticSummary).length} tactics
+            {tk('rules.subtitle', { count: rules.length, tactics: Object.keys(tacticSummary).length })}
           </p>
         </div>
       </div>
@@ -437,10 +439,10 @@ export default function Rules() {
 
       {/* Filters */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3>Filters</h3>
+        <h3>{tk('common.filters')}</h3>
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 200px' }}>
-            <label className="form-label">Search</label>
+            <label className="form-label">{tk('common.search')}</label>
             <input
               type="text"
               className="form-control"
@@ -450,9 +452,9 @@ export default function Rules() {
             />
           </div>
           <div>
-            <label className="form-label">Severity</label>
+            <label className="form-label">{tk('common.severity')}</label>
             <select className="form-control" value={filter.severity} onChange={e => setFilter({...filter, severity: e.target.value})}>
-              <option value="">All Severities</option>
+              <option value="">{tk('rules.all_severities')}</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -460,7 +462,7 @@ export default function Rules() {
             </select>
           </div>
           <div>
-            <label className="form-label">Status</label>
+            <label className="form-label">{tk('common.status')}</label>
             <select className="form-control" value={filter.enabled} onChange={e => setFilter({...filter, enabled: e.target.value})}>
               <option value="">All Rules</option>
               <option value="true">Enabled Only</option>
@@ -483,11 +485,11 @@ export default function Rules() {
       {/* Rules Table */}
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: 'var(--text-secondary)' }}>Loading rules...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('rules.loading')}</p>
         </div>
       ) : filteredRules.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: 'var(--text-secondary)' }}>No rules found matching filters</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('rules.no_rules')}</p>
         </div>
       ) : (
         <div className="card">
@@ -496,13 +498,13 @@ export default function Rules() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Rule Name</th>
-                  <th>Severity</th>
-                  <th>MITRE Technique</th>
+                  <th>{tk('rules.rule_name')}</th>
+                  <th>{tk('common.severity')}</th>
+                  <th>{tk('rules.mitre_technique')}</th>
                   <th>Tactic</th>
-                  <th>Auto-Response</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>{tk('rules.auto_response')}</th>
+                  <th>{tk('common.status')}</th>
+                  <th>{tk('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1074,7 +1076,7 @@ export default function Rules() {
             )}
 
             <div style={{ marginTop: '2rem', textAlign: 'right' }}>
-              <button className="btn btn-secondary" onClick={() => setSelectedRule(null)}>Close</button>
+              <button className="btn btn-secondary" onClick={() => setSelectedRule(null)}>{tk('common.close')}</button>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import type { ActiveAttack } from '../App'
 import AttackEffectivenessAnalyzer from '../components/AttackEffectivenessAnalyzer'
 import ResearchLab from '../components/ResearchLab'
 import { formatDateTimeWithSeconds } from '../utils/datetime'
+import { useLang } from '../hooks/useLang'
 
 interface ScenarioBuilderProps {
   onAttackLaunched: (attack: ActiveAttack) => void
@@ -23,6 +24,7 @@ interface MitreTechLookup {
 }
 
 export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderProps) {
+  const { tk, dir } = useLang()
   const [scenarios, setScenarios] = useState<{ scenario_id: string; name?: string; description?: string; attack_pattern?: string; target_component?: string; components?: string[]; duration_seconds?: number; category?: string; mitre_technique_ids?: string[] }[]>([])
   const [runs, setRuns] = useState<{ run_id: string; scenario_id: string; status: string; started_at?: string; scenario_name?: string; target_device_id?: string; results?: Record<string, unknown> }[]>([])
   const [loading, setLoading] = useState(true)
@@ -202,11 +204,11 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
   }
 
   return (
-    <div className="container">
+    <div className="container" dir={dir}>
       <div className="page-header">
         <div>
-          <h1>Attack Scenario Builder</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Launch attack simulations or open your personal research lab</p>
+          <h1>{tk('scenarios.title')}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('scenarios.subtitle')}</p>
         </div>
         {activeTab === 'scenarios' && (
           <button
@@ -215,7 +217,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
             <span style={{ fontSize: '1.2rem' }}>⚙️</span>
-            Custom Scenario Builder
+            {tk('scenarios.custom_builder')}
           </button>
         )}
       </div>
@@ -228,8 +230,8 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
         borderBottom: '1px solid var(--border-color)',
       }}>
         {([
-          { key: 'scenarios' as const, label: 'Attack Scenarios' },
-          { key: 'lab' as const, label: 'Research Lab' },
+          { key: 'scenarios' as const, label: tk('scenarios.tab_scenarios') },
+          { key: 'lab' as const, label: tk('scenarios.tab_lab') },
         ]).map(tab => (
           <button
             key={tab.key}
@@ -259,7 +261,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
       {targetModal && (
         <div style={modalOverlayStyle} onClick={() => setTargetModal(null)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-primary)' }}>Select Target Device</h3>
+            <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-primary)' }}>{tk('scenarios.select_target')}</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}>
               Choose a specific device to target or let the system pick randomly
             </p>
@@ -269,7 +271,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                 style={{ width: '100%', justifyContent: 'flex-start', padding: '0.75rem' }}
                 onClick={() => runScenario(targetModal.scenarioId)}
               >
-                Random Target
+                {tk('scenarios.random_target')}
               </button>
               {devices.map(device => (
                 <button
@@ -288,7 +290,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
               style={{ marginTop: '1rem', width: '100%' }}
               onClick={() => setTargetModal(null)}
             >
-              Cancel
+              {tk('common.cancel')}
             </button>
           </div>
         </div>
@@ -296,7 +298,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
 
       {/* Quick Launch */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3>Quick Launch Attacks</h3>
+        <h3>{tk('scenarios.quick_launch')}</h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
           Launch an attack and automatically switch to the 3D city map to watch it unfold in real-time
         </p>
@@ -324,11 +326,11 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
 
       {/* Available Scenarios */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3>Available Attack Scenarios</h3>
+        <h3>{tk('scenarios.available')}</h3>
         {loading ? (
-          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>Loading scenarios...</p>
+          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>{tk('scenarios.loading')}</p>
         ) : scenarios.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>No scenarios available</p>
+          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>{tk('scenarios.no_scenarios')}</p>
         ) : (
           <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
             {scenarios.map(scenario => (
@@ -394,7 +396,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
                     disabled={running[scenario.scenario_id]}
                     style={{ minWidth: '140px' }}
                   >
-                    {running[scenario.scenario_id] ? 'Launching...' : 'Run & Watch'}
+                    {running[scenario.scenario_id] ? tk('scenarios.launching') : tk('scenarios.run_watch')}
                   </button>
                 </div>
               </div>
@@ -405,7 +407,7 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
 
       {/* Recent Runs */}
       <div className="card">
-        <h3>Recent Scenario Runs</h3>
+        <h3>{tk('scenarios.recent_runs')}</h3>
         {runs.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
             No scenarios have been run yet. Launch a scenario above to begin testing.
@@ -415,13 +417,13 @@ export default function ScenarioBuilder({ onAttackLaunched }: ScenarioBuilderPro
             <table>
               <thead>
                 <tr>
-                  <th>Run ID</th>
-                  <th>Scenario</th>
-                  <th>Status</th>
-                  <th>Target</th>
-                  <th>Started</th>
-                  <th>Duration</th>
-                  <th>Actions</th>
+                  <th>{tk('scenarios.run_id')}</th>
+                  <th>{tk('scenarios.scenario')}</th>
+                  <th>{tk('common.status')}</th>
+                  <th>{tk('common.target')}</th>
+                  <th>{tk('scenarios.started')}</th>
+                  <th>{tk('common.duration')}</th>
+                  <th>{tk('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>

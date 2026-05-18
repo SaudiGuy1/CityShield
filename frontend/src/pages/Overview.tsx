@@ -3,6 +3,7 @@ import anime from 'animejs'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import SmartCityMap3D from '../components/SmartCityMap3D'
 import type { ActiveAttack } from '../App'
+import { useLang } from '../hooks/useLang'
 
 interface OverviewProps {
   user: { username?: string; role?: string } | null
@@ -11,6 +12,7 @@ interface OverviewProps {
 }
 
 export default function Overview({ user, activeAttack, onAttackEnd }: OverviewProps) {
+  const { tk, dir } = useLang()
   const [stats, setStats] = useState({
     totalLogs: 0,
     activeAlerts: 0,
@@ -134,44 +136,44 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
   }, [fetchData])
 
   return (
-    <div className="container">
+    <div className="container" dir={dir}>
       <div className="page-header">
         <div>
-          <h1>CityShield Dashboard</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Welcome back, {user?.username || 'User'}</p>
+          <h1>{tk('overview.title')}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>{tk('overview.welcome', { username: user?.username || 'User' })}</p>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div ref={statsRef} className="card-grid" style={{ marginBottom: '2rem' }}>
         <div className="stat-card">
-          <h3>Total Events</h3>
+          <h3>{tk('overview.total_events')}</h3>
           <div className="stat-value">{stats.totalLogs.toLocaleString()}</div>
-          <div className="stat-label">Logged events</div>
+          <div className="stat-label">{tk('overview.logged_events')}</div>
         </div>
 
         <div className="stat-card">
-          <h3>Active Alerts</h3>
+          <h3>{tk('overview.active_alerts')}</h3>
           <div className="stat-value" style={{ color: 'var(--accent-danger)' }}>{stats.activeAlerts}</div>
-          <div className="stat-label">Requires attention</div>
+          <div className="stat-label">{tk('overview.requires_attention')}</div>
         </div>
 
         <div className="stat-card">
-          <h3>Active Rules</h3>
+          <h3>{tk('overview.active_rules')}</h3>
           <div className="stat-value" style={{ color: 'var(--accent-success)' }}>{stats.activeRules}</div>
-          <div className="stat-label">Detection rules enabled</div>
+          <div className="stat-label">{tk('overview.rules_enabled')}</div>
         </div>
 
         <div className="stat-card">
-          <h3>Detection Rate</h3>
+          <h3>{tk('overview.detection_rate')}</h3>
           <div className="stat-value" style={{ color: 'var(--accent-warning)' }}>{stats.detectionRate}%</div>
-          <div className="stat-label">Events analyzed</div>
+          <div className="stat-label">{tk('overview.events_analyzed')}</div>
         </div>
       </div>
 
       {/* 3D City Visualization */}
       <div className="chart-container">
-        <h3>Smart City Components</h3>
+        <h3>{tk('overview.smart_city_components')}</h3>
         <SmartCityMap3D
           activeAttack={activeAttack}
           onAttackEnd={onAttackEnd}
@@ -182,7 +184,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
         {/* Event Timeline */}
         <div className="chart-container">
-          <h3>Event Activity</h3>
+          <h3>{tk('overview.event_activity')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={eventData}>
               <defs>
@@ -209,7 +211,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
 
         {/* Component Distribution */}
         <div className="chart-container">
-          <h3>Component Distribution</h3>
+          <h3>{tk('overview.component_distribution')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -242,29 +244,29 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
       {/* System Status and Quick Links */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
         <div className="card">
-          <h3>System Status</h3>
+          <h3>{tk('overview.system_status')}</h3>
           <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Traffic Simulator</span>
-              <span className="badge badge-success">Active</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{tk('overview.traffic_simulator')}</span>
+              <span className="badge badge-success">{tk('common.active')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>IoT Sensors</span>
-              <span className="badge badge-success">Active</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{tk('overview.iot_sensors')}</span>
+              <span className="badge badge-success">{tk('common.active')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Network Emulator</span>
-              <span className="badge badge-success">Active</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{tk('overview.network_emulator')}</span>
+              <span className="badge badge-success">{tk('common.active')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Detection Engine</span>
-              <span className="badge badge-success">Running</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{tk('overview.detection_engine')}</span>
+              <span className="badge badge-success">{tk('overview.running')}</span>
             </div>
           </div>
         </div>
 
         <div className="card">
-          <h3>External Services</h3>
+          <h3>{tk('overview.external_services')}</h3>
           <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
             <a
               href="http://localhost:5601"
@@ -291,7 +293,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
                 e.currentTarget.style.background = 'var(--bg-tertiary)'
               }}
             >
-              <span>OpenSearch Dashboards</span>
+              <span>{tk('overview.opensearch_dashboards')}</span>
               <span style={{ color: 'var(--accent-primary)' }}>→</span>
             </a>
 
@@ -329,7 +331,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
                 }
               }}
             >
-              <span>Initialize Dashboards</span>
+              <span>{tk('overview.init_dashboards')}</span>
               <span style={{ color: 'var(--accent-primary)' }}>+</span>
             </button>
 
@@ -358,7 +360,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
                 e.currentTarget.style.background = 'var(--bg-tertiary)'
               }}
             >
-              <span>API Documentation</span>
+              <span>{tk('overview.api_docs')}</span>
               <span style={{ color: 'var(--accent-primary)' }}>→</span>
             </a>
 
@@ -370,7 +372,7 @@ export default function Overview({ user, activeAttack, onAttackEnd }: OverviewPr
               fontSize: '0.75rem',
               color: 'var(--text-secondary)'
             }}>
-              <strong style={{ color: 'var(--accent-primary)' }}>Note:</strong> Services run on localhost. If links don't work, ensure Docker is running and ports are accessible.
+              {tk('overview.services_note')}
             </div>
           </div>
         </div>
