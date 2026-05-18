@@ -160,7 +160,7 @@ export default function Nav({
   onLogout: () => void
 }) {
   const location = useLocation()
-  const { tk } = useLang()
+  const { tk, dir } = useLang()
 
   const visibleItems = navItems.filter(
     (item) => !item.roles || (user?.role && item.roles.includes(user.role))
@@ -187,7 +187,7 @@ export default function Nav({
                 : location.pathname.startsWith(item.to)
 
             return (
-              <motion.div key={item.to} whileHover={{ x: 4 }} transition={{ duration: 0.15 }}>
+              <motion.div key={item.to} whileHover={{ x: dir === 'rtl' ? -4 : 4 }} transition={{ duration: 0.15 }}>
                 <Link
                   to={item.to}
                   className={isActive ? 'active' : ''}

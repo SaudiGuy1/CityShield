@@ -485,8 +485,8 @@ export default function SecurityAwareness() {
   const labels = {
     title: lang === 'ar' ? 'تدريب التوعية الأمنية' : 'Security Awareness Training',
     subtitle: lang === 'ar'
-      ? 'وحدات تدريبية حسب الدور لجميع موظفي CityShield'
-      : 'Role-based training modules for all CityShield personnel',
+      ? 'وحدات تدريبية حسب الدور لجميع موظفي المدينة الذكية'
+      : 'Role-based training modules for all smart city personnel',
     modulesCount: (n: number, q: number) => lang === 'ar'
       ? `${n} وحدات · ${q} أسئلة`
       : `${n} modules · ${q} questions`,
@@ -513,7 +513,6 @@ export default function SecurityAwareness() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
         <div>
           <h1>{labels.title}</h1>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '-1rem' }}>{labels.subtitle}</p>
         </div>
         <LangToggle />
       </div>

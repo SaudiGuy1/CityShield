@@ -964,7 +964,7 @@ export default function Rules() {
                                     padding: '0 0.15rem', fontSize: '0.85rem', lineHeight: 1, opacity: 0.7,
                                   }}
                                   title="Remove"
-                                >\u00d7</button>
+                                >&times;</button>
                               </span>
                             )
                           })}

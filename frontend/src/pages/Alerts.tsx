@@ -587,7 +587,7 @@ export default function Alerts({ activeAttack }: { activeAttack?: ActiveAttack |
                       )}
                       {alert.status !== 'resolved' && (
                         <button className="btn btn-sm btn-success" onClick={e => { e.stopPropagation(); openResolveModal(alert) }}>
-                          Resolve\u2026
+                          Resolve&hellip;
                         </button>
                       )}
                       {alert.status === 'resolved' && (
