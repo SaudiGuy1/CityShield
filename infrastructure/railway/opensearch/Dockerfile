@@ -18,6 +18,6 @@ ENV discovery.type=single-node \
     network.host=:: \
     DISABLE_SECURITY_PLUGIN=true \
     DISABLE_INSTALL_DEMO_CONFIG=true \
-    OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    OPENSEARCH_JAVA_OPTS="-Xms512m -Xmx512m"
 
 EXPOSE 9200
