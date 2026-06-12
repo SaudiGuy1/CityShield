@@ -1,0 +1,32 @@
+# Production override for deploying CityShield on a public VPS.
+#
+# Usage (alongside the base compose file):
+#   docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d \
+#     opensearch backend frontend traffic_sim iot_sim network_emulator \
+#     detection_engine response_manager scenario_runner
+#
+# Security model: ONLY the frontend is exposed to the internet (port 80).
+# OpenSearch (no auth), the backend API, and Dashboards are re-bound to
+# 127.0.0.1 so they are reachable on the host/compose network but NOT from the
+# public internet. The frontend's nginx reverse-proxies /api and /ws to the
+# backend over the internal compose network, so nothing else needs a public port.
+#
+# Requires Docker Compose v2.24+ for the `!override` tag (the install script
+# provided installs a recent Docker).
+services:
+  opensearch:
+    ports: !override
+      - "127.0.0.1:9200:9200"
+
+  backend:
+    ports: !override
+      - "127.0.0.1:8000:8000"
+
+  dashboards:
+    ports: !override
+      - "127.0.0.1:5601:5601"
+
+  frontend:
+    # Public entry point. http://<SERVER_IP>/ serves the SOC console.
+    ports: !override
+      - "80:80"
