@@ -1,5 +1,7 @@
 """OpenSearch client and index management."""
 import logging
+import os
+import time
 from typing import Optional, Dict, Any, List
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from opensearchpy.exceptions import NotFoundError
@@ -13,15 +15,43 @@ class OpenSearchClient:
 
     def __init__(self):
         """Initialize OpenSearch client."""
+        # Derive TLS settings from the URL scheme so the same code works against a
+        # plain-HTTP local/Railway node and an https managed cluster (e.g. Bonsai).
+        use_ssl = settings.opensearch_url.lower().startswith("https")
         self.client = OpenSearch(
             hosts=[settings.opensearch_url],
             http_auth=(settings.opensearch_user, settings.opensearch_pass),
-            use_ssl=False,
-            verify_certs=False,
+            use_ssl=use_ssl,
+            verify_certs=use_ssl,
             connection_class=RequestsHttpConnection,
             timeout=30
         )
+        # On Railway (and any orchestrator that starts services in parallel) the
+        # backend can boot before OpenSearch is reachable. Wait for it rather than
+        # crash-looping. Locally OpenSearch is gated by a healthcheck, so this
+        # succeeds on the first attempt and adds no delay.
+        self._wait_for_connection()
         self._ensure_indices()
+
+    def _wait_for_connection(self):
+        """Block until OpenSearch answers a ping, up to a bounded number of tries."""
+        retries = int(os.getenv("OPENSEARCH_STARTUP_RETRIES", "30"))
+        delay = float(os.getenv("OPENSEARCH_STARTUP_DELAY_SECONDS", "2"))
+        for attempt in range(1, retries + 1):
+            try:
+                if self.client.ping():
+                    if attempt > 1:
+                        logger.info(f"Connected to OpenSearch after {attempt} attempts")
+                    return
+            except Exception as e:
+                logger.warning(
+                    f"OpenSearch not ready (attempt {attempt}/{retries}): {e}"
+                )
+            time.sleep(delay)
+        logger.error(
+            "OpenSearch did not become reachable in time; continuing anyway. "
+            "Index creation and seeding may fail until it is available."
+        )
 
     def _ensure_indices(self):
         """Create required indices if they don't exist."""

@@ -1,0 +1,55 @@
+server {
+    # ${PORT} is injected at container start by docker-entrypoint.sh.
+    # Defaults to 80 for local docker-compose; Railway sets it to its assigned port.
+    listen ${PORT};
+    listen [::]:${PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Resolve upstream names at request time (not startup) so nginx boots even if
+    # the backend isn't up yet and survives backend redeploys (new private IP).
+    # ${NGINX_RESOLVER} is taken from /etc/resolv.conf by the entrypoint
+    # (127.0.0.11 under docker-compose, Railway's DNS in the cloud).
+    resolver ${NGINX_RESOLVER} valid=10s ipv6=on;
+
+    # Cache-busting: index.html should never be cached
+    location = /index.html {
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    # Hashed assets can be cached forever
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /ws/ {
+        # ${BACKEND_URL} -> http://backend:8000 locally, or the deployed backend on Railway.
+        # Using a variable forces request-time DNS resolution via the resolver above.
+        set $cityshield_backend ${BACKEND_URL};
+        proxy_pass $cityshield_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 86400;
+    }
+
+    location /api {
+        set $cityshield_backend ${BACKEND_URL};
+        proxy_pass $cityshield_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 86400;
+    }
+}
