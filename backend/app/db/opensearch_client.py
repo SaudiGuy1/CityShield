@@ -15,11 +15,31 @@ class OpenSearchClient:
 
     def __init__(self):
         """Initialize OpenSearch client."""
+        url = (settings.opensearch_url or "").strip()
+        # Detect a missing or unresolved endpoint. On Railway this happens when the
+        # referenced service (e.g. ${{opensearch.RAILWAY_PRIVATE_DOMAIN}}) doesn't
+        # exist or is named differently, so the variable expands to nothing and the
+        # URL becomes "http://:9200" with an empty host — which would crash the
+        # client constructor before the API can even start.
+        host_part = url.split("://", 1)[1] if "://" in url else url
+        if not url or "${{" in url or host_part.startswith(":") or host_part == "":
+            logger.error(
+                "OPENSEARCH_URL is missing or unresolved (got %r). On Railway this "
+                "usually means the 'opensearch' service does not exist or is named "
+                "differently, so the variable reference did not resolve. Set "
+                "OPENSEARCH_URL to a reachable endpoint such as "
+                "http://opensearch.railway.internal:9200. Falling back to "
+                "http://opensearch:9200 so the API can still start (it will report "
+                "OpenSearch as unavailable until the URL is fixed).",
+                url,
+            )
+            url = "http://opensearch:9200"
+
         # Derive TLS settings from the URL scheme so the same code works against a
         # plain-HTTP local/Railway node and an https managed cluster (e.g. Bonsai).
-        use_ssl = settings.opensearch_url.lower().startswith("https")
+        use_ssl = url.lower().startswith("https")
         self.client = OpenSearch(
-            hosts=[settings.opensearch_url],
+            hosts=[url],
             http_auth=(settings.opensearch_user, settings.opensearch_pass),
             use_ssl=use_ssl,
             verify_certs=use_ssl,
