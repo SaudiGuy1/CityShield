@@ -388,12 +388,21 @@ def _seed_detection_rules(retries: int = 3, delay: float = 2.0):
 
 
 def _seed_demo_data():
-    """Seed fake alerts and log events so the dashboards look alive.
+    """Seed realistic, internally-consistent SOC data so the demo looks live.
+
+    Alerts use REAL detection rules (id/name/MITRE technique/severity); each one
+    is backed by a cluster of correlated log events in its drill-down window
+    (shared correlation_id, source IP and asset), and a realistic mix of
+    open/triaged/resolved statuses with genuine analyst notes + resolution
+    history. Baseline benign telemetry fills the streams so the system looks
+    busy. Timestamps are spread irregularly over several days.
 
     Only runs in in-memory demo mode (USE_IN_MEMORY_STORE=true) so it never
-    writes fake data into a real OpenSearch cluster. Idempotent.
+    writes into a real OpenSearch cluster. Idempotent; deterministic layout.
     """
     import os
+    import random
+    import uuid
     from datetime import timedelta
 
     if os.getenv("USE_IN_MEMORY_STORE", "false").lower() != "true":
@@ -404,75 +413,248 @@ def _seed_demo_data():
     except Exception:
         pass
 
+    try:
+        with open(Path(__file__).parent / "data" / "detection_rules.json") as f:
+            all_rules = json.load(f)
+    except Exception:
+        all_rules = []
+    if not all_rules:
+        return
+
+    rng = random.Random(20260613)  # fixed seed -> stable layout; anchored to now
     now = datetime.utcnow()
-    zones = ["downtown", "industrial", "residential", "transit-hub"]
-    demo_alerts = [
-        ("Network Service Scanning detected", "high", "network_infrastructure", "T1046",
-         "Network Service Scanning", "cyber-range-metasploitable", "192.168.100.50"),
-        ("Brute Force login attempts", "high", "network_infrastructure", "T1110",
-         "Brute Force", "cyber-range-metasploitable", "192.168.100.51"),
-        ("IoT firmware tampering suspected", "critical", "iot_sensors", "T1565",
-         "Data Manipulation", "iot-range-target", "192.168.100.77"),
-        ("Exploit attempt against web service", "medium", "network_infrastructure", "T1190",
-         "Exploit Public-Facing Application", "cyber-range-metasploitable", "192.168.100.60"),
-        ("Anomalous traffic-signal command", "medium", "traffic_management", "T1565",
-         "Data Manipulation", None, "10.20.0.9"),
-        ("Possible data exfiltration", "high", "iot_sensors", "T1041",
-         "Exfiltration Over C2 Channel", "iot-range-target", "192.168.100.88"),
+
+    ZONES = ["zone-a", "zone-b", "zone-c", "zone-d", "zone-e"]
+    ANALYSTS = ["admin", "researcher"]
+    STREAM = {
+        "network_infrastructure": "logs-network",
+        "iot_sensors": "logs-iot",
+        "traffic_management": "logs-traffic",
+    }
+    ASSETS = {
+        "network_infrastructure": [
+            ("core-router-01", "10.10.0.1"), ("edge-firewall-02", "10.10.0.2"),
+            ("scada-gateway-03", "10.30.0.5"), ("web-portal-prod", "10.10.5.20"),
+            ("vpn-concentrator", "10.10.0.9"), ("metasploitable-target", "172.20.0.2"),
+        ],
+        "iot_sensors": [
+            ("air-quality-az-07", "10.40.2.7"), ("water-flow-bz-12", "10.40.3.12"),
+            ("smart-meter-cz-44", "10.40.5.44"), ("streetlight-ctrl-19", "10.40.1.19"),
+            ("iot-hub-target", "172.21.0.2"),
+        ],
+        "traffic_management": [
+            ("signal-ctrl-12", "10.20.0.12"), ("ramp-meter-03", "10.20.1.3"),
+            ("cctv-node-27", "10.20.4.27"), ("vms-board-05", "10.20.6.5"),
+        ],
+    }
+    # Believable external attacker IPs (reused across incidents for campaign feel).
+    ATTACKERS = ["45.137.21.8", "185.220.101.34", "91.219.236.17", "193.27.228.140",
+                 "194.165.16.77", "23.129.64.210", "146.70.124.5", "5.188.206.18",
+                 "212.70.149.71", "103.97.176.4"]
+    USERS = ["root", "admin", "operator", "svc_scada", "jdoe", "msmith", "backup"]
+    DPORT = {"port_scan": 0, "auth_failure": 22, "c2_beacon": 443, "data_transfer": 443,
+             "exploit_attempt": 8080, "anomaly": 1883, "command_override": 502,
+             "suspicious_process": 445}
+
+    events_by_comp = {
+        "network_infrastructure": ["port_scan", "auth_failure", "c2_beacon", "exploit_attempt", "suspicious_process"],
+        "iot_sensors": ["anomaly", "data_transfer", "auth_failure"],
+        "traffic_management": ["command_override", "anomaly"],
+    }
+
+    def classify(rule):
+        """Pick a city subsystem (spread across all three) and a plausible event
+        type for the alert. The rule itself (real id/name/technique) is unchanged;
+        a generic rule can fire on any asset type, like a real deployment."""
+        t = (rule.get("name", "") + " " + (rule.get("technique_name") or "")).lower()
+        if any(w in t for w in ["iot", "sensor", "firmware", "telemetry"]):
+            comp = "iot_sensors"
+        elif any(w in t for w in ["signal", "traffic", "scada", "ics"]):
+            comp = "traffic_management"
+        else:
+            comp = rng.choices(
+                ["network_infrastructure", "iot_sensors", "traffic_management"],
+                weights=[50, 28, 22])[0]
+
+        if any(w in t for w in ["scan", "recon", "discovery", "enumerat", "sniff"]):
+            event = "port_scan"
+        elif any(w in t for w in ["brute", "credential", "password", "login", "account", "authentication"]):
+            event = "auth_failure"
+        elif any(w in t for w in ["beacon", "command and control", "c2", "tunnel", "proxy"]):
+            event = "c2_beacon"
+        elif any(w in t for w in ["exfil", "archive", "collection", "transfer", "clipboard", "staged"]):
+            event = "data_transfer"
+        elif any(w in t for w in ["exploit", "injection", "vulnerab", "remote code", "elevation"]):
+            event = "exploit_attempt"
+        elif any(w in t for w in ["manipulation", "integrity", "tamper", "anomaly"]):
+            event = "anomaly"
+        elif any(w in t for w in ["signal", "control", "scada", "ics"]):
+            event = "command_override"
+        else:
+            event = rng.choice(events_by_comp[comp])
+
+        if event not in events_by_comp[comp]:
+            event = rng.choice(events_by_comp[comp])
+        return comp, event
+
+    def msg_for(event, src, asset, asset_ip, n, user, dport):
+        return {
+            "port_scan": f"TCP SYN scan from {src} — {n * 9} ports probed on {asset} ({asset_ip})",
+            "auth_failure": f"{n * 3} failed authentications for user '{user}' from {src} on {asset}",
+            "c2_beacon": f"Periodic {rng.choice([30, 45, 60, 90])}s HTTPS beacon from {asset} to {src} (possible C2)",
+            "data_transfer": f"Outbound transfer of {rng.randint(40, 900)} MB from {asset} to {src} over port {dport}",
+            "exploit_attempt": f"Exploit attempt ({rng.choice(['CVE-2021-44228', 'CVE-2019-0708', 'SQL injection', 'path traversal'])}) from {src} against {asset}:{dport}",
+            "anomaly": f"Telemetry anomaly on {asset}: reading {rng.randint(3, 9)}σ above 30-day baseline",
+            "command_override": f"Unauthorized control command on {asset} from {src} — signal timing overridden",
+            "suspicious_process": f"Suspicious process activity on {asset} correlated with {src}",
+        }[event]
+
+    RES_NOTES = {
+        "true_positive": [
+            "Confirmed malicious activity. Source {src} blocked at the perimeter firewall and added to the threat-intel watchlist; {asset} isolated for review.",
+            "Validated true positive correlated with earlier reconnaissance from the same source. Credentials rotated and {asset} reimaged.",
+        ],
+        "false_positive": [
+            "Triggered by the scheduled authenticated vulnerability scan from the internal scanner (10.0.5.12). Rule tuned to exclude the scanner subnet.",
+            "Matched a routine backup job to {asset}; verified against the change calendar. Added an allow-list exception.",
+        ],
+        "benign": [
+            "Traced to an authorized maintenance window (CHG-{chg}); behaviour expected. No further action.",
+            "Confirmed legitimate operator action on {asset} during shift handover.",
+        ],
+        "informational": [
+            "Low-confidence signal with no follow-on activity. Documented for baseline tuning.",
+            "Isolated low-severity event; retained for trend analysis only.",
+        ],
+    }
+    INV_NOTES = [
+        "Reviewed {n} correlated events in the drill-down window; {src} -> {asset} in {zone}.",
+        "Pivoted on {src} across logs-*; activity scoped to {asset}.",
+        "Checked threat intel for {src} and cross-referenced the asset inventory.",
     ]
-    for i, (name, sev, comp, tid, tname, asset, src_ip) in enumerate(demo_alerts):
-        ts = now - timedelta(minutes=7 * i + 3)
-        doc = {
-            "alert_id": f"demo-alert-{i+1}",
-            "triggered_at": ts.isoformat(),
-            "rule_id": f"demo-rule-{tid.lower()}",
-            "rule_name": name,
-            "severity": sev,
+    REM_NOTES = ["Firewall rule pushed; monitoring for recurrence.", "Host patched and credentials rotated.",
+                 "No remediation required.", "Watch-list entry added; 24h heightened monitoring."]
+
+    history: list = []
+    chosen = rng.sample(all_rules, min(26, len(all_rules)))
+    for rule in chosen:
+        comp, event = classify(rule)
+        zone = rng.choice(ZONES)
+        asset, asset_ip = rng.choice(ASSETS[comp])
+        src = rng.choice(ATTACKERS)
+        user = rng.choice(USERS)
+        dport = DPORT[event] or rng.choice([21, 23, 135, 445, 3389])
+        n_events = rng.randint(4, 16)
+        triggered = now - timedelta(minutes=rng.randint(8, 4 * 24 * 60), seconds=rng.randint(0, 59))
+        corr = uuid.uuid4().hex
+        first_seen = triggered - timedelta(seconds=rng.randint(60, 140))
+        alert_id = uuid.uuid4().hex
+        alert = {
+            "alert_id": alert_id,
+            "triggered_at": triggered.isoformat(),
+            "rule_id": rule.get("rule_id"),
+            "rule_name": rule.get("name"),
+            "severity": rule.get("severity", "medium"),
             "component": comp,
-            "city_zone": zones[i % len(zones)],
-            "technique_id": tid,
-            "technique_name": tname,
-            "evidence": {"source_ip": src_ip, "event_count": 5 + i * 3, "first_seen": ts.isoformat()},
-            "related_query": f"src_ip:{src_ip} AND component:{comp}",
-            "status": "open" if i % 3 else "triaged",
+            "city_zone": zone,
+            "technique_id": rule.get("technique_id", ""),
+            "technique_name": rule.get("technique_name", ""),
+            "evidence": {
+                "source_ip": src, "target_ip": asset_ip, "target_asset": asset,
+                "destination_port": dport, "event_count": n_events,
+                "first_seen": first_seen.isoformat(), "last_seen": triggered.isoformat(),
+                "city_zone": zone, "sample": msg_for(event, src, asset, asset_ip, n_events, user, dport),
+            },
+            "related_query": f"src_ip:{src} AND component:{comp}",
+            "status": "open",
             "asset_id": asset,
-            "related_events_count": 5 + i * 3,
+            "correlation_id": corr,
+            "related_events_count": n_events,
         }
-        try:
-            opensearch_client.index_document("alerts", doc, doc_id=doc["alert_id"])
-        except Exception as e:
-            logger.debug(f"demo alert seed skipped: {e}")
-
-    # A spread of log events across the three component streams.
-    streams = [
-        ("logs-network", "network_infrastructure", ["port_scan", "connection", "auth_failure"], "cyber-range-metasploitable"),
-        ("logs-iot", "iot_sensors", ["sensor_reading", "anomaly", "command"], "iot-range-target"),
-        ("logs-traffic", "traffic_management", ["signal_change", "vehicle_count", "command"], None),
-    ]
-    seeded_logs = 0
-    for idx, (index, comp, events, asset) in enumerate(streams):
-        for j in range(12):
-            ts = now - timedelta(minutes=j * 4 + idx)
-            doc = {
-                "@timestamp": ts.isoformat() + "Z",
-                "component": comp,
-                "event_type": events[j % len(events)],
-                "severity": ["info", "low", "medium", "high"][j % 4],
-                "city_zone": zones[j % len(zones)],
-                "src_ip": f"192.168.100.{40 + j}",
-                "dst_ip": f"10.0.0.{5 + idx}",
-                "src_port": 40000 + j,
-                "dst_port": [22, 80, 443, 8080][j % 4],
-                "asset_id": asset,
-                "message": f"{comp} {events[j % len(events)]} event",
+        roll = rng.random()
+        if roll < 0.45:
+            cls = rng.choices(["true_positive", "false_positive", "benign", "informational"],
+                              weights=[60, 20, 12, 8])[0]
+            resolver = rng.choice(ANALYSTS)
+            resolved_at = min(triggered + timedelta(minutes=rng.randint(8, 720)), now - timedelta(minutes=2))
+            rnotes = rng.choice(RES_NOTES[cls]).format(src=src, asset=asset, chg=rng.randint(1800, 2400))
+            inotes = rng.choice(INV_NOTES).format(n=n_events, src=src, asset=asset, zone=zone)
+            rem = rng.choice(REM_NOTES)
+            alert["status"] = "resolved"
+            alert["resolution"] = {
+                "classification": cls, "resolution_notes": rnotes, "investigation_notes": inotes,
+                "remediation_notes": rem, "resolved_by": resolver, "resolved_at": resolved_at.isoformat(),
+                "last_amended_by": None, "last_amended_at": None,
             }
-            try:
-                opensearch_client.index_document(index, doc)
-                seeded_logs += 1
-            except Exception as e:
-                logger.debug(f"demo log seed skipped: {e}")
+            history.append({
+                "history_id": uuid.uuid4().hex, "alert_id": alert_id, "action": "resolve",
+                "classification": cls, "resolution_notes": rnotes, "investigation_notes": inotes,
+                "remediation_notes": rem, "performed_by": resolver, "performed_at": resolved_at.isoformat(),
+            })
+        elif roll < 0.75:
+            alert["status"] = "triaged"
 
-    logger.info(f"Seeded demo data: {len(demo_alerts)} alerts, {seeded_logs} log events")
+        opensearch_client.index_document("alerts", alert, doc_id=alert_id)
+
+        sev_pool = (["medium", "high", "high", "critical"]
+                    if alert["severity"] in ("high", "critical")
+                    else ["low", "medium", "medium", "high"])
+        for _ in range(n_events):
+            ts = triggered - timedelta(seconds=rng.randint(0, 140))
+            opensearch_client.index_document(STREAM[comp], {
+                "@timestamp": ts.isoformat() + "Z", "component": comp, "event_type": event,
+                "severity": rng.choice(sev_pool), "city_zone": zone, "src_ip": src,
+                "dst_ip": asset_ip, "src_port": rng.randint(1024, 65535), "dst_port": dport,
+                "asset_id": asset, "correlation_id": corr,
+                "message": msg_for(event, src, asset, asset_ip, n_events, user, dport),
+            })
+
+    for h in history:
+        opensearch_client.index_document("alert-resolution-history", h, doc_id=h["history_id"])
+
+    # Baseline benign telemetry over the last 24h so the streams look alive.
+    baseline_events = {
+        "network_infrastructure": ["connection", "auth_success", "dns_query", "heartbeat"],
+        "iot_sensors": ["sensor_reading", "telemetry", "heartbeat", "calibration"],
+        "traffic_management": ["vehicle_count", "signal_state", "heartbeat", "occupancy"],
+    }
+
+    def baseline_msg(ev, asset, zone):
+        return {
+            "connection": f"Session established to {asset} from internal host",
+            "auth_success": f"Successful login on {asset}",
+            "dns_query": f"DNS resolution served for {asset}",
+            "heartbeat": f"{asset} health check OK",
+            "sensor_reading": f"{asset} reading {rng.randint(10, 120)} {rng.choice(['µg/m³', 'L/min', 'dB', 'kWh'])}",
+            "telemetry": f"{asset} telemetry batch uploaded",
+            "calibration": f"{asset} auto-calibration completed",
+            "vehicle_count": f"{zone} throughput {rng.randint(20, 180)} veh/min",
+            "signal_state": f"{asset} phase {rng.choice(['green', 'amber', 'red'])}",
+            "occupancy": f"{zone} occupancy {rng.randint(5, 95)}%",
+        }.get(ev, f"{asset} {ev}")
+
+    n_base = 0
+    for comp, events in baseline_events.items():
+        for _ in range(110):
+            asset, asset_ip = rng.choice(ASSETS[comp])
+            ev = rng.choice(events)
+            zone = rng.choice(ZONES)
+            ts = now - timedelta(minutes=rng.randint(0, 24 * 60), seconds=rng.randint(0, 59))
+            opensearch_client.index_document(STREAM[comp], {
+                "@timestamp": ts.isoformat() + "Z", "component": comp, "event_type": ev,
+                "severity": rng.choices(["info", "low", "medium"], weights=[70, 25, 5])[0],
+                "city_zone": zone,
+                "src_ip": f"10.{rng.randint(10, 60)}.{rng.randint(0, 9)}.{rng.randint(2, 250)}",
+                "dst_ip": asset_ip, "src_port": rng.randint(1024, 65535),
+                "dst_port": rng.choice([80, 443, 1883, 502, 123]), "asset_id": asset,
+                "message": baseline_msg(ev, asset, zone),
+            })
+            n_base += 1
+
+    logger.info(
+        f"Seeded realistic demo data: {len(chosen)} alerts ({len(history)} resolved), "
+        f"{n_base} baseline events + correlated clusters"
+    )
 
 
 @asynccontextmanager
