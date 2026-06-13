@@ -456,5 +456,12 @@ class OpenSearchClient:
             raise
 
 
-# Global client instance
-opensearch_client = OpenSearchClient()
+# Global client instance.
+# USE_IN_MEMORY_STORE=true swaps OpenSearch for an in-process store so the
+# backend runs with no external dependency (demo mode). Default is the real
+# OpenSearch client, so local docker-compose is unchanged.
+if os.getenv("USE_IN_MEMORY_STORE", "false").lower() == "true":
+    from .memory_store import InMemoryClient
+    opensearch_client = InMemoryClient()
+else:
+    opensearch_client = OpenSearchClient()

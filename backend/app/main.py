@@ -387,6 +387,94 @@ def _seed_detection_rules(retries: int = 3, delay: float = 2.0):
     logger.info(f"Detection rules seeding complete: {seeded} new, {skipped} existing (total in file: {len(rules_data)})")
 
 
+def _seed_demo_data():
+    """Seed fake alerts and log events so the dashboards look alive.
+
+    Only runs in in-memory demo mode (USE_IN_MEMORY_STORE=true) so it never
+    writes fake data into a real OpenSearch cluster. Idempotent.
+    """
+    import os
+    from datetime import timedelta
+
+    if os.getenv("USE_IN_MEMORY_STORE", "false").lower() != "true":
+        return
+    try:
+        if opensearch_client.count("alerts") > 0:
+            return  # already seeded
+    except Exception:
+        pass
+
+    now = datetime.utcnow()
+    zones = ["downtown", "industrial", "residential", "transit-hub"]
+    demo_alerts = [
+        ("Network Service Scanning detected", "high", "network_infrastructure", "T1046",
+         "Network Service Scanning", "cyber-range-metasploitable", "192.168.100.50"),
+        ("Brute Force login attempts", "high", "network_infrastructure", "T1110",
+         "Brute Force", "cyber-range-metasploitable", "192.168.100.51"),
+        ("IoT firmware tampering suspected", "critical", "iot_sensors", "T1565",
+         "Data Manipulation", "iot-range-target", "192.168.100.77"),
+        ("Exploit attempt against web service", "medium", "network_infrastructure", "T1190",
+         "Exploit Public-Facing Application", "cyber-range-metasploitable", "192.168.100.60"),
+        ("Anomalous traffic-signal command", "medium", "traffic_management", "T1565",
+         "Data Manipulation", None, "10.20.0.9"),
+        ("Possible data exfiltration", "high", "iot_sensors", "T1041",
+         "Exfiltration Over C2 Channel", "iot-range-target", "192.168.100.88"),
+    ]
+    for i, (name, sev, comp, tid, tname, asset, src_ip) in enumerate(demo_alerts):
+        ts = now - timedelta(minutes=7 * i + 3)
+        doc = {
+            "alert_id": f"demo-alert-{i+1}",
+            "triggered_at": ts.isoformat(),
+            "rule_id": f"demo-rule-{tid.lower()}",
+            "rule_name": name,
+            "severity": sev,
+            "component": comp,
+            "city_zone": zones[i % len(zones)],
+            "technique_id": tid,
+            "technique_name": tname,
+            "evidence": {"source_ip": src_ip, "event_count": 5 + i * 3, "first_seen": ts.isoformat()},
+            "related_query": f"src_ip:{src_ip} AND component:{comp}",
+            "status": "open" if i % 3 else "triaged",
+            "asset_id": asset,
+            "related_events_count": 5 + i * 3,
+        }
+        try:
+            opensearch_client.index_document("alerts", doc, doc_id=doc["alert_id"])
+        except Exception as e:
+            logger.debug(f"demo alert seed skipped: {e}")
+
+    # A spread of log events across the three component streams.
+    streams = [
+        ("logs-network", "network_infrastructure", ["port_scan", "connection", "auth_failure"], "cyber-range-metasploitable"),
+        ("logs-iot", "iot_sensors", ["sensor_reading", "anomaly", "command"], "iot-range-target"),
+        ("logs-traffic", "traffic_management", ["signal_change", "vehicle_count", "command"], None),
+    ]
+    seeded_logs = 0
+    for idx, (index, comp, events, asset) in enumerate(streams):
+        for j in range(12):
+            ts = now - timedelta(minutes=j * 4 + idx)
+            doc = {
+                "@timestamp": ts.isoformat() + "Z",
+                "component": comp,
+                "event_type": events[j % len(events)],
+                "severity": ["info", "low", "medium", "high"][j % 4],
+                "city_zone": zones[j % len(zones)],
+                "src_ip": f"192.168.100.{40 + j}",
+                "dst_ip": f"10.0.0.{5 + idx}",
+                "src_port": 40000 + j,
+                "dst_port": [22, 80, 443, 8080][j % 4],
+                "asset_id": asset,
+                "message": f"{comp} {events[j % len(events)]} event",
+            }
+            try:
+                opensearch_client.index_document(index, doc)
+                seeded_logs += 1
+            except Exception as e:
+                logger.debug(f"demo log seed skipped: {e}")
+
+    logger.info(f"Seeded demo data: {len(demo_alerts)} alerts, {seeded_logs} log events")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
@@ -422,6 +510,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.debug(f"Detection rule seeding skipped: {e}")
 
+    # Seed fake alerts/logs in demo (in-memory) mode so dashboards look alive
+    try:
+        _seed_demo_data()
+    except Exception as e:
+        logger.debug(f"Demo data seeding skipped: {e}")
+
     # Initialize OpenSearch Dashboards (non-blocking)
     try:
         created = init_opensearch_dashboards()
@@ -446,10 +540,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS
+# Configure CORS — origins are configurable via the CORS_ALLOWED_ORIGINS env var.
+# A wildcard ("*") combined with allow_credentials=True is rejected by browsers and
+# is insecure, so we use an explicit allow-list (defaults to local dev origins).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify allowed origins
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

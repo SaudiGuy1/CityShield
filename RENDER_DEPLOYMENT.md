@@ -1,159 +1,91 @@
-# Deploy CityShield on Render (fast demo)
+# Deploy CityShield on Render — demo mode (no database)
 
-This gets a working demo URL with **frontend + backend on Render**, and
-**OpenSearch on a free managed cluster** (Bonsai). Local docker-compose is
-unaffected.
+This publishes a working demo with **two free Render web services and nothing
+else**. The backend runs in **in-memory demo mode** (`USE_IN_MEMORY_STORE=true`),
+so there is **no OpenSearch / database to host** — the #1 thing that made the
+other platforms painful is gone.
 
-## Honest note on OpenSearch (read first)
+On startup the backend seeds the same demo data as a full stack:
+- admin + researcher users,
+- 10 OWASP Top-10 scenarios, 75 detection rules,
+- training assets, and sample **alerts + log events** so dashboards look alive.
 
-OpenSearch is **mandatory** — login, users, alerts, and all data live in it.
-There is **no mock mode** that removes it (`USE_MOCK_CITY_COMPONENTS` only mocks
-some city-visualization data, not the datastore). Render has no managed
-OpenSearch, so the lightest path is a **free external managed cluster** that the
-backend connects to over HTTPS (already supported in code).
+> Demo-mode caveat: data lives in memory and **resets when the service
+> restarts/sleeps** (it re-seeds on next boot). Live simulator traffic isn't
+> generated, but the seeded demo data is always there. For a persistent,
+> fully-live deployment use `VPS_DEPLOYMENT.md`.
 
-Two ways to provide OpenSearch — pick one:
-
-| Option | Cost | Notes |
-|---|---|---|
-| **A. Bonsai managed (recommended)** | Free sandbox | Fastest. Free tier has limits (storage + index count) — fine for a demo. |
-| **B. OpenSearch as a Render Private Service** | Paid (~$25/mo, needs ≥2 GB) | All-Render, no third party. YAML at the bottom. |
+Your local docker-compose is unaffected (in-memory mode is off by default).
 
 ---
 
 ## Architecture
 
 ```
- users ──► cityshield-frontend (Render web, nginx)  ──proxy /api,/ws──►  cityshield-backend (Render web, FastAPI)
-                public URL (this is your link)                                      │ https
-                                                                                    ▼
-                                                                       OpenSearch (Bonsai, managed)
+ users ─► cityshield-frontend (Render web, nginx)  ──proxy /api,/ws──►  cityshield-backend (Render web, FastAPI)
+              public URL (your link)                                       in-memory store (no DB)
 ```
 
-Only the **frontend** URL is what you share. The frontend proxies `/api` and
-`/ws` to the backend automatically (Render injects the backend URL via the
-Blueprint).
-
 ---
 
-## Step 1 — Create a free OpenSearch (Bonsai)
+## Steps (click-by-click)
 
-1. Go to **bonsai.io** → sign up → **Create Cluster**.
-2. Choose **OpenSearch**, the **Sandbox (free)** plan, a nearby region.
-3. Open the cluster → **Access** / **Credentials**. Copy:
-   - **Host URL** → e.g. `https://your-cluster-1234.us-east-1.bonsaisearch.net:443`
-   - **Access Key** and **Access Secret**.
-
-Keep these three for Step 3.
-
-> Bonsai's free sandbox limits storage and index count. CityShield creates ~12
-> indices on first boot. If creation is rejected, upgrade the cluster or use
-> Option B. The `users` index (needed for login) is created first, so login
-> usually works even on a constrained tier.
-
----
-
-## Step 2 — Create the Render Blueprint
-
-1. Push this branch to GitHub (it contains `render.yaml`):
-   ```bash
-   git push
-   ```
-2. In Render: **New + → Blueprint**.
-3. **Connect** your `CityShield` repo and select the **`railway-deployment`**
-   branch (the one with `render.yaml`).
-4. Render reads `render.yaml` and shows two services: `cityshield-backend` and
-   `cityshield-frontend`. Click **Apply**.
-
----
-
-## Step 3 — Set the backend's secret variables
-
-Render created the services but left the secret vars blank (`sync:false`). Open
-**cityshield-backend → Environment** and set:
-
-| Variable | Value |
-|---|---|
-| `OPENSEARCH_URL` | the Bonsai **Host URL** (e.g. `https://...bonsaisearch.net:443`) |
-| `OPENSEARCH_USER` | Bonsai **Access Key** |
-| `OPENSEARCH_PASS` | Bonsai **Access Secret** |
-| `DEFAULT_ADMIN_PASS` | a strong admin password you choose |
-
-`BACKEND_JWT_SECRET` is generated automatically by Render — leave it.
-
-Click **Save Changes** (the backend redeploys).
-
----
-
-## Step 4 — Get your link
-
-1. Wait for **both** services to go **Live** (first build ~3–5 min).
-2. Open **cityshield-frontend** → its URL is
-   `https://cityshield-frontend.onrender.com` — **this is your demo link**.
-3. Log in with `admin` / the `DEFAULT_ADMIN_PASS` you set. Change it after login.
-
----
-
-## Required environment variables (summary)
-
-**Backend** (most are pre-filled by `render.yaml`; you set the 4 secrets):
-- `OPENSEARCH_URL`, `OPENSEARCH_USER`, `OPENSEARCH_PASS` — **you set** (Bonsai)
-- `DEFAULT_ADMIN_PASS` — **you set**
-- `BACKEND_JWT_SECRET` — auto-generated by Render
-- `USE_MOCK_CITY_COMPONENTS=true`, `BACKEND_JWT_ALGORITHM=HS256`,
-  `BACKEND_ACCESS_TOKEN_EXPIRE_MINUTES=60`, `DEFAULT_ADMIN_USER=admin`,
-  `CORS_ALLOWED_ORIGINS=*`, `LOG_LEVEL=INFO` — pre-filled
-
-**Frontend:**
-- `BACKEND_URL` — injected automatically from the backend service (no action)
-
----
-
-## Known limitations on Render
-
-- **Free services sleep** after ~15 min idle and take ~30–60 s to wake on the
-  next request. Fine for a demo; for an always-on demo use the Starter plan.
-- **Bonsai free tier limits** (storage / index count). If you hit them, upgrade
-  Bonsai or use Option B below.
-- The cyber range, IoT range, and researcher lab are **not deployed** (they need
-  a Docker socket / raw sockets). The app degrades gracefully without them.
-- Simulators / detection engine aren't in this Blueprint (to keep it minimal).
-  Login + dashboards work; to add live events, add them as more Render services
-  pointing at the same `OPENSEARCH_URL`.
-
----
-
-## Option B — run OpenSearch on Render (all-Render, paid)
-
-Add this service to `render.yaml` and set the backend's
-`OPENSEARCH_URL=http://cityshield-opensearch:9200` (private networking),
-`OPENSEARCH_USER`/`OPENSEARCH_PASS` to anything (security is disabled):
-
-```yaml
-  - type: pserv                       # private service (paid plan required)
-    name: cityshield-opensearch
-    runtime: image
-    image:
-      url: docker.io/opensearchproject/opensearch:2.11.1
-    plan: standard                    # ≥ 2 GB RAM
-    disk:
-      name: os-data
-      mountPath: /usr/share/opensearch/data
-      sizeGB: 10
-    envVars:
-      - key: discovery.type
-        value: single-node
-      - key: DISABLE_SECURITY_PLUGIN
-        value: "true"
-      - key: DISABLE_INSTALL_DEMO_CONFIG
-        value: "true"
-      - key: bootstrap.memory_lock
-        value: "false"
-      - key: node.store.allow_mmap
-        value: "false"
-      - key: OPENSEARCH_JAVA_OPTS
-        value: "-Xms512m -Xmx512m"
+**1. Push the branch** (it contains `render.yaml`):
+```bash
+git push
 ```
 
-> Reminder: if Render still struggles with OpenSearch memory, the most reliable
-> option remains a single VM with docker-compose — see `VPS_DEPLOYMENT.md`.
+**2. Create the Blueprint**
+- Render → **New + → Blueprint**.
+- **Connect** your `CityShield` repo, select the **`railway-deployment`** branch.
+- Render reads `render.yaml` and shows **cityshield-backend** + **cityshield-frontend**. Click **Apply**.
+
+**3. Set one secret**
+- Open **cityshield-backend → Environment** → set **`DEFAULT_ADMIN_PASS`** to a
+  password you choose → **Save Changes**.
+- (`BACKEND_JWT_SECRET` is auto-generated; `BACKEND_URL` on the frontend is
+  auto-wired. Nothing else to set.)
+
+**4. Get your link**
+- Wait for both services to go **Live** (first build ~3–5 min).
+- Open **cityshield-frontend** → `https://cityshield-frontend.onrender.com` —
+  **this is your demo link**.
+- Log in: `admin` / the `DEFAULT_ADMIN_PASS` you set.
+
+---
+
+## Required environment variables
+
+You set **one**: `DEFAULT_ADMIN_PASS`. Everything else is pre-filled by
+`render.yaml`:
+
+| Variable | Value | Who sets it |
+|---|---|---|
+| `DEFAULT_ADMIN_PASS` | your admin password | **you** (dashboard) |
+| `USE_IN_MEMORY_STORE` | `true` | render.yaml |
+| `BACKEND_JWT_SECRET` | auto-generated | Render |
+| `DEFAULT_ADMIN_USER` / `DEFAULT_ADMIN_EMAIL` | `admin` / `admin@cityshield.example.com` | render.yaml |
+| `USE_MOCK_CITY_COMPONENTS`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, JWT settings | sane defaults | render.yaml |
+| `BACKEND_URL` (frontend) | injected from backend | render.yaml |
+
+---
+
+## What works in the demo
+
+Login, RBAC, the 3D smart-city dashboard, alerts (seeded), alert resolution,
+75 detection rules, 10 OWASP scenarios, MITRE technique browser, devices,
+metrics, security-awareness, team analytics, theming, and English/Arabic.
+
+**Not in this demo:** live simulator traffic, the cyber range, and the
+researcher lab (they need extra services / a Docker socket). Use a VM
+(`VPS_DEPLOYMENT.md`) for the fully-live stack.
+
+---
+
+## Notes
+
+- **Free Render services sleep** after ~15 min idle (~30–60 s cold start, and
+  the in-memory data re-seeds). Fine for a demo; use the Starter plan for
+  always-on.
+- This same flag works on **any** host (Railway, Fly, a tiny box): set
+  `USE_IN_MEMORY_STORE=true` and you need only the backend + frontend.

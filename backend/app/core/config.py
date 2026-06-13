@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Default Admin
     default_admin_user: str = os.getenv("DEFAULT_ADMIN_USER", "admin")
     default_admin_pass: str = os.getenv("DEFAULT_ADMIN_PASS", "admin")
-    default_admin_email: str = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@cityshield.local")
+    default_admin_email: str = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@cityshield.example.com")
 
     # Default Researcher
     default_researcher_user: str = os.getenv("DEFAULT_RESEARCHER_USER", "researcher")
@@ -30,6 +30,18 @@ class Settings(BaseSettings):
     app_name: str = "CityShield Backend API"
     app_version: str = "1.0.0"
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
+
+    # CORS — comma-separated list of allowed origins. Defaults to local dev hosts.
+    # Set CORS_ALLOWED_ORIGINS in production to the deployed frontend origin(s).
+    cors_allowed_origins: str = os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse the configured CORS origins into a list."""
+        return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
 
     class Config:
         env_file = ".env"
